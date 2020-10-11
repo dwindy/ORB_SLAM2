@@ -22,6 +22,8 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
+//https://github.com/raulmur/ORB_SLAM2/issues/337
+#include <unistd.h>
 #include<string>
 #include<thread>
 #include<opencv2/core/core.hpp>
@@ -59,7 +61,10 @@ public:
 public:
 
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);
+    System(const string &strVocFile, //字典路径
+           const string &strSettingsFile, //配置文件路径
+           const eSensor sensor, //传感器类型
+           const bool bUseViewer = true); //是否可视化
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.

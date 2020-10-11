@@ -43,10 +43,27 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
-    mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
-    mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
+Tracking::Tracking(System *pSys, //系统实例?
+                   ORBVocabulary* pVoc, //BOW字典
+                   FrameDrawer *pFrameDrawer,
+                   MapDrawer *pMapDrawer,
+                   Map *pMap, //地图句柄
+                   KeyFrameDatabase* pKFDB, //关键帧产生的词袋数据库
+                   const string &strSettingPath,
+                   const int sensor):
+    mState(NO_IMAGES_YET),
+    mSensor(sensor),
+    mbOnlyTracking(false),
+    mbVO(false), //当处于纯跟踪模式时候，这个变量表示了当前跟踪状态的好坏
+    mpORBVocabulary(pVoc),
+    mpKeyFrameDB(pKFDB),
+    mpInitializer(static_cast<Initializer*>(NULL)),
+    mpSystem(pSys),
+    mpViewer(NULL),
+    mpFrameDrawer(pFrameDrawer),
+    mpMapDrawer(pMapDrawer),
+    mpMap(pMap),
+    mnLastRelocFrameId(0)
 {
     // Load camera parameters from settings file
 
@@ -76,7 +93,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     }
     DistCoef.copyTo(mDistCoef);
 
-    mbf = fSettings["Camera.bf"];
+    mbf = fSettings["Camera.bf"]; //双目baseline * fx 50
 
     float fps = fSettings["Camera.fps"];
     if(fps==0)
@@ -110,17 +127,19 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
     // Load ORB parameters
 
-    int nFeatures = fSettings["ORBextractor.nFeatures"];
-    float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
-    int nLevels = fSettings["ORBextractor.nLevels"];
-    int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
-    int fMinThFAST = fSettings["ORBextractor.minThFAST"];
+    int nFeatures = fSettings["ORBextractor.nFeatures"]; //每帧特征点数 1000
+    float fScaleFactor = fSettings["ORBextractor.scaleFactor"]; //图像金字塔的尺度 1.2
+    int nLevels = fSettings["ORBextractor.nLevels"]; //金字塔层数 8
+    int fIniThFAST = fSettings["ORBextractor.iniThFAST"]; //fast初始阈值 20
+    int fMinThFAST = fSettings["ORBextractor.minThFAST"]; //如果达不到足够的特征点数量，改用最小阈值 8
 
+    //tracking过程使用的是left实例作为特征提取器
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     if(sensor==System::STEREO)
         mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
+    //monocular初始化过程中使用这个实例作为特征提取器，注意两倍特征数
     if(sensor==System::MONOCULAR)
         mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
@@ -133,6 +152,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
     if(sensor==System::STEREO || sensor==System::RGBD)
     {
+        //判断一个3D点远近的阈值，mdf * 35 /fx 实际就是基线长度的xx倍
         mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
         cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
     }
