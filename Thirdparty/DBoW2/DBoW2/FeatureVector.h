@@ -18,6 +18,7 @@
 namespace DBoW2 {
 
 /// Vector of nodes with indexes of local features
+//<node, indexs of descriptor>
 class FeatureVector: 
   public std::map<NodeId, std::vector<unsigned int> >
 {

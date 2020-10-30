@@ -236,8 +236,27 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
 }
 
+/**
+ * @brief Pose only optimization
+ * 3D-2D 最小化重投影误差 e=(u,v)-project(Tcw*Pw)
+ * 
+ * 1. Vertex: g2o::VertexSE3Expmap(),当前帧得Tcw
+ * 2. Edge：
+ *      -g2o:EdgeSE3ProjectXYZOnlyPose(), BaseUnaryEdge
+ *          +Vertex: 待优化当前帧的Tcw
+ *          +measurement: MapPoint在当前帧中的二维位置（u，v）
+ *          +InfoMatrix：invSigma2（与特征点所在的尺度有关）
+ *      -g2o::EdgeStereoSE3ProjectXYZOnlyPose(), BaseUnaryEdge
+ *          +Vertex: 待优化当前帧的Tcw
+ *          +measurement：MapPoint在当前帧中的二维位置(ul,v,ur)
+ *          +InfoMatrix:invSigma2(与特征点所在的尺度有关
+ * @param pFrame Frame
+ * @return inliers数量
+*/
 int Optimizer::PoseOptimization(Frame *pFrame)
 {
+
+    //*Step 1: 构造g2o优化器,BlockSolver_6_3：位姿_PoseDim 6维 路标 _LandmarkDim 3维
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
 
@@ -251,32 +270,38 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     int nInitialCorrespondences=0;
 
     // Set Frame vertex
+    //*Step 2: 添加顶点,待优化帧的Tcw
     g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
     vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+    //设置ID
     vSE3->setId(0);
+    //要优化所以不能fixed
     vSE3->setFixed(false);
     optimizer.addVertex(vSE3);
 
     // Set MapPoint vertices
     const int N = pFrame->N;
 
+    //Monocular
     vector<g2o::EdgeSE3ProjectXYZOnlyPose*> vpEdgesMono;
     vector<size_t> vnIndexEdgeMono;
     vpEdgesMono.reserve(N);
     vnIndexEdgeMono.reserve(N);
-
+    //Stereo
     vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose*> vpEdgesStereo;
     vector<size_t> vnIndexEdgeStereo;
     vpEdgesStereo.reserve(N);
     vnIndexEdgeStereo.reserve(N);
 
+    //自由度为2的卡方分布，显著性水平为0.05,对应的临界值是5.991
     const float deltaMono = sqrt(5.991);
     const float deltaStereo = sqrt(7.815);
 
-
+    //*Step3 添加一元边
     {
+    //使用地图点构建图的时候，不希望地图点被修改。
     unique_lock<mutex> lock(MapPoint::mGlobalMutex);
-
+    //遍历（当前帧）地图点
     for(int i=0; i<N; i++)
     {
         MapPoint* pMP = pFrame->mvpMapPoints[i];
@@ -291,14 +316,16 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 Eigen::Matrix<double,2,1> obs;
                 const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
                 obs << kpUn.pt.x, kpUn.pt.y;
-
+                //新建节点
                 g2o::EdgeSE3ProjectXYZOnlyPose* e = new g2o::EdgeSE3ProjectXYZOnlyPose();
-
+                //填充
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
                 e->setMeasurement(obs);
+                //这个点的可信度和金字塔层级有关
                 const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                //?跟其他地方信息矩阵用方差的逆有何区别？
                 e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
-
+                //鲁棒核函数
                 g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                 e->setRobustKernel(rk);
                 rk->setDelta(deltaMono);
@@ -364,6 +391,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     if(nInitialCorrespondences<3)
         return 0;
 
+    //*Step 4: 开始优化，总共优化4次，每次优化迭代10次，每次优化后将观测点区分为outlier和inlier
     // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
     const float chi2Mono[4]={5.991,5.991,5.991,5.991};
@@ -375,25 +403,32 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     {
 
         vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+        //初始化优化器，默认为0，0指的是只对level为0的边进行优化
         optimizer.initializeOptimization(0);
+        //优化10次
         optimizer.optimize(its[it]);
 
         nBad=0;
+        //优化结束后，遍历边找outlier
         for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
         {
             g2o::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
 
             const size_t idx = vnIndexEdgeMono[i];
 
+            //? 优化结束后computeerror的目的？
             if(pFrame->mvbOutlier[idx])
             {
                 e->computeError();
             }
 
+            //error * informatrix * error
             const float chi2 = e->chi2();
 
             if(chi2>chi2Mono[it])
             {                
+                //如果误差大于阈值，离群标记true
+                //点level设置为1
                 pFrame->mvbOutlier[idx]=true;
                 e->setLevel(1);
                 nBad++;
@@ -404,6 +439,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 e->setLevel(0);
             }
 
+            //只有前两次需要鲁棒核函数，之后重投影误差显著下降，不再需要。
             if(it==2)
                 e->setRobustKernel(0);
         }
@@ -441,6 +477,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             break;
     }    
 
+    //* Step 5 得到优化后的当前帧的位姿
     // Recover optimized pose and return number of inliers
     g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();

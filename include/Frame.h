@@ -164,7 +164,7 @@ public:
     cv::Mat mTcw;
 
     // Current and Next Frame id.
-    static long unsigned int nNextId;
+    static long unsigned int nNextId; //frame类的静态成员
     long unsigned int mnId;
 
     // Reference Keyframe.

@@ -1123,6 +1123,16 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
 
 // --------------------------------------------------------------------------
 
+/**
+ * @brief 将一副图像中的所有特征点转换为BoWvector和FeatureVector
+ * @tparam TDescriptor
+ * @tparam F
+ * @param [in] features 图像中的特征点
+ * @param [in & out] v BowVector
+ * @param [in & out] fv FeatureVector
+ * @param [in] levelsup 距离叶子的深度
+ */
+
 template<class TDescriptor, class F> 
 void TemplatedVocabulary<TDescriptor,F>::transform(
   const std::vector<TDescriptor>& features,
@@ -1151,7 +1161,7 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
       NodeId nid;
       WordValue w; 
       // w is the idf value if TF_IDF, 1 if TF
-      
+      //fit描述子，搜索层级levelsup，输出word id，weight，node id，
       transform(*fit, id, w, &nid, levelsup);
       
       if(w > 0) // not stopped
@@ -1214,15 +1224,26 @@ void TemplatedVocabulary<TDescriptor,F>::transform
 
 // --------------------------------------------------------------------------
 
-template<class TDescriptor, class F>
-void TemplatedVocabulary<TDescriptor,F>::transform(const TDescriptor &feature, 
-  WordId &word_id, WordValue &weight, NodeId *nid, int levelsup) const
-{ 
+/**
+ * @brief 将描述子转化为word id，word weight，父节点id（不是上一层，而是叶子深度）
+ * @brief TDescriptor
+ * @brief F
+ * @param[in] feature 特征描述子
+ * @param[in & out] word id Word ID 
+ * @param[in & out] weight Weight
+ * @param[in & out] nid 记录当前描述子转化为word后所属的node id，它距离叶子深度为levelsup
+ * @param[in] levelsup 距离叶子的深度
+*/
+template <class TDescriptor, class F>
+void TemplatedVocabulary<TDescriptor, F>::transform(const TDescriptor &feature,
+                                                    WordId &word_id, WordValue &weight, NodeId *nid, int levelsup) const
+{
   // propagate the feature down the tree
   vector<NodeId> nodes;
   typename vector<NodeId>::const_iterator nit;
 
   // level at which the node must be stored in nid, if given
+  //m_L数深度 6 .levelsup 4 nid_level 2
   const int nid_level = m_L - levelsup;
   if(nid_level <= 0 && nid != NULL) *nid = 0; // root
 
@@ -1232,9 +1253,10 @@ void TemplatedVocabulary<TDescriptor,F>::transform(const TDescriptor &feature,
   do
   {
     ++current_level;
+    //取出当前节点所有子节点的ID
     nodes = m_nodes[final_id].children;
+    //以第一个子节点的举例初始化比较
     final_id = nodes[0];
- 
     double best_d = F::distance(feature, m_nodes[final_id].descriptor);
 
     for(nit = nodes.begin() + 1; nit != nodes.end(); ++nit)
@@ -1248,12 +1270,14 @@ void TemplatedVocabulary<TDescriptor,F>::transform(const TDescriptor &feature,
       }
     }
     
+    //如果当前level到了我们输入的nid_level，存下nid。以后不更新了
     if(nid != NULL && current_level == nid_level)
       *nid = final_id;
     
   } while( !m_nodes[final_id].isLeaf() );
 
   // turn node id into word id
+  //把叶子节点的相关信息传回去
   word_id = m_nodes[final_id].word_id;
   weight = m_nodes[final_id].weight;
 }

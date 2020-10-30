@@ -43,8 +43,9 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
 {
+    //关键帧ID
     mnId=nNextId++;
-
+    //创建好对应的网格
     mGrid.resize(mnGridCols);
     for(int i=0; i<mnGridCols;i++)
     {
@@ -52,18 +53,23 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
         for(int j=0; j<mnGridRows; j++)
             mGrid[i][j] = F.mGrid[i][j];
     }
-
+    //设置当前帧的位姿
     SetPose(F.mTcw);    
 }
 
 void KeyFrame::ComputeBoW()
 {
-    if(mBowVec.empty() || mFeatVec.empty())
+    if (mBowVec.empty() || mFeatVec.empty())
     {
+        //将描述子mDescriptors转换为DBoW要求的格式
         vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         // Feature vector associate features with nodes in the 4th level (from leaves up)
         // We assume the vocabulary tree has 6 levels, change the 4 otherwise
-        mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
+        //将特征点的描述子转换为词袋向量mBowVec和特征向量mFeatVec
+        mpORBvocabulary->transform(vCurrentDesc, //当前描述子vector
+                                   mBowVec,      //词袋向量，记录单词ID和对应权重TF-IDF值
+                                   mFeatVec,     //记录node id以及对应的图像feature对应的索引?
+                                   4);           //从叶子节点向前的层数
     }
 }
 
@@ -125,6 +131,7 @@ void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight)
     {
         unique_lock<mutex> lock(mMutexConnections);
         if(!mConnectedKeyFrameWeights.count(pKF))
+            //TODO 如果不存在pKF，这里不需要增加一个map<pKF,weight>先？可以直接访问【pKF】吗？
             mConnectedKeyFrameWeights[pKF]=weight;
         else if(mConnectedKeyFrameWeights[pKF]!=weight)
             mConnectedKeyFrameWeights[pKF]=weight;
@@ -135,6 +142,10 @@ void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight)
     UpdateBestCovisibles();
 }
 
+/**
+*@brief 按照权重对连接的关键帧进行排序
+*更新后的变量存在mvpOrderdConnectedKeyFrames和mvOrderedWeights中 
+*/
 void KeyFrame::UpdateBestCovisibles()
 {
     unique_lock<mutex> lock(mMutexConnections);
@@ -144,10 +155,13 @@ void KeyFrame::UpdateBestCovisibles()
        vPairs.push_back(make_pair(mit->second,mit->first));
 
     sort(vPairs.begin(),vPairs.end());
+    //用链表以后方便删除和插入
     list<KeyFrame*> lKFs;
     list<int> lWs;
     for(size_t i=0, iend=vPairs.size(); i<iend;i++)
     {
+        //sort后从小到大，push_front后从大到小
+        //? 可是最后还是赋给了vector成员变量阿?
         lKFs.push_front(vPairs[i].second);
         lWs.push_front(vPairs[i].first);
     }
@@ -286,8 +300,17 @@ MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
     return mvpMapPoints[idx];
 }
 
+/*
+更新图的连接
+首先获得该关键帧的所有Mappoint点，统计观测到这些3D点的每个关键帧与其他所有关键帧之间的共视程度
+对每一个找到的关键帧，建立一条边，边的权重是该关键帧和当前关键帧公共3D点的个数
+并且权重必须大于一个阈值 如果没有超过阈值，则值保留权重最大的边
+对于这些连接按照权重从大到小排序，方便将来处理
+更新完共视图之后，如果没有初始化过，则初始化为连接权重最大的边，类似最大生成树。
+*/
 void KeyFrame::UpdateConnections()
 {
+    //<关键帧-权重>
     map<KeyFrame*,int> KFcounter;
 
     vector<MapPoint*> vpMP;
@@ -299,6 +322,8 @@ void KeyFrame::UpdateConnections()
 
     //For all map points in keyframe check in which other keyframes are they seen
     //Increase counter for those keyframes
+    //通过3D点间接统计可以观测到这些3D点的所有关键帧之间的共视程度
+    //* Step 1 统计每个地图点都有多少关键帧与当前关键帧共视，结果放在Kfcounter
     for(vector<MapPoint*>::iterator vit=vpMP.begin(), vend=vpMP.end(); vit!=vend; vit++)
     {
         MapPoint* pMP = *vit;
@@ -311,8 +336,11 @@ void KeyFrame::UpdateConnections()
 
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
+        //已经有其他关键帧观测到这个mappoint就在KFcounter中对应的KFcounter[mit->first]++共视个数
+        //?但是“其他关键帧观测到这个地图点”这是哪里初始化的？
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
+            //mnID关键帧的ID
             if(mit->first->mnId==mnId)
                 continue;
             KFcounter[mit->first]++;
@@ -320,6 +348,7 @@ void KeyFrame::UpdateConnections()
     }
 
     // This should not happen
+    //?为什么不会发生
     if(KFcounter.empty())
         return;
 
@@ -328,7 +357,9 @@ void KeyFrame::UpdateConnections()
     int nmax=0;
     KeyFrame* pKFmax=NULL;
     int th = 15;
-
+    
+    //存>threshold的共视关键帧
+    //int在前面方便排序
     vector<pair<int,KeyFrame*> > vPairs;
     vPairs.reserve(KFcounter.size());
     for(map<KeyFrame*,int>::iterator mit=KFcounter.begin(), mend=KFcounter.end(); mit!=mend; mit++)
@@ -338,6 +369,7 @@ void KeyFrame::UpdateConnections()
             nmax=mit->second;
             pKFmax=mit->first;
         }
+        //所有大于threshold的共视关键帧都会链上
         if(mit->second>=th)
         {
             vPairs.push_back(make_pair(mit->second,mit->first));
@@ -345,12 +377,15 @@ void KeyFrame::UpdateConnections()
         }
     }
 
+    //* STEP3 如果没有超过阈值的关键帧，包留最大共视帧
     if(vPairs.empty())
     {
         vPairs.push_back(make_pair(nmax,pKFmax));
         pKFmax->AddConnection(this,nmax);
     }
 
+    //* Step4 对共视度比较高的关键帧更新连接关系和权重
+    //? 上面AddConnection的时候不是调用过updatecovisible了？
     sort(vPairs.begin(),vPairs.end());
     list<KeyFrame*> lKFs;
     list<int> lWs;
@@ -368,8 +403,11 @@ void KeyFrame::UpdateConnections()
         mvpOrderedConnectedKeyFrames = vector<KeyFrame*>(lKFs.begin(),lKFs.end());
         mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());
 
+        //*Step 5 更新生成树的连接
         if(mbFirstConnection && mnId!=0)
         {
+            //初始化
+            //该帧的父节点为共视度最高的帧，双向链接
             mpParent = mvpOrderedConnectedKeyFrames.front();
             mpParent->AddChild(this);
             mbFirstConnection = false;
@@ -630,6 +668,7 @@ cv::Mat KeyFrame::UnprojectStereo(int i)
         return cv::Mat();
 }
 
+//对当前帧下所有地图点的深度进行排序，返回距离头部1/q处的深度值作为当前场景的平均深度
 float KeyFrame::ComputeSceneMedianDepth(const int q)
 {
     vector<MapPoint*> vpMapPoints;
@@ -646,6 +685,7 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
     cv::Mat Rcw2 = Tcw_.row(2).colRange(0,3);
     Rcw2 = Rcw2.t();
     float zcw = Tcw_.at<float>(2,3);
+    //遍历每一个地图点，投影到当前帧，得到深度。
     for(int i=0; i<N; i++)
     {
         if(mvpMapPoints[i])

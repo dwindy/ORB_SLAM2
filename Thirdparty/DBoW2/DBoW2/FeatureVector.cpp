@@ -27,7 +27,7 @@ FeatureVector::~FeatureVector(void)
 }
 
 // ---------------------------------------------------------------------------
-
+//input node-id 和 feature index
 void FeatureVector::addFeature(NodeId id, unsigned int i_feature)
 {
   FeatureVector::iterator vit = this->lower_bound(id);

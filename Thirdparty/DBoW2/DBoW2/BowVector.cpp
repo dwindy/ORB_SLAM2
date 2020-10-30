@@ -33,10 +33,12 @@ BowVector::~BowVector(void)
 
 void BowVector::addWeight(WordId id, WordValue v)
 {
+  //大于等于id的第一个值的位置
   BowVector::iterator vit = this->lower_bound(id);
   
   if(vit != this->end() && !(this->key_comp()(id, vit->first)))
   {
+    //如果该key（id）已经存在，增加权重即可
     vit->second += v;
   }
   else
