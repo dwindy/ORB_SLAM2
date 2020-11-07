@@ -137,10 +137,14 @@ class EdgeSim3ProjectXYZ : public  BaseBinaryEdge<2, Vector2d,  VertexSBAPointXY
 
     void computeError()
     {
+      //定义这种边的第二个顶点是Sim3类型
       const VertexSim3Expmap* v1 = static_cast<const VertexSim3Expmap*>(_vertices[1]);
+      //定义这种边的第一个顶点是PointXYZ类型
       const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
 
       Vector2d obs(_measurement);
+      //误差 = 观测 - 投影
+      //从右往左是 v2相机2坐标系下的三维点坐标 通过v1的估计 投影到相机1系 再通过cam-map1投影到成像平面
       _error = obs-v1->cam_map1(project(v1->estimate().map(v2->estimate())));
     }
 

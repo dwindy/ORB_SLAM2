@@ -362,6 +362,7 @@ void KeyFrame::UpdateConnections()
     //int在前面方便排序
     vector<pair<int,KeyFrame*> > vPairs;
     vPairs.reserve(KFcounter.size());
+    //*STep 2 找到共视度最高的关键帧
     for(map<KeyFrame*,int>::iterator mit=KFcounter.begin(), mend=KFcounter.end(); mit!=mend; mit++)
     {
         if(mit->second>nmax)

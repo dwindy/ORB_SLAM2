@@ -331,6 +331,9 @@ int MapPoint::GetIndexInKeyFrame(KeyFrame *pKF)
         return -1;
 }
 
+/**
+ * @brief 检查该地图点是否在关键帧中(有对应的二维特征点)
+*/
 bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexFeatures);

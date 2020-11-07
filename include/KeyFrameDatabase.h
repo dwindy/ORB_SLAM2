@@ -62,6 +62,7 @@ protected:
   // Associated vocabulary
   const ORBVocabulary* mpVoc;
 
+  //倒排索引，mvInvertedFile【i】表示包含了第i个word id的所有关键帧
   // Inverted file
   std::vector<list<KeyFrame*> > mvInvertedFile;
 
