@@ -144,7 +144,7 @@ class EdgeSim3ProjectXYZ : public  BaseBinaryEdge<2, Vector2d,  VertexSBAPointXY
 
       Vector2d obs(_measurement);
       //误差 = 观测 - 投影
-      //从右往左是 v2相机2坐标系下的三维点坐标 通过v1的估计 投影到相机1系 再通过cam-map1投影到成像平面
+      //从右往左是 v2相机2坐标系下的三维点坐标 通过v1的估计 投影到相机1系 project 归一化 再通过cam-map1投影到成像平面
       _error = obs-v1->cam_map1(project(v1->estimate().map(v2->estimate())));
     }
 
