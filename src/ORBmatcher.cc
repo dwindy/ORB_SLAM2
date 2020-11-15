@@ -861,7 +861,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                     vMatches12[idx1]=bestIdx2;
 
                     //!原码遗漏
-                    vnMatched2[bestIdx2]=true;
+                    //vnMatched2[bestIdx2]=true;
                     nmatches++;
                     //旋转差直方图
                     if(mbCheckOrientation)

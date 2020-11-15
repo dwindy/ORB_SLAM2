@@ -412,7 +412,7 @@ namespace ORB_SLAM2
     };
 
     //从yaml配置文件中获得参数
-    ORBextractor::ORBextractORBor(int _nfeatures, float _scaleFactor, int _nlevels,
+    ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
                                int _iniThFAST, int _minThFAST) : nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
                                                                  iniThFAST(_iniThFAST), minThFAST(_minThFAST)
     {

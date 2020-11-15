@@ -384,6 +384,7 @@ void Tracking::Track()
                         // bOK = TrackReferenceKeyFrame();
                     }
                     else
+                    {
                         bOK = TrackReferenceKeyFrame();
                     }
                 }
