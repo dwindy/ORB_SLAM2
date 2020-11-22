@@ -57,7 +57,7 @@ void LocalMapping::Run()
     mbFinished = false;
 
     while(1)
-    {   
+    {
         //*Step 1 告诉Tracking线程that，LocalMapping线程正处于繁忙状态
         // Tracking will see that Local Mapping is busy
         SetAcceptKeyFrames(false);
@@ -187,7 +187,7 @@ void LocalMapping::ProcessNewKeyFrame()
                 //该地图点是否在关键帧中
                 //?为什么会有个地图点不在关键帧中，所以是来自于匹配上的帧？
                 if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
-                {   
+                {
                     //如果地图点不是来自当前帧的观测，为当前地图点添加观测
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     //获得该点的平均观测方向和观测距离范围
@@ -272,7 +272,6 @@ void LocalMapping::CreateNewMapPoints()
     int nn = 10;
     if(mbMonocular)
         nn=20;
-
     //*Step 1 当前关键帧中前nn个共视度高的关键帧
     const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
@@ -360,12 +359,12 @@ void LocalMapping::CreateNewMapPoints()
         const float &cy2 = pKF2->cy;
         const float &invfx2 = pKF2->invfx;
         const float &invfy2 = pKF2->invfy;
-        
+
         //*Step 6 对每对匹配通过三角化生成3D点
         // Triangulate each match
         const int nmatches = vMatchedIndices.size();
         for(int ikp=0; ikp<nmatches; ikp++)
-        {   
+        {
             //*Step 6.1 取出匹配特征点
             const int &idx1 = vMatchedIndices[ikp].first;
             const int &idx2 = vMatchedIndices[ikp].second;
@@ -439,7 +438,7 @@ void LocalMapping::CreateNewMapPoints()
                 continue; //No stereo and very low parallax
 
             cv::Mat x3Dt = x3D.t();
-            
+
             //*Step 6.5 检测3D点在相机前方
             //Check triangulation in front of cameras
             float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);
@@ -760,7 +759,6 @@ void LocalMapping::KeyFrameCulling()
     //pKFi:observations中的某个关键帧
     //scaleLeveli:pKFi的金字塔尺度
     //scalelevel:pkf的金字塔尺度
-
     // Check redundant keyframes (only local keyframes)
     // A keyframe is considered redundant if the 90% of the MapPoints it sees, are seen
     // in at least other 3 keyframes (in the same or finer scale)
@@ -793,7 +791,7 @@ void LocalMapping::KeyFrameCulling()
                 if(!pMP->isBad())
                 {
                     if(!mbMonocular)
-                    {   
+                    {
                         //双目仅仅考虑近处的地图点（基线35倍）
                         if(pKF->mvDepth[i]>pKF->mThDepth || pKF->mvDepth[i]<0)
                             continue;

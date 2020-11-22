@@ -255,7 +255,6 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 */
 int Optimizer::PoseOptimization(Frame *pFrame)
 {
-
     //*Step 1: 构造g2o优化器,BlockSolver_6_3：位姿_PoseDim 6维 路标 _LandmarkDim 3维
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
@@ -755,7 +754,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
     // Check inlier observations
     for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
-    {   
+    {
         //*Step 10 outlier不再参与优化
         g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
         MapPoint* pMP = vpMapPointEdgeMono[i];
@@ -1316,7 +1315,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         }
     }
 
-    // 有删除误差边 说明质量不好 增加迭代次数
+    //有删除误差边 说明质量不好 增加迭代次数
     int nMoreIterations;
     if(nBad>0)
         nMoreIterations=10;
@@ -1325,7 +1324,6 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
     if(nCorrespondences-nBad<10)
         return 0;
-
 
     //*Step 7 再次迭代 
     // Optimize again only with inliers

@@ -158,7 +158,7 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
     const float a = kp1.pt.x*F12.at<float>(0,0)+kp1.pt.y*F12.at<float>(1,0)+F12.at<float>(2,0);
     const float b = kp1.pt.x*F12.at<float>(0,1)+kp1.pt.y*F12.at<float>(1,1)+F12.at<float>(2,1);
     const float c = kp1.pt.x*F12.at<float>(0,2)+kp1.pt.y*F12.at<float>(1,2)+F12.at<float>(2,2);
-    
+
     //*Step kp2点到线l2的距离
     //l2: ax+by+c=0
     //(u,v)到l2距离为: [au+bv+c]/sqrt(a^2+b^2)
@@ -199,7 +199,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
     const DBoW2::FeatureVector &vFeatVecKF = pKF->mFeatVec;
 
     int nmatches=0;
-    
+
     //特征点角度直方图
     vector<int> rotHist[HISTO_LENGTH];
     for(int i=0;i<HISTO_LENGTH;i++)
@@ -222,7 +222,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
         {
             const vector<unsigned int> vIndicesKF = KFit->second;
             const vector<unsigned int> vIndicesF = Fit->second;
-            
+
             //* Step 2 遍历KF中该node下的特征点
             for(size_t iKF=0; iKF<vIndicesKF.size(); iKF++)
             {
@@ -274,7 +274,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
                 {
                     //*Step 4.2 最佳要 远远好于 次佳
                     if(static_cast<float>(bestDist1)<mfNNratio*static_cast<float>(bestDist2))
-                    {   
+                    {
                         //*Step 4.3 记录成功匹配特征点的对应的地图点(来自关键帧)
                         vpMapPointMatches[bestIdxF]=pMP;
                         //取出特征点
@@ -466,7 +466,6 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
     vector<int> rotHist[HISTO_LENGTH];
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
-
     //源代码 BUG 
     const float factor = 1.0f/HISTO_LENGTH;
     //应该定义为
@@ -546,7 +545,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
                     //正确的 factor = HISTO_LENGTH / 360.0f = 1/12
                     //eg. 40 * 1/12 = 3.333 = 3
                     int bin = round(rot*factor);
-                    if(bin==HISTO_LENGTH) //0:29 会有bin=30这个情况吗？有 360 - 0
+                    if(bin==HISTO_LENGTH)//0:29 会有bin=30这个情况吗？有 360 - 0
                         bin=0;
                     assert(bin>=0 && bin<HISTO_LENGTH);
                     rotHist[bin].push_back(i1);
@@ -555,7 +554,6 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
         }
 
     }
-
 
     //Step 6 只保留直方图里最高的三个bins
     if(mbCheckOrientation)
@@ -836,7 +834,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
 
                     //? 为什么双目不需要判断像素点到极点的距离？
                     //* 因为双目可以恢复三维点
-                    if (!bStereo1 && !bStereo2)
+                    if(!bStereo1 && !bStereo2)
                     {
                         const float distex = ex-kp2.pt.x;
                         const float distey = ey-kp2.pt.y;
@@ -859,7 +857,6 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                 {
                     const cv::KeyPoint &kp2 = pKF2->mvKeysUn[bestIdx2];
                     vMatches12[idx1]=bestIdx2;
-
                     //!原码遗漏
                     //vnMatched2[bestIdx2]=true;
                     nmatches++;
@@ -1065,7 +1062,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
                 bestIdx = idx;
             }
         }
-        
+
         //*Step 7 最小距离小于阈值，认为找到了投影匹配点。
         // If there is already a MapPoint replace otherwise add new measurement
         if(bestDist<=TH_LOW)

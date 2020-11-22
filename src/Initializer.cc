@@ -105,7 +105,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
             int idx = vAvailableIndices[randi];
 
             mvSets[it][j] = idx;
-            //每次被选中之后，将这个特征点剔除掉。8个点就不会重复。
+            //每次被选中之后，将这个特征点剔除掉。8个点就不会重复.
             vAvailableIndices[randi] = vAvailableIndices.back();
             vAvailableIndices.pop_back();
         }
@@ -623,7 +623,7 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
 * @return false
 */
 bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
-                               cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
+                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
 {
     
     // We recover 8 motion hypotheses using the method of Faugeras et al.

@@ -357,7 +357,7 @@ void KeyFrame::UpdateConnections()
     int nmax=0;
     KeyFrame* pKFmax=NULL;
     int th = 15;
-    
+
     //存>threshold的共视关键帧
     //int在前面方便排序
     vector<pair<int,KeyFrame*> > vPairs;

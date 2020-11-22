@@ -40,7 +40,9 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: ./mono_tum path_to_vocabulary path_to_settings path_to_sequence" << endl;
         return 1;
     }
+    cout<<"Info 1 system get in"<<endl;
 
+    cout<<"Info 2 load images"<<endl;
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
     vector<double> vTimestamps;
@@ -48,7 +50,9 @@ int main(int argc, char **argv)
     LoadImages(strFile, vstrImageFilenames, vTimestamps);
 
     int nImages = vstrImageFilenames.size();
+    cout<<"Info 3 loaded "<<nImages<<" images"<<endl;
 
+    cout<<"Info 4 create SLAM instance -> ORB_SLAM2::System SLAM()"<<endl;
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
 
@@ -129,13 +133,14 @@ void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vecto
 {
     ifstream f;
     f.open(strFile.c_str());
-
+    if(f.fail())
+        cout<<"fail to open rgb file"<<endl;
     // skip first three lines
     string s0;
     getline(f,s0);
     getline(f,s0);
     getline(f,s0);
-
+    int counter = 0;
     while(!f.eof())
     {
         string s;
@@ -151,5 +156,6 @@ void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vecto
             ss >> sRGB;
             vstrImageFilenames.push_back(sRGB);
         }
+        counter++;
     }
 }

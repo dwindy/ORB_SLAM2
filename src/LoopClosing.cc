@@ -59,7 +59,7 @@ void LoopClosing::Run()
     mbFinished =false;
 
     while(1)
-    {   
+    {
         //*Step 1 查看闭环检测队列mlpLoopKeyFrameQueue中有没有关键帧
         //LoopClosing中的关键帧是localmapping发送过来的
         //insertkeyframe将关键帧插入闭环检测队列mlpLoopKeyFrameQueue
@@ -374,7 +374,7 @@ bool LoopClosing::ComputeSim3()
                 //*Step 2.2 通过求解sim3变换，引导关键帧匹配，弥补Step1中的漏匹配（bow漏的）
                 cv::Mat R = pSolver->GetEstimatedRotation();
                 cv::Mat t = pSolver->GetEstimatedTranslation();
-                const float s = pSolver->GetEstimatedScale();                
+                const float s = pSolver->GetEstimatedScale();
                 matcher.SearchBySim3(mpCurrentKF,pKF,vpMapPointMatches,s,R,t,7.5);
 
                 //*Step 2.3 通过新的匹配 优化sim3 只有有一个候选帧通过sim3的求解与优化，就跳出停止对其他候选帧的判断

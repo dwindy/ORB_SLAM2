@@ -206,7 +206,8 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extra
 
     // ORB extraction
     //Step 3 提取特征点 0 左图 1 右图
-    ExtractORB(0,imGray); //提取ORB特征
+    //提取ORB特征
+    ExtractORB(0,imGray);
 
     N = mvKeys.size();
 
@@ -357,7 +358,8 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 
     //*Step 4 相机视角 和 地图点平均观测方向 的夹角的余弦
    // Check viewing angle
-    cv::Mat Pn = pMP->GetNormal(); //在updatenormanddepth中更新
+    //在updatenormanddepth中更新
+    cv::Mat Pn = pMP->GetNormal();
 
     const float viewCos = PO.dot(Pn)/dist;
 
@@ -367,7 +369,7 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     //*Step 根据地图点到光心的距离预测一个尺度
     // Predict scale in the image
     const int nPredictedLevel = pMP->PredictScale(dist,this);
-    //*Step 一些信息
+
     // Data used by the tracking
     pMP->mbTrackInView = true;
     //像素横坐标 左图
@@ -411,7 +413,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
 
     //for what?
     const bool bCheckLevels = (minLevel>0) || (maxLevel>=0);
-    //Step 2 遍历所有cell，寻找匹配上的特征点
+    //*Step 2 遍历所有cell，寻找匹配上的特征点
     for(int ix = nMinCellX; ix<=nMaxCellX; ix++)
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
@@ -462,7 +464,7 @@ bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
 
 void Frame::ComputeBoW()
 {
-    if (mBowVec.empty())
+    if(mBowVec.empty())
     {
         //将描述子转换成DBoW需要的格式
         vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
@@ -508,7 +510,8 @@ void Frame::UndistortKeyPoints()
     mat=mat.reshape(1);
 
     // Fill undistorted keypoint vector
-    mvKeysUn.resize(N); //给vector大小
+    //给vector大小
+    mvKeysUn.resize(N);
     for(int i=0; i<N; i++)
     {
         //只更新kp.pt和坐标（包留了特征点的其他信息）
@@ -575,6 +578,7 @@ void Frame::ComputeStereoMatches()
     //Assign keypoints to row table
     //二维vector存储每一行特征点的列坐标？小六这里写错了吧？似乎只是把特征点索引iR塞进row table
     vector<vector<size_t> > vRowIndices(nRows,vector<size_t>());
+
     for(int i=0; i<nRows; i++)
         vRowIndices[i].reserve(200);
 
@@ -643,7 +647,7 @@ void Frame::ComputeStereoMatches()
         {
             const size_t iR = vCandidates[iC];
             const cv::KeyPoint &kpR = mvKeysRight[iR];
-            
+
             //只在金字塔相邻层找
             if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
                 continue;
@@ -720,7 +724,7 @@ void Frame::ComputeStereoMatches()
                 vDists[L+incR] = dist;
             }
 
-            //这个越界判断的目的是？
+            //?这个越界判断的目的是
             if(bestincR==-L || bestincR==L)
                 continue;
 
@@ -743,7 +747,7 @@ void Frame::ComputeStereoMatches()
             float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
 
             float disparity = (uL-bestuR);
-            
+
             //保存深度和视察（不保存匹配结果？）
             if(disparity>=minD && disparity<maxD)
             {

@@ -258,7 +258,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
     //mImGray 是tracking class 的成员
-    mImGray = im; 
+    mImGray = im;
 
     if(mImGray.channels()==3)
     {
@@ -289,7 +289,6 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 void Tracking::Track()
 {
     //Track包含估计运动和跟踪局部地图两个部分
-
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -455,7 +454,7 @@ void Tracking::Track()
 
         //将最新的关键帧 作为 当前帧的.参考关键帧(有可能为空)
         mCurrentFrame.mpReferenceKF = mpReferenceKF;
-        
+
         //*Step 3 在跟踪得到当前帧初始状态后 对local map进行跟踪 得到更多匹配 优化当前位姿
         // If we have an initial estimation of the camera pose and matching. Track the local map.
         if(!mbOnlyTracking)
@@ -484,7 +483,7 @@ void Tracking::Track()
         //只有跟踪成功的时候才考虑生成关键帧
         // If tracking were good, check if we insert a keyframe
         if(bOK)
-        {   
+        {
             //*Step 5 更新恒速运动模型
             // Update motion model
             if(!mLastFrame.mTcw.empty())
@@ -749,7 +748,7 @@ void Tracking::CreateInitialMapMonocular()
     // Insert KFs in the map
     mpMap->AddKeyFrame(pKFini);
     mpMap->AddKeyFrame(pKFcur);
-    
+
     // * Step 3 用初始化得到的3D点来生成地图点MapPoints
     // Create MapPoints and asscoiate to keyframes
     for(size_t i=0; i<mvIniMatches.size();i++)
@@ -989,7 +988,7 @@ void Tracking::UpdateLastFrame()
         }
 
         if(bCreateNew)
-        {   
+        {
             //特征点反投影到地图点
             cv::Mat x3D = mLastFrame.UnprojectStereo(i);
             MapPoint* pNewMP = new MapPoint(x3D,mpMap,&mLastFrame,i);
@@ -1303,7 +1302,7 @@ void Tracking::CreateNewKeyFrame()
         }
 
         if(!vDepthIdx.empty())
-        {   
+        {
             //*Step 3.2 按照深度排序
             sort(vDepthIdx.begin(),vDepthIdx.end());
 
@@ -1444,7 +1443,7 @@ void Tracking::UpdateLocalMap()
 }
 
 void Tracking::UpdateLocalPoints()
-{   
+{
     //*Step1 清空局部mappoints
     mvpLocalMapPoints.clear();
 
@@ -1486,7 +1485,7 @@ void Tracking::UpdateLocalKeyFrames()
         {
             MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
             if(!pMP->isBad())
-            {   
+            {
                 //观测到该点的的KF和该点在KF中的索引
                 const map<KeyFrame*,size_t> observations = pMP->GetObservations();
                 for (map<KeyFrame *, size_t>::const_iterator it = observations.begin(), itend = observations.end(); it != itend; it++)
@@ -1508,7 +1507,7 @@ void Tracking::UpdateLocalKeyFrames()
 
     int max=0;
     KeyFrame* pKFmax= static_cast<KeyFrame*>(NULL);
-    
+
     //*Step 2 更新局部关键帧 mvplocalkeyframes，有三个策略添加
     mvpLocalKeyFrames.clear();
     //申请三倍内存
@@ -1742,7 +1741,7 @@ bool Tracking::Relocalization()
                     int nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,10,100);
 
                     if(nadditional+nGood>=50)
-                    {   
+                    {
                         //3D-2D pnp BA 优化
                         nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
@@ -1770,6 +1769,7 @@ bool Tracking::Relocalization()
                         }
                     }
                 }
+
 
                 // If the pose is supported by enough inliers stop ransacs and continue
                 if(nGood>=50)

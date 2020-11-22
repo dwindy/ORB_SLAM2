@@ -553,7 +553,7 @@ namespace ORB_SLAM2
         // Compute how many initial nodes
         //根据图像宽高比确定初始节点数量，一般是1/2。（Bug，竖屏图像可能为0）
         const int nIni = round(static_cast<float>(maxX - minX) / (maxY - minY));
-        
+
         //初始节点的x方向的像素个数
         const float hX = static_cast<float>(maxX - minX) / nIni;
 
@@ -567,13 +567,13 @@ namespace ORB_SLAM2
         for (int i = 0; i < nIni; i++)
         {
             ExtractorNode ni;
-            ni.UL = cv::Point2i(hX * static_cast<float>(i), 0); //upper left 0，0
-            ni.UR = cv::Point2i(hX * static_cast<float>(i + 1), 0); //upper right 640，0 
-            ni.BL = cv::Point2i(ni.UL.x, maxY - minY); //bottom left
-            ni.BR = cv::Point2i(ni.UR.x, maxY - minY); //bottom right
+            ni.UL = cv::Point2i(hX * static_cast<float>(i), 0);//upper left 0，0
+            ni.UR = cv::Point2i(hX * static_cast<float>(i + 1), 0);//upper right 640，0 
+            ni.BL = cv::Point2i(ni.UL.x, maxY - minY);//bottom left
+            ni.BR = cv::Point2i(ni.UR.x, maxY - minY);//bottom right
             ni.vKeys.reserve(vToDistributeKeys.size());
 
-            lNodes.push_back(ni); //放到最后？
+            lNodes.push_back(ni);//放到最后？
             vpIniNodes[i] = &lNodes.back();
         }
 
@@ -698,7 +698,7 @@ namespace ORB_SLAM2
                     //浅拷贝，不会清空新保存的vector嘛？
                     vSizeAndPointerToNode.clear();
                     //排序，包含特征点比较少的区域会放在前面
-                    sort(vPrevSizeAndPointerToNode.begin(), vPrevSizeAndPointerToNode.end());  
+                    sort(vPrevSizeAndPointerToNode.begin(), vPrevSizeAndPointerToNode.end());
                     //从后面开始分割，即特征点比较多的区域会更早被分割
                     //（会有一些对都包含同样数目的特征点，这些对的顺序是随机的，所以每次跑都可能不一样）
                     for (int j = vPrevSizeAndPointerToNode.size() - 1; j >= 0; j--)

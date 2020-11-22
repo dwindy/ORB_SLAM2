@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/bingxin/workspace/ORB_SLAM2/Examples/Stereo/stereo_euroc.cc" "/home/bingxin/workspace/ORB_SLAM2/cmake-build-debug/CMakeFiles/stereo_euroc.dir/Examples/Stereo/stereo_euroc.cc.o"
+  "/home/xin/Downloads/ORB_SLAM2/Examples/Stereo/stereo_euroc.cc" "/home/xin/Downloads/ORB_SLAM2/cmake-build-debug/CMakeFiles/stereo_euroc.dir/Examples/Stereo/stereo_euroc.cc.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
@@ -18,14 +18,12 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "../"
   "../include"
   "/usr/local/include/eigen3"
-  "/home/bingxin/workspace/Pangolin/include"
-  "/home/bingxin/workspace/Pangolin/build/src/include"
   "/usr/local/include/opencv"
   )
 
 # Targets to which this target links.
 set(CMAKE_TARGET_LINKED_INFO_FILES
-  "/home/bingxin/workspace/ORB_SLAM2/cmake-build-debug/CMakeFiles/ORB_SLAM2.dir/DependInfo.cmake"
+  "/home/xin/Downloads/ORB_SLAM2/cmake-build-debug/CMakeFiles/ORB_SLAM2.dir/DependInfo.cmake"
   )
 
 # Fortran module output directory.
