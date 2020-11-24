@@ -34,11 +34,15 @@ using namespace std;
 void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
+void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends);
+
+void ProjectScan2Cam(string vstrScanFilename, vector<vector<double>> &laserPoints);
+
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    if(argc != 5)
     {
-        cerr << endl << "Usage: ./mono_kitti path_to_vocabulary path_to_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./mono_kitti path_to_vocabulary path_to_settings path_to_image_sequence path_to_scan_sequence" << endl;
         return 1;
     }
 
@@ -46,8 +50,14 @@ int main(int argc, char **argv)
     vector<string> vstrImageFilenames;
     vector<double> vTimestamps;
     LoadImages(string(argv[3]), vstrImageFilenames, vTimestamps);
-
     int nImages = vstrImageFilenames.size();
+
+    // Retrieve paths to Laser Scans
+    vector<string> vstrScanFilenames;
+    vector<double> vLaserTimestamps;
+    vector<double> vLaserStartTimes;
+    vector<double> vLaserEndTimes;
+    LoadLaserscans(string(argv[4]), vstrScanFilenames, vLaserTimestamps, vLaserStartTimes, vLaserEndTimes);
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
@@ -80,6 +90,17 @@ int main(int argc, char **argv)
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
 
+        //TODO Project Scan to Camera shutter time
+        vector<vector<double>> laserPoints;
+        //1000000 is the KITTI readme file suggested number
+        for(int i = 0; i<1000000; i++)
+        {
+            vector<double> point = {0,0,0,0};
+            laserPoints.push_back(point);
+        }
+        ProjectScan2Cam(vstrScanFilenames[ni], laserPoints);
+
+        //TODO pass laser scan to the SLAM system aswell
         // Pass the image to the SLAM system
         SLAM.TrackMonocular(im,tframe);
 
@@ -127,7 +148,8 @@ int main(int argc, char **argv)
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
 {
     ifstream fTimes;
-    string strPathTimeFile = strPathToSequence + "/times.txt";
+    //string strPathTimeFile = strPathToSequence + "/times.txt";
+    string strPathTimeFile = strPathToSequence + "/timestamp_processed.txt";
     fTimes.open(strPathTimeFile.c_str());
     while(!fTimes.eof())
     {
@@ -143,7 +165,8 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
         }
     }
 
-    string strPrefixLeft = strPathToSequence + "/image_0/";
+    //string strPrefixLeft = strPathToSequence + "/image_0/";
+    string strPrefixLeft = strPathToSequence + "/data/";
 
     const int nTimes = vTimestamps.size();
     vstrImageFilenames.resize(nTimes);
@@ -151,7 +174,118 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
     for(int i=0; i<nTimes; i++)
     {
         stringstream ss;
-        ss << setfill('0') << setw(6) << i;
+        //ss << setfill('0') << setw(6) << i;
+        ss << setfill('0') << setw(10) << i;
         vstrImageFilenames[i] = strPrefixLeft + ss.str() + ".png";
     }
+}
+
+/**
+ * @brief Load Laser Scans
+ * @param [in] strPathToSequence : the data folder address
+ * @param [in,out] vstrLaserscanFilenames : the string vector contains each Scan File name
+ * @param [in,out] vTimestamps : the double vector contains timestamps of each Scan file
+ * @param [in,out] vTimestarts : the double vector contains start time of each Scan
+ * @param [in,out] vTimeends : the double vector contains end time of each Scan
+ */
+void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends)
+{
+    //load scan times
+    ifstream fTimes;
+    string strPathTimeFile = strPathToSequence + "/timestamps_processed.txt";
+    fTimes.open(strPathTimeFile.c_str());
+    while(!fTimes.eof())
+    {
+        string s;
+        getline(fTimes,s);
+        if(!s.empty())
+        {
+            stringstream ss;
+            ss << s;
+            double t;
+            ss >> t;
+            vTimestamps.push_back(t);
+        }
+    }
+    fTimes.close();
+
+    //load scan start times
+    string strPathStartTimeFile = strPathToSequence + "/timestamps_start_processed.txt";
+    fTimes.open(strPathStartTimeFile.c_str());
+    while(!fTimes.eof())
+    {
+        string s;
+        getline(fTimes,s);
+        if(!s.empty())
+        {
+            stringstream ss;
+            ss << s;
+            double t;
+            ss >> t;
+            vTimestarts.push_back(t);
+        }
+    }
+    fTimes.close();
+
+    //load scan end times
+    string strPathEndTimeFile = strPathToSequence + "/timestamps_end_processed.txt";
+    fTimes.open(strPathEndTimeFile.c_str());
+    while(!fTimes.eof())
+    {
+        string s;
+        getline(fTimes,s);
+        if(!s.empty())
+        {
+            stringstream ss;
+            ss << s;
+            double t;
+            ss >> t;
+            vTimeends.push_back(t);
+        }
+    }
+    fTimes.close();
+
+    //load Laser Scan file names
+    //string strPrefixLeft = strPathToSequence + "/image_0/";
+    string strPrefixLeft = strPathToSequence + "/data/";
+
+    const int nTimes = vTimestamps.size();
+    vstrLaserscanFilenames.resize(nTimes);
+
+    for(int i=0; i<nTimes; i++)
+    {
+        stringstream ss;
+        //ss << setfill('0') << setw(6) << i;
+        ss << setfill('0') << setw(10) << i;
+        vstrLaserscanFilenames[i] = strPrefixLeft + ss.str() + ".bin";
+    }
+}
+
+void ProjectScan2Cam(string vstrScanFilename, vector<vector<double>> &laserPoints)
+{
+    //allocate 4MB buffer (around ~130 * 4 * 4 KB)
+    int32_t num = 1000000;
+    float *data = (float *) malloc(num * sizeof(float));
+    //pointers for reading laser point
+    float *px = data + 0;
+    float *py = data + 1;
+    float *pz = data + 2;
+    float *pr = data + 3;
+
+    //load point cloud
+    FILE *fstream;
+    fstream = fopen(vstrScanFilename.c_str(), "rb");
+    num = fread(data, sizeof(float), num, fstream)/4;
+    for(int i=0; i<num;i++)
+    {
+        laserPoints[i][0] = *px;
+        laserPoints[i][1] = *py;
+        laserPoints[i][2] = *pz;
+        laserPoints[i][3] = *pr;
+        px+=4;py+=4;py+=4;pr+=4;
+    }
+    fclose(fstream);
+
+    //reset laserpoint vector size
+    laserPoints.resize(num);
 }
