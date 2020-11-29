@@ -56,6 +56,8 @@ public:
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    ///added module
+    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes,ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -107,6 +109,12 @@ public:
 
     // Frame timestamp.
     double mTimeStamp;
+
+    ///added module
+    vector<std::vector<double>> mLaserPoints;
+    vector<double> mLaserTimes; //{middle time, start, end}
+    vector<cv::KeyPoint> mPjcLaserPts;
+    vector<vector<double>> mLaserPtsUndis;
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;
@@ -168,7 +176,7 @@ public:
     long unsigned int mnId;
 
     // Reference Keyframe.
-    KeyFrame* mpReferenceKF;
+    KeyFrame* mpReferenceKF{};
 
     // Scale pyramid info.
     int mnScaleLevels;

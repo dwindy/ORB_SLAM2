@@ -119,6 +119,20 @@ cv::Mat FrameDrawer::DrawFrame()
         }
     }
 
+    ///added module
+    //draw projected laser points
+    int PjcLsrNum = mvPjcLsrPts.size();
+    if(PjcLsrNum>0)
+    {
+        for(int i=0;i<PjcLsrNum;i++)
+        {
+            //color
+            float maxVal = 20.0;
+            int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+            cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,green,red),-1);
+        }
+    }
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
 
@@ -164,15 +178,20 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 }
 
-void FrameDrawer::Update(Tracking *pTracker)
-{
+void FrameDrawer::Update(Tracking *pTracker) {
     unique_lock<mutex> lock(mMutex);
     pTracker->mImGray.copyTo(mIm);
-    mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
+    mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
     N = mvCurrentKeys.size();
-    mvbVO = vector<bool>(N,false);
-    mvbMap = vector<bool>(N,false);
+    mvbVO = vector<bool>(N, false);
+    mvbMap = vector<bool>(N, false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
+
+    ///added module
+    if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
+    {
+        mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
+    }
 
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)

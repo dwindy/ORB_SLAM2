@@ -36,7 +36,7 @@ void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
 
 void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends);
 
-void ProjectScan2Cam(string vstrScanFilename, vector<vector<double>> &laserPoints);
+void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoints);
 
 int main(int argc, char **argv)
 {
@@ -52,7 +52,8 @@ int main(int argc, char **argv)
     LoadImages(string(argv[3]), vstrImageFilenames, vTimestamps);
     int nImages = vstrImageFilenames.size();
 
-    // Retrieve paths to Laser Scans
+    ///Added Module
+    //Retrieve paths to Laser Scans
     vector<string> vstrScanFilenames;
     vector<double> vLaserTimestamps;
     vector<double> vLaserStartTimes;
@@ -90,7 +91,8 @@ int main(int argc, char **argv)
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
 
-        //TODO Project Scan to Camera shutter time
+        ///Added module
+        //Load scans of this frame
         vector<vector<double>> laserPoints;
         //1000000 is the KITTI readme file suggested number
         for(int i = 0; i<1000000; i++)
@@ -98,11 +100,15 @@ int main(int argc, char **argv)
             vector<double> point = {0,0,0,0};
             laserPoints.push_back(point);
         }
-        ProjectScan2Cam(vstrScanFilenames[ni], laserPoints);
+        readLaserPoints(vstrScanFilenames[ni], laserPoints);
+        //store scan Middle time, start time and end time
+        vector<double> laserTimes = {vLaserTimestamps[ni], vLaserStartTimes[ni], vLaserEndTimes[ni]};
 
-        //TODO pass laser scan to the SLAM system aswell
-        // Pass the image to the SLAM system
-        SLAM.TrackMonocular(im,tframe);
+
+        //SLAM.TrackMonocular(im,tframe);
+        ///added module
+        //Pass the image and lasers to the SLAM system
+        SLAM.TrackMonucular(im,tframe,laserPoints,laserTimes);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -261,8 +267,14 @@ void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLasersc
     }
 }
 
-void ProjectScan2Cam(string vstrScanFilename, vector<vector<double>> &laserPoints)
+/**
+ * @brief Load laserpoint by given filename.
+ * @param [in] vstrScanFilename : filename of laser scans
+ * @param [in,out] laserPoints : laser points
+ */
+void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoints)
 {
+    ///Step 1 load laser points
     //allocate 4MB buffer (around ~130 * 4 * 4 KB)
     int32_t num = 1000000;
     float *data = (float *) malloc(num * sizeof(float));
@@ -282,10 +294,12 @@ void ProjectScan2Cam(string vstrScanFilename, vector<vector<double>> &laserPoint
         laserPoints[i][1] = *py;
         laserPoints[i][2] = *pz;
         laserPoints[i][3] = *pr;
-        px+=4;py+=4;py+=4;pr+=4;
+        px+=4;py+=4;pz+=4;pr+=4;
     }
     fclose(fstream);
-
     //reset laserpoint vector size
     laserPoints.resize(num);
+
+    ///Step2
+
 }

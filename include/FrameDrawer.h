@@ -62,6 +62,8 @@ protected:
     vector<cv::KeyPoint> mvIniKeys;
     vector<int> mvIniMatches;
     int mState;
+    ///added module
+    vector<cv::KeyPoint> mvPjcLsrPts;
 
     Map* mpMap;
 

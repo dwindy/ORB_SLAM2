@@ -225,6 +225,75 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     return Tcw;
 }
 
+///Added module |
+/**
+ * input image, image time, lasers, laser times(middle time, start time and end time),
+ * return pose
+ * @param im [in] : current image frame
+ * @param timestamp [in] : current frame time
+ * @param lasers [in] : current laser points
+ * @param laserTimes [in] : laser middle time, start time and end time
+ * @return pose : robot pose
+ */
+cv::Mat System::TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, vector<double> &laserTimes)
+{
+    if(mSensor!=MONOCULAR)
+    {
+        cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular." << endl;
+        exit(-1);
+    }
+
+    // Check mode change
+    {
+        //独占锁，主要是为了mbActivateLocalizationMode和mbDeactivateLocalizationMode不发生混乱
+        unique_lock<mutex> lock(mMutexMode);
+        if (mbActivateLocalizationMode) //true则关闭局部地图线程
+        {
+            mpLocalMapper->RequestStop();
+
+            // Wait until Local Mapping has effectively stopped
+            while (!mpLocalMapper->isStopped())
+            {
+                usleep(1000);
+            }
+            //mpLocalMapper停止后，只tracking，不更新局部地图
+            mpTracker->InformOnlyTracking(true);
+            //说是可以释放更多资源？
+            mbActivateLocalizationMode = false;
+        }
+        //同理，如果deactive localization mode TRUE,又释放一些资源。
+        if (mbDeactivateLocalizationMode)
+        {
+            mpTracker->InformOnlyTracking(false);
+            mpLocalMapper->Release();
+            mbDeactivateLocalizationMode = false;
+        }
+    }
+
+    // Check reset
+    {
+        unique_lock<mutex> lock(mMutexReset);
+        if(mbReset)
+        {
+            mpTracker->Reset();
+            mbReset = false;
+        }
+    }
+
+    //获取相机的位姿
+    //cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
+    ///added module
+    cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp,lasers,laserTimes);
+
+    //获取完后更新状态
+    unique_lock<mutex> lock2(mMutexState);
+    mTrackingState = mpTracker->mState;
+    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+
+    return Tcw;
+}
+
 cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 {
     if(mSensor!=MONOCULAR)

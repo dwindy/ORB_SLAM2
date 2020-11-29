@@ -99,6 +99,23 @@ Tracking::Tracking(System *pSys, //系统实例?
     if(fps==0)
         fps=30;
 
+    ///added module
+    //load Tcam_Lidar parameters
+    cv::Mat Tcl = cv::Mat::eye(4,4,CV_64F);
+    Tcl.at<double>(0,0) = fSettings["Rcl.11"];
+    Tcl.at<double>(0,1) = fSettings["Rcl.12"];
+    Tcl.at<double>(0,2) = fSettings["Rcl.13"];
+    Tcl.at<double>(1,0) = fSettings["Rcl.21"];
+    Tcl.at<double>(1,1) = fSettings["Rcl.22"];
+    Tcl.at<double>(1,2) = fSettings["Rcl.23"];
+    Tcl.at<double>(2,0) = fSettings["Rcl.31"];
+    Tcl.at<double>(2,1) = fSettings["Rcl.32"];
+    Tcl.at<double>(2,2) = fSettings["Rcl.33"];
+    Tcl.at<double>(0,3) = fSettings["Tcl.1"];
+    Tcl.at<double>(1,3) = fSettings["Tcl.2"];
+    Tcl.at<double>(2,3) = fSettings["Tcl.3"];
+    Tcl.copyTo(mTcamlid);
+
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
     mMaxFrames = fps;
@@ -254,7 +271,51 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     return mCurrentFrame.mTcw.clone();
 }
 
+///added module
+/**
+ * Input image, image time, laser, laser times.
+ * Constrcut Frame instance.
+ * Run Track() and return Tcw.
+ * @param im : passed image frame
+ * @param timestamp : image frame time
+ * @param lasers : passed laser points
+ * @param laserTimes : laser middle time, start time and end time
+ * @return Tcw
+ */
+cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes)
+{
+    //mImGray 是tracking class 的成员
+    mImGray = im;
 
+    if(mImGray.channels()==3)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
+        else
+            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+    }
+    else if(mImGray.channels()==4)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,CV_RGBA2GRAY);
+        else
+            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+    }
+
+    //enum eTrackingState : Sys not ready -1, no img yet 0, not init 1, ok 2, lost 3
+    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
+        //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+        ///added module
+        mCurrentFrame = Frame(mImGray,timestamp,lasers,laserTimes,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+    else
+        //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+        ///added module
+        mCurrentFrame = Frame(mImGray,timestamp,lasers,laserTimes,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+
+    Track();
+
+    return mCurrentFrame.mTcw.clone();
+}
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
     //mImGray 是tracking class 的成员
@@ -288,6 +349,73 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
+//    ///test
+//    int testNum = 10;
+//    vector<vector<double>> testPoints;
+//    for(int i=0;i<testNum;i++)
+//    {
+//        vector<double> thisPoint = {1,0,-2};
+//        thisPoint[0] +=i*2;
+//        testPoints.push_back(thisPoint);
+//    }
+//    mCurrentFrame.mLaserPoints = testPoints;
+    ///added module
+    //project Laser points to Image frame
+    int lsrPtNum = mCurrentFrame.mLaserPoints.size();
+
+    if(lsrPtNum>0)
+    {
+        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4,3),CV_64F);
+        P_rect_00.at<double>(0,0) = (double)mK.at<float>(0,0);
+        P_rect_00.at<double>(0,2) = (double)mK.at<float>(0,2);
+        P_rect_00.at<double>(1,1) = (double)mK.at<float>(1,1);
+        P_rect_00.at<double>(1,2) = (double)mK.at<float>(1,2);
+        P_rect_00.at<double>(2,2) = 1;
+        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4,4),CV_64F);
+
+        cv::Mat X(4, 1, CV_64F);
+        cv::Mat Y(3, 1, CV_64F);
+        for(int li = 0; li<lsrPtNum;li++)
+        {
+            // filter the not needed points
+            double maxX = 25.0, maxY = 6.0, minZ = -1.8;
+            if (mCurrentFrame.mLaserPoints[li][0] > maxX || mCurrentFrame.mLaserPoints[li][0] < 0.0
+                || mCurrentFrame.mLaserPoints[li][1] > maxY || mCurrentFrame.mLaserPoints[li][1] < -maxY
+                || mCurrentFrame.mLaserPoints[li][2] < minZ
+                || mCurrentFrame.mLaserPoints[li][3] < 0.01)
+            {
+                continue;
+            }
+
+            X.at<double>(0,0)=mCurrentFrame.mLaserPoints[li][0];
+            X.at<double>(1,0)=mCurrentFrame.mLaserPoints[li][1];
+            X.at<double>(2,0)=mCurrentFrame.mLaserPoints[li][2];
+            X.at<double>(3,0)=1;
+
+//            cout<<X<<endl;
+//            cout<<mTcamlid<<endl;
+//            cout<<R_rect_00<<endl;
+//            cout<<P_rect_00<<endl;
+//            cout<<R_rect_00 * mTcamlid * X<<endl;
+//            cout<<P_rect_00 * R_rect_00 * mTcamlid * X<<endl;
+            Y = P_rect_00 * R_rect_00 * mTcamlid * X;
+            cv::Point pt;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            cout<<pt<<endl;
+            if(pt.x<0||pt.x>mImGray.cols||pt.y<0||pt.y>mImGray.rows)
+            {
+                cout<<X.t()<<" | ";
+                cout<<pt<<endl;
+                continue;
+            }
+            //distance as response
+            double responseVal = sqrt(X.at<double>(0,0) * X.at<double>(0,0) + X.at<double>(1,0) * X.at<double>(1,0) + X.at<double>(2,0) *X.at<double>(2,0));
+            cv::KeyPoint thisPoint(pt,0,-1,responseVal,0,-1);
+            mCurrentFrame.mPjcLaserPts.push_back(thisPoint);
+        }
+    }
+
     //Track包含估计运动和跟踪局部地图两个部分
     if(mState==NO_IMAGES_YET)
     {

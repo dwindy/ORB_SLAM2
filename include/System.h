@@ -81,6 +81,9 @@ namespace ORB_SLAM2
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
         // Returns the camera pose (empty if tracking fails).
         cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp);
+        ///Added module
+        //Input image, image time, laser, laser time, laser start time, laser end time
+        cv::Mat TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, vector<double> &laserTimes);
 
         // This stops local mapping thread (map building) and performs only camera tracking.
         void ActivateLocalizationMode();

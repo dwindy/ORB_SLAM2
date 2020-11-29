@@ -61,6 +61,8 @@ namespace ORB_SLAM2
         cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
         cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
+        ///added module
+        cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes);
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -185,6 +187,10 @@ namespace ORB_SLAM2
         cv::Mat mK;
         cv::Mat mDistCoef;
         float mbf;
+
+        ///added module
+        //LiDAR to Camera Transform
+        cv::Mat mTcamlid;
 
         //New KeyFrame rules (according to fps)
         int mMinFrames;
