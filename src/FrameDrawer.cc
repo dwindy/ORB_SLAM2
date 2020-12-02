@@ -35,6 +35,39 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
     mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
 }
 
+cv::Mat FrameDrawer::DrawLiDAR()
+{
+    cv::Mat im = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    mIm.copyTo(im);
+    ///added module
+    //draw projected laser points
+    int PjcLsrNum = mvPjcLsrPts.size();
+    if(PjcLsrNum>0)
+    {
+        for(int i=0;i<PjcLsrNum;i++)
+        {
+            //color
+            float maxVal = 20.0;
+            int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+            cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,0,0),-1);
+        }
+    }
+    PjcLsrNum = mvPjcLsrPtsUndis.size();
+    if(PjcLsrNum>0)
+    {
+        for(int i=0;i<PjcLsrNum;i++)
+        {
+            //color
+            float maxVal = 20.0;
+            int red = min(255, (int) (255 * abs((mvPjcLsrPtsUndis[i].response - maxVal) / maxVal)));
+            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPtsUndis[i].response - maxVal) / maxVal))));
+            cv::circle(im,mvPjcLsrPtsUndis[i].pt,2,cv::Scalar(255,255,255),-1);
+        }
+    }
+    return im;
+}
+
 cv::Mat FrameDrawer::DrawFrame()
 {
     cv::Mat im;
@@ -191,6 +224,10 @@ void FrameDrawer::Update(Tracking *pTracker) {
     if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
     {
         mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
+    }
+    if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
+    {
+        mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;
     }
 
 

@@ -63,6 +63,7 @@ namespace ORB_SLAM2
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
         ///added module
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes);
+        void ProjectLiDARtoImage();
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -145,6 +146,9 @@ namespace ORB_SLAM2
 
         bool NeedNewKeyFrame();
         void CreateNewKeyFrame();
+
+        ///Added Module
+        void UndisLiDAR();
 
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.

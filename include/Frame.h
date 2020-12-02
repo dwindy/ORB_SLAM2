@@ -112,9 +112,11 @@ public:
 
     ///added module
     vector<std::vector<double>> mLaserPoints;
+    vector<std::vector<double>> mLaserPtsUndis;
     vector<double> mLaserTimes; //{middle time, start, end}
     vector<cv::KeyPoint> mPjcLaserPts;
-    vector<vector<double>> mLaserPtsUndis;
+    vector<cv::KeyPoint> mPjcLaserPtsUndis;
+
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;

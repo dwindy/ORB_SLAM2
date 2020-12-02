@@ -48,6 +48,9 @@ public:
     // Draw last processed frame.
     cv::Mat DrawFrame();
 
+    //temporaly added for show dis and undis lidar
+    cv::Mat DrawLiDAR();
+
 protected:
 
     void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
@@ -64,6 +67,7 @@ protected:
     int mState;
     ///added module
     vector<cv::KeyPoint> mvPjcLsrPts;
+    vector<cv::KeyPoint> mvPjcLsrPtsUndis;
 
     Map* mpMap;
 

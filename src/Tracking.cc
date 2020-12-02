@@ -37,6 +37,8 @@
 
 #include<mutex>
 
+///added module
+#include <math.h>
 
 using namespace std;
 
@@ -347,7 +349,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
-void Tracking::Track()
+void Tracking::ProjectLiDARtoImage()
 {
 //    ///test
 //    int testNum = 10;
@@ -359,6 +361,7 @@ void Tracking::Track()
 //        testPoints.push_back(thisPoint);
 //    }
 //    mCurrentFrame.mLaserPoints = testPoints;
+
     ///added module
     //project Laser points to Image frame
     int lsrPtNum = mCurrentFrame.mLaserPoints.size();
@@ -392,21 +395,13 @@ void Tracking::Track()
             X.at<double>(2,0)=mCurrentFrame.mLaserPoints[li][2];
             X.at<double>(3,0)=1;
 
-//            cout<<X<<endl;
-//            cout<<mTcamlid<<endl;
-//            cout<<R_rect_00<<endl;
-//            cout<<P_rect_00<<endl;
-//            cout<<R_rect_00 * mTcamlid * X<<endl;
-//            cout<<P_rect_00 * R_rect_00 * mTcamlid * X<<endl;
             Y = P_rect_00 * R_rect_00 * mTcamlid * X;
             cv::Point pt;
             pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
             pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-            cout<<pt<<endl;
             if(pt.x<0||pt.x>mImGray.cols||pt.y<0||pt.y>mImGray.rows)
             {
-                cout<<X.t()<<" | ";
-                cout<<pt<<endl;
+                //cout<<X.t()<<" | ";cout<<pt<<endl;
                 continue;
             }
             //distance as response
@@ -415,6 +410,58 @@ void Tracking::Track()
             mCurrentFrame.mPjcLaserPts.push_back(thisPoint);
         }
     }
+
+    lsrPtNum = mCurrentFrame.mLaserPtsUndis.size();
+    if(lsrPtNum>0)
+    {
+        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4,3),CV_64F);
+        P_rect_00.at<double>(0,0) = (double)mK.at<float>(0,0);
+        P_rect_00.at<double>(0,2) = (double)mK.at<float>(0,2);
+        P_rect_00.at<double>(1,1) = (double)mK.at<float>(1,1);
+        P_rect_00.at<double>(1,2) = (double)mK.at<float>(1,2);
+        P_rect_00.at<double>(2,2) = 1;
+        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4,4),CV_64F);
+
+        cv::Mat X(4, 1, CV_64F);
+        cv::Mat Y(3, 1, CV_64F);
+        for(int li = 0; li<lsrPtNum;li++)
+        {
+            // filter the not needed points
+            double maxX = 25.0, maxY = 6.0, minZ = -1.8;
+            if (mCurrentFrame.mLaserPtsUndis[li][0] > maxX || mCurrentFrame.mLaserPtsUndis[li][0] < 0.0
+                || mCurrentFrame.mLaserPtsUndis[li][1] > maxY || mCurrentFrame.mLaserPtsUndis[li][1] < -maxY
+                || mCurrentFrame.mLaserPtsUndis[li][2] < minZ
+                || mCurrentFrame.mLaserPtsUndis[li][3] < 0.01)
+            {
+                continue;
+            }
+
+            X.at<double>(0,0)=mCurrentFrame.mLaserPtsUndis[li][0];
+            X.at<double>(1,0)=mCurrentFrame.mLaserPtsUndis[li][1];
+            X.at<double>(2,0)=mCurrentFrame.mLaserPtsUndis[li][2];
+            X.at<double>(3,0)=1;
+
+            Y = P_rect_00 * R_rect_00 * mTcamlid * X;
+            cv::Point pt;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            if(pt.x<0||pt.x>mImGray.cols||pt.y<0||pt.y>mImGray.rows)
+            {
+                //cout<<X.t()<<" | ";cout<<pt<<endl;
+                continue;
+            }
+            //distance as response
+            double responseVal = sqrt(X.at<double>(0,0) * X.at<double>(0,0) + X.at<double>(1,0) * X.at<double>(1,0) + X.at<double>(2,0) *X.at<double>(2,0));
+            cv::KeyPoint thisPoint(pt,0,-1,responseVal,0,-1);
+            mCurrentFrame.mPjcLaserPtsUndis.push_back(thisPoint);
+        }
+    }
+
+}
+
+void Tracking::Track()
+{
+    ProjectLiDARtoImage();
 
     //Track包含估计运动和跟踪局部地图两个部分
     if(mState==NO_IMAGES_YET)
@@ -621,6 +668,11 @@ void Tracking::Track()
                 mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
                 //Velocity = Tcl = Tcw * Twl
                 mVelocity = mCurrentFrame.mTcw*LastTwc;
+//                cout<<mVelocity<<endl;
+//                cout<<mLastFrame.mTimeStamp<<endl;
+//                cout<<mCurrentFrame.mTimeStamp<<endl;
+//                cout<<mCurrentFrame.mLaserTimes[0]<<" "<<mCurrentFrame.mLaserTimes[1]<<" "<<mCurrentFrame.mLaserTimes[2]<<endl;
+                    UndisLiDAR();
             }
             else
             //否则速度为空
@@ -1489,6 +1541,58 @@ void Tracking::CreateNewKeyFrame()
     //更新 当前帧成为新得关键帧 
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
+}
+
+///Added Module
+/**
+ * @brief Based on Velocity captured from VO
+ * Undistort LiDAR point cloud
+*/
+void Tracking::UndisLiDAR()
+{
+    //laser time, start time, end time
+    double t_l = mCurrentFrame.mLaserTimes[0];
+    double t_ls = mCurrentFrame.mLaserTimes[1];
+    double t_le = mCurrentFrame.mLaserTimes[2];
+    //last vision frame time, current frame time.
+    double t_last = mLastFrame.mTimeStamp;
+    double t_cur = mCurrentFrame.mTimeStamp;
+    //vision frame delta time.
+    double deltaTime = t_cur - t_last;
+    cv::Mat V = cv::Mat::zeros(3, 1, CV_64F);
+    V.at<double>(0, 0) = mVelocity.at<float>(0, 3) / deltaTime;
+    V.at<double>(1, 0) = mVelocity.at<float>(1, 3) / deltaTime;
+    V.at<double>(2, 0) = mVelocity.at<float>(2, 3) / deltaTime;
+    //cout << "Velocity " <<endl<< V << endl;
+    double timeToProj = t_cur - t_l;
+    cv::Mat timeToProjM = cv::Mat::zeros(3, 1, CV_64F);
+    timeToProjM.at<double>(0, 0) = timeToProj;
+    timeToProjM.at<double>(1, 0) = timeToProj;
+    timeToProjM.at<double>(2, 0) = timeToProj;
+    //cout << "timeToProjM " <<endl<< timeToProjM << endl;
+    cv::Mat P_undis = cv::Mat::zeros(3, 1, CV_64F);
+    cv::Mat P_distor = cv::Mat::zeros(3, 1, CV_64F);
+    for (int i = 0; i < mCurrentFrame.mLaserPoints.size(); i++) {
+        P_distor.at<double>(0, 0) = mCurrentFrame.mLaserPoints[i][0];
+        P_distor.at<double>(1, 0) = mCurrentFrame.mLaserPoints[i][1];
+        P_distor.at<double>(2, 0) = mCurrentFrame.mLaserPoints[i][2];
+        //cout << "P_distor " <<endl<< P_distor << endl;
+        if (t_l < t_cur)
+            //t_last ---> t_ls ---> t_l ---> t_cur ---> t_le
+            //forward from t_1 to t_cur
+            P_undis = P_distor + V.mul(timeToProjM);
+        else
+            //t_last ---> t_ls ---> t_cur ---> t_l ---> t_le
+            //backward from t_1 to t_cur
+        if (t_l > t_cur)
+            P_undis = P_distor - V.mul(timeToProjM);
+        else
+            //t_l==t_cur
+            P_undis = P_distor;
+        //cout << "P_undis " << endl << P_undis << endl;
+        vector<double> undisPoint{P_undis.at<double>(0, 0), P_undis.at<double>(1, 0), P_undis.at<double>(2, 0)};
+        mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
+    }
 }
 
 void Tracking::SearchLocalPoints()
