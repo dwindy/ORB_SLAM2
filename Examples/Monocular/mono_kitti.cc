@@ -108,7 +108,7 @@ int main(int argc, char **argv)
         //SLAM.TrackMonocular(im,tframe);
         ///added module
         //Pass the image and lasers to the SLAM system
-        SLAM.TrackMonucular(im,tframe,laserPoints,laserTimes);
+        SLAM.TrackMonucular(im, tframe, laserPoints, laserTimes);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();

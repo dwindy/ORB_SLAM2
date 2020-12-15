@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
 
-SET(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
 IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE Release)
+  #SET(CMAKE_BUILD_TYPE Release)
+  SET(CMAKE_BUILD_TYPE Debug)
 ENDIF()
 
 MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
@@ -42,12 +42,17 @@ endif()
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
+#added module
+find_package(PCL REQUIRED )
+include_directories( ${PCL_INCLUDE_DIRS} )
+add_definitions( ${PCL_DEFINITIONS} )
+link_directories( ${PCL_LIBRARY_DIRS} )
 
 include_directories(
-${PROJECT_SOURCE_DIR}
-${PROJECT_SOURCE_DIR}/include
-${EIGEN3_INCLUDE_DIR}
-${Pangolin_INCLUDE_DIRS}
+        ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/include
+        ${EIGEN3_INCLUDE_DIR}
+        ${Pangolin_INCLUDE_DIRS}
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -80,6 +85,7 @@ ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+${PCL_LIBRARIES}
 )
 
 # Build examples

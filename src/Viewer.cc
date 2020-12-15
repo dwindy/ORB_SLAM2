@@ -136,11 +136,12 @@ void Viewer::Run()
 
         cv::Mat im = mpFrameDrawer->DrawFrame();
         cv::imshow("ORB-SLAM2: Current Frame",im);
-        //temporally added module
-        cv::waitKey(1);
-        cv::Mat im_temp = mpFrameDrawer->DrawLiDAR();
-        cv::namedWindow("distored and undistored LiDAR");
-        cv::imshow("distored and undistored LiDAR",im_temp);
+        //temporally added module---
+//        cv::waitKey(1);
+//        cv::Mat im_temp = mpFrameDrawer->DrawLiDAR();
+//        cv::namedWindow("distored and undistored LiDAR");
+//        cv::imshow("distored and undistored LiDAR",im_temp);
+        //---
         cv::waitKey(mT);
 
         if(menuReset)

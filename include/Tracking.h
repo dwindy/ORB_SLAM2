@@ -40,6 +40,9 @@
 
 #include <mutex>
 
+///added module
+#include <pcl-1.8/pcl/point_cloud.h>
+
 namespace ORB_SLAM2
 {
 
@@ -149,6 +152,7 @@ namespace ORB_SLAM2
 
         ///Added Module
         void UndisLiDAR();
+        void ExtractPlane();
 
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.

@@ -39,6 +39,12 @@
 
 ///added module
 #include <math.h>
+#include <pcl-1.8/pcl/point_cloud.h>
+#include <pcl-1.8/pcl/segmentation/region_growing.h>
+#include <pcl-1.8/pcl/search/search.h>
+#include <pcl-1.8/pcl/search/kdtree.h>
+#include <pcl-1.8/pcl/features/normal_3d.h>
+#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
 
 using namespace std;
 
@@ -349,6 +355,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
+///added module
 void Tracking::ProjectLiDARtoImage()
 {
 //    ///test
@@ -362,8 +369,7 @@ void Tracking::ProjectLiDARtoImage()
 //    }
 //    mCurrentFrame.mLaserPoints = testPoints;
 
-    ///added module
-    //project Laser points to Image frame
+    ///project distorted Laser points to Image frame
     int lsrPtNum = mCurrentFrame.mLaserPoints.size();
 
     if(lsrPtNum>0)
@@ -376,8 +382,8 @@ void Tracking::ProjectLiDARtoImage()
         P_rect_00.at<double>(2,2) = 1;
         cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4,4),CV_64F);
 
-        cv::Mat X(4, 1, CV_64F);
-        cv::Mat Y(3, 1, CV_64F);
+        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
+        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
         for(int li = 0; li<lsrPtNum;li++)
         {
             // filter the not needed points
@@ -411,6 +417,7 @@ void Tracking::ProjectLiDARtoImage()
         }
     }
 
+    ///project undistorted laser points
     lsrPtNum = mCurrentFrame.mLaserPtsUndis.size();
     if(lsrPtNum>0)
     {
@@ -461,7 +468,11 @@ void Tracking::ProjectLiDARtoImage()
 
 void Tracking::Track()
 {
+    ///added module
+    ///project 3D LiDAR point to 2D image frame
     ProjectLiDARtoImage();
+    ///todo plan to deal with LiDAR data, extract Plane from it.
+    ///todo Should think about the low frequency of LiDAR plane extraction
 
     //Track包含估计运动和跟踪局部地图两个部分
     if(mState==NO_IMAGES_YET)
@@ -672,7 +683,12 @@ void Tracking::Track()
 //                cout<<mLastFrame.mTimeStamp<<endl;
 //                cout<<mCurrentFrame.mTimeStamp<<endl;
 //                cout<<mCurrentFrame.mLaserTimes[0]<<" "<<mCurrentFrame.mLaserTimes[1]<<" "<<mCurrentFrame.mLaserTimes[2]<<endl;
-                    UndisLiDAR();
+                ///added module
+                ///undis LiDAR point with motion from vision
+                UndisLiDAR();
+                ///extract plane segement
+                ExtractPlane();
+
             }
             else
             //否则速度为空
@@ -1593,6 +1609,47 @@ void Tracking::UndisLiDAR()
         vector<double> undisPoint{P_undis.at<double>(0, 0), P_undis.at<double>(1, 0), P_undis.at<double>(2, 0)};
         mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
     }
+}
+
+///added module
+void Tracking::ExtractPlane()
+{
+    int LiDARNum = mCurrentFrame.mLaserPtsUndis.size();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr LiDARCloud(new pcl::PointCloud<pcl::PointXYZ>);
+    LiDARCloud->points.resize(LiDARNum);
+    for(int li=0;li<LiDARNum;li++)
+    {
+        LiDARCloud->points[li].x = mCurrentFrame.mLaserPtsUndis[li][0];
+        LiDARCloud->points[li].y = mCurrentFrame.mLaserPtsUndis[li][0];
+        LiDARCloud->points[li].z = mCurrentFrame.mLaserPtsUndis[li][0];
+    }
+    //test float to double?
+    cout<<LiDARCloud->points[0].x<<" "<<mCurrentFrame.mLaserPtsUndis[0][0]<<endl;
+    ///estimating normals for each point
+    pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+    normal_estimator.setSearchMethod(tree);
+    normal_estimator.setInputCloud(LiDARCloud);
+    normal_estimator.setKSearch(50);
+    normal_estimator.compute(*normals);
+    ///region growing
+    pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+    reg.setMinClusterSize(1000);
+    reg.setMaxClusterSize(100000);
+    reg.setSearchMethod(tree);
+    reg.setNumberOfNeighbours(100);//too little will cause run time error
+    reg.setInputCloud(LiDARCloud);
+    reg.setInputNormals(normals);
+    reg.setSmoothnessThreshold(3.0/180.0*M_PI);
+    reg.setCurvatureThreshold(2.0);
+    ///region call
+    clock_t startTime = clock();
+    std::vector<pcl::PointIndices> clusters;
+    reg.extract(clusters);
+    clock_t endTime = clock();
+    double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
+    cout << "Region Growing time used " << timeUsed << " sec" << endl;
 }
 
 void Tracking::SearchLocalPoints()

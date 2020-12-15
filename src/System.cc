@@ -233,7 +233,7 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
  * @param timestamp [in] : current frame time
  * @param lasers [in] : current laser points
  * @param laserTimes [in] : laser middle time, start time and end time
- * @return pose : robot pose
+ * @return pose [out]: robot pose
  */
 cv::Mat System::TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, vector<double> &laserTimes)
 {

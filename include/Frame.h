@@ -112,7 +112,7 @@ public:
 
     ///added module
     vector<std::vector<double>> mLaserPoints;
-    vector<std::vector<double>> mLaserPtsUndis;
+    vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
     vector<double> mLaserTimes; //{middle time, start, end}
     vector<cv::KeyPoint> mPjcLaserPts;
     vector<cv::KeyPoint> mPjcLaserPtsUndis;
