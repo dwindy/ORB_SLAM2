@@ -35,6 +35,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
     mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
 }
 
+///added module
 cv::Mat FrameDrawer::DrawLiDAR()
 {
     cv::Mat im = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
@@ -117,7 +118,7 @@ cv::Mat FrameDrawer::DrawFrame()
                 cv::line(im,vIniKeys[i].pt,vCurrentKeys[vMatches[i]].pt,
                         cv::Scalar(0,255,0));
             }
-        }        
+        }
     }
     else if(state==Tracking::OK) //TRACKING
     {
@@ -150,20 +151,50 @@ cv::Mat FrameDrawer::DrawFrame()
                 }
             }
         }
-    }
-
-    ///added module
-    //draw projected laser points
-    int PjcLsrNum = mvPjcLsrPts.size();
-    if(PjcLsrNum>0)
-    {
-        for(int i=0;i<PjcLsrNum;i++)
+        ///added module
+        //draw projected raw laser points
+        int PjcLsrNum = mvPjcLsrPts.size();
+        if(PjcLsrNum>0)
         {
-            //color
-            float maxVal = 20.0;
-            int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
-            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
-            cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,green,red),-1);
+            for(int i=0;i<PjcLsrNum;i++)
+            {
+                //color
+                float maxVal = 20.0;
+                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+                cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,green,red),-1);
+            }
+        }
+        //draw plan points
+        int planeNum = mvPlanePoints.size();
+        if (planeNum > 0) {
+            for (int i = 0; i < planeNum; i++) {
+                for (int pi = 0; pi < mvPlanePoints[i].size(); pi++) {
+                    switch (i) {
+                        case 0:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
+                            break;
+                        case 1:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
+                            break;
+                        case 2:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
+                            break;
+                        case 3:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
+                            break;
+                        case 4:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
+                            break;
+                        case 5:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
+                            break;
+                        default:
+                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);
+                            break;
+                    }
+                }
+            }
         }
     }
     cv::Mat imWithInfo;
@@ -224,12 +255,13 @@ void FrameDrawer::Update(Tracking *pTracker) {
     if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
     {
         mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
+        cout<<"mvPjcLsrPts "<<mvPjcLsrPts.size()<<endl;
     }
     if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
     {
         mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;
+        cout<<"mvPjcLsrPtsUndis "<<mvPjcLsrPts.size()<<endl;
     }
-
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {
@@ -254,6 +286,20 @@ void FrameDrawer::Update(Tracking *pTracker) {
         }
     }
     mState=static_cast<int>(pTracker->mLastProcessedState);
+}
+
+void FrameDrawer::UpdateLiDAR(Tracking *pTracker)
+{
+    unique_lock<mutex> lock(mMutex);
+    mvPlanePoints.clear();
+    if (pTracker->mLastProcessedState == Tracking::OK) {
+        int PlanNum = pTracker->mCurrentFrame.mvPlanes.size();
+        if (PlanNum > 0) {
+            for (int plni = 0; plni < pTracker->mCurrentFrame.mvPlanes.size(); plni++) {
+                mvPlanePoints.push_back(pTracker->mCurrentFrame.mvPlanes[plni].pointList2D);
+            }
+        }
+    }
 }
 
 } //namespace ORB_SLAM

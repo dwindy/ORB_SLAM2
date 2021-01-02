@@ -40,6 +40,22 @@ namespace ORB_SLAM2
 class MapPoint;
 class KeyFrame;
 
+///added module
+class Plane{
+public:
+    double A,B,C,D;
+    double phi, theta, dis;
+    int count;
+    int PlaneId;
+    vector<int> keyPointList;
+    Plane(double Ain, double Bin, double Cin, double Din):A(Ain),B(Bin),C(Cin),D(Din){PlaneId=-1;}
+    Plane(double phiin, double thetain, double disin):phi(phiin),theta(thetain),dis(disin){PlaneId=-1;}
+    Plane(){PlaneId=-1;}
+    cv::Point3d centreP;
+    vector<cv::Point3d> pointList;
+    vector<cv::Point2d> pointList2D;
+};
+
 class Frame
 {
 public:
@@ -116,6 +132,7 @@ public:
     vector<double> mLaserTimes; //{middle time, start, end}
     vector<cv::KeyPoint> mPjcLaserPts;
     vector<cv::KeyPoint> mPjcLaserPtsUndis;
+    vector<vector<cv::Point>> planNorms;
 
 
     // Calibration matrix and OpenCV distortion parameters.
@@ -137,6 +154,9 @@ public:
     // Threshold close/far points. Close points are inserted from 1 view.
     // Far points are inserted as in the monocular case from 2 views.
     float mThDepth;
+
+    ///added module
+    std::vector<Plane> mvPlanes;
 
     // Number of KeyPoints.
     int N;

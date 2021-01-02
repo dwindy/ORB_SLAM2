@@ -37,11 +37,22 @@
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
+//#include "Optimizer.h"
+//#include "Tracking.h"
 
 #include <mutex>
 
 ///added module
 #include <pcl-1.8/pcl/point_cloud.h>
+#include <pcl-1.8/pcl/segmentation/region_growing.h>
+#include <pcl-1.8/pcl/search/search.h>
+#include <pcl-1.8/pcl/search/kdtree.h>
+#include <pcl-1.8/pcl/features/normal_3d.h>
+//#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
+#include <pcl-1.8/pcl/ModelCoefficients.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 
 namespace ORB_SLAM2
 {
@@ -67,6 +78,7 @@ namespace ORB_SLAM2
         ///added module
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes);
         void ProjectLiDARtoImage();
+        void ProjectPlanetoImage();
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -152,7 +164,8 @@ namespace ORB_SLAM2
 
         ///Added Module
         void UndisLiDAR();
-        void ExtractPlane();
+        void RegionGrowing();
+        int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOUT);
 
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.
