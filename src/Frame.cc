@@ -35,7 +35,30 @@ namespace ORB_SLAM2
     Frame::Frame()
     {}
 
-//Copy Constructor
+////Copy Constructor
+//    Frame::Frame(const Frame &frame)
+//            :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
+//             mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+//             mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
+//             mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),
+//             mvDepth(frame.mvDepth), mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
+//             mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
+//             mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
+//             mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
+//             mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
+//             mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
+//             mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+//    {
+//        for(int i=0;i<FRAME_GRID_COLS;i++)
+//            for(int j=0; j<FRAME_GRID_ROWS; j++)
+//                mGrid[i][j]=frame.mGrid[i][j];
+//
+//        if(!frame.mTcw.empty())
+//            SetPose(frame.mTcw);
+//    }
+
+    ///added module
+    //Copy Constructor
     Frame::Frame(const Frame &frame)
             :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
              mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
@@ -47,7 +70,11 @@ namespace ORB_SLAM2
              mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
              mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
              mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
-             mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+             mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
+             //added LiDAR modules
+             mLaserPt_cam(frame.mLaserPt_cam),mLaserPoints(frame.mLaserPoints)//,mLaserPtsUndis(frame.mLaserPtsUndis),
+             //mLaserTimes(frame.mLaserTimes),mPjcLaserPts(frame.mPjcLaserPts),mPjcLaserPtsUndis(frame.mPjcLaserPtsUndis),
+             //mvPlanes(frame.mvPlanes)
     {
         for(int i=0;i<FRAME_GRID_COLS;i++)
             for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -188,12 +215,14 @@ namespace ORB_SLAM2
  * @param[in] bf //baseline*f
  * @param[int]thDepth //区分远近点的深度阈值
  */
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes,
-                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
+                 const vector<double> &laserTimes,
+                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
                  const float &bf, const float &thDepth)
-            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
-              mTimeStamp(timeStamp), mLaserPoints(lasers), mLaserTimes(laserTimes), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
-    {
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
+              mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
+              mTimeStamp(timeStamp), mLaserPoints(lasers), mLaserTimes(laserTimes), mK(K.clone()),
+              mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         //Step 1 帧ID增加
         mnId=nNextId++;
@@ -258,6 +287,88 @@ namespace ORB_SLAM2
 
         //把特征点分配到网格中，默认64/48
         AssignFeaturesToGrid();
+
+        ///added module
+        //Project LiDAR point to Cam coordination
+        ProjectLiDARtoCam();
+        ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
+    }
+
+    void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
+        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
+        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
+        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
+        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
+        P_rect_00.at<double>(2, 2) = 1;
+        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+        int ptNum = mLaserPt_cam.size();
+        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
+        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
+        int counter = 0;
+        for (int pi = 0; pi < ptNum; pi++) {
+            cv::Point pt;
+            X.at<double>(0, 0) = mLaserPt_cam[pi].pt3d.x;
+            X.at<double>(1, 0) = mLaserPt_cam[pi].pt3d.y;
+            X.at<double>(2, 0) = mLaserPt_cam[pi].pt3d.z;
+            X.at<double>(3, 0) = 1;
+            Y = P_rect_00 * R_rect_00 * X;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+                mLaserPt_cam[pi].index2d = -1;
+                continue;
+            }
+            mLaserPt_cam[pi].pt2d = pt;
+            mLaserPt_cam[pi].index2d = counter;
+            counter++;
+        }
+        cout << "Lidar points " << mLaserPt_cam.size() << " in image frame " << counter << endl;
+    }
+    /**
+     * Project LiDAR point from LiDAR coordination to Cam coordination
+     */
+    void Frame::ProjectLiDARtoCam()
+    {
+        int lsrPtNum = mLaserPoints.size();
+        if(lsrPtNum>0)
+        {
+            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
+            int counter = 0;
+            for(int li=0; li<lsrPtNum;li++)
+            {
+                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
+                double maxX=25.0, maxY = 6.0, minZ = -1.8;
+                if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
+                    || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
+                    || mLaserPoints[li][2] < minZ
+                    || mLaserPoints[li][3] > -minZ)
+                {
+                    continue;
+                }
+                P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
+                P_lidar.at<double>(1, 0) = mLaserPoints[li][1];
+                P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
+                P_lidar.at<double>(3, 0) = 1;
+                P_cam = mTcamlid * P_lidar;
+                vector<double> thisP;
+                thisP.push_back(P_cam.at<double>(0, 0));
+                thisP.push_back(P_cam.at<double>(1, 0));
+                thisP.push_back(P_cam.at<double>(2, 0));
+                thisP.push_back(mLaserPoints[li][3]);
+                cv::Point3d newP;
+                newP.x = P_cam.at<double>(0, 0);
+                newP.y = P_cam.at<double>(1, 0);
+                newP.z = P_cam.at<double>(2, 0);
+                PtLsr newPtLsr;
+                newPtLsr.pt3d = newP;
+                newPtLsr.index3d =counter;
+                counter++;
+                mLaserPt_cam.push_back(newPtLsr);
+            }
+        }
+        //cout<<"frame "<<mnId<<" mLaserPt_cam "<<mLaserPt_cam.size()<<endl;
     }
 
 /**
@@ -593,6 +704,7 @@ namespace ORB_SLAM2
                             mDistCoef, //畸变参数
                             cv::Mat(), //空矩阵即可
                             mK); //新内参矩阵（加入了畸变参数进去）
+
         //恢复到单通道
         mat=mat.reshape(1);
 

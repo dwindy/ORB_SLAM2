@@ -1502,12 +1502,12 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
     const cv::Mat Rlw = LastFrame.mTcw.rowRange(0,3).colRange(0,3);
     const cv::Mat tlw = LastFrame.mTcw.rowRange(0,3).col(3);
 
-    //当前帧相对于上一帧的平移量 Tlc = Tlw * inv(Tcw)
+    //当前帧相对于上一帧的平移量 Tlc = Tlw * inv(Tcw) (why not got t from T?)
     //写成矩阵形式看一下就能得到:
     // Tlc = Rlw * Twc + Tlw;
     const cv::Mat tlc = Rlw*twc+tlw;
 
-    //前进还是后退 Z大于基线 前进 -Z小于基线 后退 
+    //?前进还是后退 Z大于基线 前进 -Z小于基线 后退 ???
     const bool bForward = tlc.at<float>(2)>CurrentFrame.mb && !bMono;
     const bool bBackward = -tlc.at<float>(2)>CurrentFrame.mb && !bMono;
 
@@ -1598,6 +1598,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
 
                 if(bestDist<=TH_HIGH)
                 {
+                    //Cur Frame and lastFrame point to the same Map point
                     CurrentFrame.mvpMapPoints[bestIdx2]=pMP;
                     nmatches++;
                     //* Step 6 角度直方图

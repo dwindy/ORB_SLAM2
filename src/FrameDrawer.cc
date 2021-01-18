@@ -252,16 +252,16 @@ void FrameDrawer::Update(Tracking *pTracker) {
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
     ///added module
-    if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
-    {
-        mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
-        cout<<"mvPjcLsrPts "<<mvPjcLsrPts.size()<<endl;
-    }
-    if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
-    {
-        mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;
-        cout<<"mvPjcLsrPtsUndis "<<mvPjcLsrPts.size()<<endl;
-    }
+//    if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
+//    {
+//        mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
+//        //cout<<"mvPjcLsrPts "<<mvPjcLsrPts.size()<<endl;
+//    }
+//    if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
+//    {
+//        mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;
+//        //cout<<"mvPjcLsrPtsUndis "<<mvPjcLsrPts.size()<<endl;
+//    }
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {
@@ -288,18 +288,18 @@ void FrameDrawer::Update(Tracking *pTracker) {
     mState=static_cast<int>(pTracker->mLastProcessedState);
 }
 
-void FrameDrawer::UpdateLiDAR(Tracking *pTracker)
-{
-    unique_lock<mutex> lock(mMutex);
-    mvPlanePoints.clear();
-    if (pTracker->mLastProcessedState == Tracking::OK) {
-        int PlanNum = pTracker->mCurrentFrame.mvPlanes.size();
-        if (PlanNum > 0) {
-            for (int plni = 0; plni < pTracker->mCurrentFrame.mvPlanes.size(); plni++) {
-                mvPlanePoints.push_back(pTracker->mCurrentFrame.mvPlanes[plni].pointList2D);
-            }
-        }
-    }
-}
+//void FrameDrawer::UpdateLiDAR(Tracking *pTracker)
+//{
+//    unique_lock<mutex> lock(mMutex);
+//    mvPlanePoints.clear();
+//    if (pTracker->mLastProcessedState == Tracking::OK) {
+//        int PlanNum = pTracker->mCurrentFrame.mvPlanes.size();
+//        if (PlanNum > 0) {
+//            for (int plni = 0; plni < pTracker->mCurrentFrame.mvPlanes.size(); plni++) {
+//                mvPlanePoints.push_back(pTracker->mCurrentFrame.mvPlanes[plni].pointList2D);
+//            }
+//        }
+//    }
+//}
 
 } //namespace ORB_SLAM

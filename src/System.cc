@@ -225,7 +225,7 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     return Tcw;
 }
 
-///Added module |
+///Added LiDAR module
 /**
  * input image, image time, lasers, laser times(middle time, start time and end time),
  * return pose

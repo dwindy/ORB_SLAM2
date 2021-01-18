@@ -49,6 +49,7 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/registration/icp.h>
 
 using namespace std;
 
@@ -315,14 +316,16 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp,
     }
 
     //enum eTrackingState : Sys not ready -1, no img yet 0, not init 1, ok 2, lost 3
-    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
+    if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
         //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray,timestamp,lasers,laserTimes,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, laserTimes, mpIniORBextractor, mpORBVocabulary, mK, mTcamlid,
+                              mDistCoef, mbf, mThDepth);
     else
         //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray,timestamp,lasers,laserTimes,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, laserTimes, mpORBextractorLeft, mpORBVocabulary, mK, mTcamlid,
+                              mDistCoef, mbf, mThDepth);
 
     Track();
 
@@ -349,10 +352,12 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     }
 
     //enum eTrackingState : Sys not ready -1, no img yet 0, not init 1, ok 2, lost 3
-    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
-        mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+    if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
+        mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf,
+                              mThDepth);
     else
-        mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+        mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
+                              mThDepth);
 
     Track();
 
@@ -360,160 +365,154 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 }
 
 
-///added module
-void Tracking::ProjectLiDARtoImage()
-{
-//    ///test
-//    int testNum = 10;
-//    vector<vector<double>> testPoints;
-//    for(int i=0;i<testNum;i++)
-//    {
-//        vector<double> thisPoint = {1,0,-2};
-//        thisPoint[0] +=i*2;
-//        testPoints.push_back(thisPoint);
+/////added module
+//    void Tracking::ProjectLiDARtoImage() {
+////    ///test
+////    int testNum = 10;
+////    vector<vector<double>> testPoints;
+////    for(int i=0;i<testNum;i++)
+////    {
+////        vector<double> thisPoint = {1,0,-2};
+////        thisPoint[0] +=i*2;
+////        testPoints.push_back(thisPoint);
+////    }
+////    mCurrentFrame.mLaserPoints = testPoints;
+//
+//        ///project distorted Laser points to Image frame
+//        int lsrPtNum = mCurrentFrame.mLaserPoints.size();
+//
+//        if (lsrPtNum > 0) {
+//            cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+//            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
+//            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
+//            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
+//            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
+//            P_rect_00.at<double>(2, 2) = 1;
+//            cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+//
+//            cv::Mat X(4, 1, CV_64F);//3D LiDAR point
+//            cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
+//            for (int li = 0; li < lsrPtNum; li++) {
+//                // filter the not needed points
+//                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
+//                if (mCurrentFrame.mLaserPoints[li][0] > maxX || mCurrentFrame.mLaserPoints[li][0] < 0.0
+//                    || mCurrentFrame.mLaserPoints[li][1] > maxY || mCurrentFrame.mLaserPoints[li][1] < -maxY
+//                    || mCurrentFrame.mLaserPoints[li][2] < minZ
+//                    || mCurrentFrame.mLaserPoints[li][3] >
+//                       -minZ) //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
+//                {
+//                    continue;
+//                }
+//
+//                X.at<double>(0, 0) = mCurrentFrame.mLaserPoints[li][0];
+//                X.at<double>(1, 0) = mCurrentFrame.mLaserPoints[li][1];
+//                X.at<double>(2, 0) = mCurrentFrame.mLaserPoints[li][2];
+//                X.at<double>(3, 0) = 1;
+//
+//                //cout<<"LiDAR point "<<X.t()<<endl;
+//                Y = P_rect_00 * R_rect_00 * mTcamlid * X;
+//                //cout<<"Y "<<Y<<endl;
+//                cv::Point pt;
+//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+//                //cout<<"image frame "<<pt.x<<" "<<pt.y<<endl;
+//                if (pt.x < 0 || pt.x >= mImGray.cols || pt.y < 0 || pt.y >= mImGray.rows) {
+//                    continue;
+//                }
+//                //distance as response
+//                double responseVal = sqrt(
+//                        X.at<double>(0, 0) * X.at<double>(0, 0) + X.at<double>(1, 0) * X.at<double>(1, 0) +
+//                        X.at<double>(2, 0) * X.at<double>(2, 0));
+//                cv::KeyPoint thisPoint(pt, 0, -1, responseVal, 0, -1);
+//                //mCurrentFrame.mPjcLaserPts.push_back(thisPoint);
+//                mCurrentFrame.mPjcLaserPts.push_back(pt);
+//            }
+//        }
+//        ///project undistorted laser points
+//        lsrPtNum = mCurrentFrame.mLaserPtsUndis.size();
+//        if (lsrPtNum > 0) {
+//            cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+//            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
+//            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
+//            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
+//            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
+//            P_rect_00.at<double>(2, 2) = 1;
+//            cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+//
+//            cv::Mat X(4, 1, CV_64F);
+//            cv::Mat Y(3, 1, CV_64F);
+//            for (int li = 0; li < lsrPtNum; li++) {
+//                // filter the not needed points
+//                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
+//                if (mCurrentFrame.mLaserPtsUndis[li][0] > maxX || mCurrentFrame.mLaserPtsUndis[li][0] < 0.0
+//                    || mCurrentFrame.mLaserPtsUndis[li][1] > maxY || mCurrentFrame.mLaserPtsUndis[li][1] < -maxY
+//                    || mCurrentFrame.mLaserPtsUndis[li][2] < minZ
+//                    || mCurrentFrame.mLaserPtsUndis[li][3] < 0.01) {
+//                    continue;
+//                }
+//
+//                X.at<double>(0, 0) = mCurrentFrame.mLaserPtsUndis[li][0];
+//                X.at<double>(1, 0) = mCurrentFrame.mLaserPtsUndis[li][1];
+//                X.at<double>(2, 0) = mCurrentFrame.mLaserPtsUndis[li][2];
+//                X.at<double>(3, 0) = 1;
+//
+//                cout << "X " << X << endl;
+//                Y = P_rect_00 * R_rect_00 * mTcamlid * X;
+//                cout << "Y " << Y << endl;
+//                cv::Point pt;
+//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+//                if (pt.x < 0 || pt.x > mImGray.cols || pt.y < 0 || pt.y > mImGray.rows) {
+//                    //cout<<X.t()<<" | ";cout<<pt<<endl;
+//                    continue;
+//                }
+//                //distance as response
+//                double responseVal = sqrt(
+//                        X.at<double>(0, 0) * X.at<double>(0, 0) + X.at<double>(1, 0) * X.at<double>(1, 0) +
+//                        X.at<double>(2, 0) * X.at<double>(2, 0));
+//                cv::KeyPoint thisPoint(pt, 0, -1, responseVal, 0, -1);
+//                mCurrentFrame.mPjcLaserPtsUndis.push_back(thisPoint);
+//            }
+//        }
 //    }
-//    mCurrentFrame.mLaserPoints = testPoints;
 
-    ///project distorted Laser points to Image frame
-    int lsrPtNum = mCurrentFrame.mLaserPoints.size();
-
-    if(lsrPtNum>0)
-    {
-        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4,3),CV_64F);
-        P_rect_00.at<double>(0,0) = (double)mK.at<float>(0,0);
-        P_rect_00.at<double>(0,2) = (double)mK.at<float>(0,2);
-        P_rect_00.at<double>(1,1) = (double)mK.at<float>(1,1);
-        P_rect_00.at<double>(1,2) = (double)mK.at<float>(1,2);
-        P_rect_00.at<double>(2,2) = 1;
-        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4,4),CV_64F);
-
-        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-        for(int li = 0; li<lsrPtNum;li++)
-        {
-            // filter the not needed points
-            double maxX = 25.0, maxY = 6.0, minZ = -1.8;
-            if (mCurrentFrame.mLaserPoints[li][0] > maxX || mCurrentFrame.mLaserPoints[li][0] < 0.0
-                || mCurrentFrame.mLaserPoints[li][1] > maxY || mCurrentFrame.mLaserPoints[li][1] < -maxY
-                || mCurrentFrame.mLaserPoints[li][2] < minZ
-                || mCurrentFrame.mLaserPoints[li][3] > -minZ) //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-            {
-                continue;
-            }
-
-            X.at<double>(0,0)=mCurrentFrame.mLaserPoints[li][0];
-            X.at<double>(1,0)=mCurrentFrame.mLaserPoints[li][1];
-            X.at<double>(2,0)=mCurrentFrame.mLaserPoints[li][2];
-            X.at<double>(3,0)=1;
-
-            //cout<<"LiDAR point "<<X.t()<<endl;
-            Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-            //cout<<"Y "<<Y<<endl;
-            cv::Point pt;
-            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-            //cout<<"image frame "<<pt.x<<" "<<pt.y<<endl;
-            if(pt.x<0||pt.x>=mImGray.cols||pt.y<0||pt.y>=mImGray.rows)
-            {
-                continue;
-            }
-            //distance as response
-            double responseVal = sqrt(X.at<double>(0,0) * X.at<double>(0,0) + X.at<double>(1,0) * X.at<double>(1,0) + X.at<double>(2,0) *X.at<double>(2,0));
-            cv::KeyPoint thisPoint(pt,0,-1,responseVal,0,-1);
-            mCurrentFrame.mPjcLaserPts.push_back(thisPoint);
-        }
-    }
-
-    ///project undistorted laser points
-    lsrPtNum = mCurrentFrame.mLaserPtsUndis.size();
-    if(lsrPtNum>0)
-    {
-        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4,3),CV_64F);
-        P_rect_00.at<double>(0,0) = (double)mK.at<float>(0,0);
-        P_rect_00.at<double>(0,2) = (double)mK.at<float>(0,2);
-        P_rect_00.at<double>(1,1) = (double)mK.at<float>(1,1);
-        P_rect_00.at<double>(1,2) = (double)mK.at<float>(1,2);
-        P_rect_00.at<double>(2,2) = 1;
-        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4,4),CV_64F);
-
-        cv::Mat X(4, 1, CV_64F);
-        cv::Mat Y(3, 1, CV_64F);
-        for(int li = 0; li<lsrPtNum;li++)
-        {
-            // filter the not needed points
-            double maxX = 25.0, maxY = 6.0, minZ = -1.8;
-            if (mCurrentFrame.mLaserPtsUndis[li][0] > maxX || mCurrentFrame.mLaserPtsUndis[li][0] < 0.0
-                || mCurrentFrame.mLaserPtsUndis[li][1] > maxY || mCurrentFrame.mLaserPtsUndis[li][1] < -maxY
-                || mCurrentFrame.mLaserPtsUndis[li][2] < minZ
-                || mCurrentFrame.mLaserPtsUndis[li][3] < 0.01)
-            {
-                continue;
-            }
-
-            X.at<double>(0,0)=mCurrentFrame.mLaserPtsUndis[li][0];
-            X.at<double>(1,0)=mCurrentFrame.mLaserPtsUndis[li][1];
-            X.at<double>(2,0)=mCurrentFrame.mLaserPtsUndis[li][2];
-            X.at<double>(3,0)=1;
-
-            cout<<"X "<<X<<endl;
-            Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-            cout<<"Y "<<Y<<endl;
-            cv::Point pt;
-            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-            if(pt.x<0||pt.x>mImGray.cols||pt.y<0||pt.y>mImGray.rows)
-            {
-                //cout<<X.t()<<" | ";cout<<pt<<endl;
-                continue;
-            }
-            //distance as response
-            double responseVal = sqrt(X.at<double>(0,0) * X.at<double>(0,0) + X.at<double>(1,0) * X.at<double>(1,0) + X.at<double>(2,0) *X.at<double>(2,0));
-            cv::KeyPoint thisPoint(pt,0,-1,responseVal,0,-1);
-            mCurrentFrame.mPjcLaserPtsUndis.push_back(thisPoint);
-        }
-    }
-
-}
-/*
- * project plane's 3D point to 2D frame
- */
-void Tracking::ProjectPlanetoImage()
-{
-    cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-    P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-    P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-    P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-    P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-    P_rect_00.at<double>(2, 2) = 1;
-    cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-    ///1st project plane normal first
-    int planNum = mCurrentFrame.mvPlanes.size();
-    for (int plni = 0; plni < planNum; plni++)
-    {
-        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-        cv::Point pt;
-        for(int pti = 0; pti< mCurrentFrame.mvPlanes[plni].pointList.size();pti++)
-        {
-            X.at<double>(0, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].x;
-            X.at<double>(1, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].y;
-            X.at<double>(2, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].z;
-            X.at<double>(3, 0) = 1;
-            Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-            mCurrentFrame.mvPlanes[plni].pointList2D.push_back(pt);
-            //cout<<"project point "<<X.t()<<" to "<<pt.x<<" "<<pt.y<<endl;
-        }
-    }
-}
+///**
+// * project plane's 3D point to 2D frame
+// */
+//    void Tracking::ProjectPlanetoImage() {
+//        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+//        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
+//        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
+//        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
+//        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
+//        P_rect_00.at<double>(2, 2) = 1;
+//        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+//        ///1st project plane normal first
+//        int planNum = mCurrentFrame.mvPlanes.size();
+//        for (int plni = 0; plni < planNum; plni++) {
+//            cv::Mat X(4, 1, CV_64F);//3D LiDAR point
+//            cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
+//            cv::Point pt;
+//            for (int pti = 0; pti < mCurrentFrame.mvPlanes[plni].pointList.size(); pti++) {
+//                X.at<double>(0, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].x;
+//                X.at<double>(1, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].y;
+//                X.at<double>(2, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].z;
+//                X.at<double>(3, 0) = 1;
+//                //Y = P_rect_00 * R_rect_00 * mTcamlid * X;
+//                Y = P_rect_00 * R_rect_00 * X;
+//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+//                mCurrentFrame.mvPlanes[plni].pointList2D.push_back(pt);
+//                //cout<<"project point "<<X.t()<<" to "<<pt.x<<" "<<pt.y<<endl;
+//            }
+//        }
+//    }
 
 void Tracking::Track()
 {
     ///added module
-    ///project 3D LiDAR point to 2D image frame
+    ///project raw 3D LiDAR point to 2D image frame
     //ProjectLiDARtoImage();
-    ///todo plan to deal with LiDAR data, extract Plane from it.
     ///todo Should think about the low frequency of LiDAR plane extraction
 
     //Track包含估计运动和跟踪局部地图两个部分
@@ -716,24 +715,49 @@ void Tracking::Track()
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
-                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
-                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
-                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
+                cv::Mat LastTwc = cv::Mat::eye(4, 4, CV_32F);
+                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0, 3).colRange(0, 3));
+                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
                 //Velocity = Tcl = Tcw * Twl
-                mVelocity = mCurrentFrame.mTcw*LastTwc;
-//                cout<<mVelocity<<endl;
-//                cout<<mLastFrame.mTimeStamp<<endl;
-//                cout<<mCurrentFrame.mTimeStamp<<endl;
-//                cout<<mCurrentFrame.mLaserTimes[0]<<" "<<mCurrentFrame.mLaserTimes[1]<<" "<<mCurrentFrame.mLaserTimes[2]<<endl;
-                ///added module
-                ///undis LiDAR point with motion from vision
-                UndisLiDAR();
-                ///extract plane segement
-                RegionGrowing();
-                ///project plane
-                ProjectPlanetoImage();
-                ///update plane infor
-                mpFrameDrawer->UpdateLiDAR(this);
+                mVelocity = mCurrentFrame.mTcw * LastTwc;
+                //cout << mCurrentFrame.mnId << " velocity " << mCurrentFrame.mTcw << endl;
+                ///save keypoints
+                fstream writer; string fileName = "data//keypoint//"+std::to_string(mCurrentFrame.mnId)+".txt";
+                writer.open(fileName, std::ios::out);
+                for (int ki = 0; ki < mCurrentFrame.mvpMapPoints.size(); ki++) {
+                    if (mCurrentFrame.mvpMapPoints[ki]) {
+                        writer << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(0, 0) << " "
+                               << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(1, 0) << " "
+                               << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(2, 0) << " "
+                               << mCurrentFrame.mvpMapPoints[ki]->mnId<<endl;
+                    }
+                }
+                writer.close();
+                ///save velocity
+//                fstream writer;
+//                string fileName = "data//velocity//" + std::to_string(mCurrentFrame.mnId) + ".txt";
+//                cout << "file name " << fileName << endl;
+//                writer.open(fileName, std::ios::out);
+//                writer << mVelocity.at<float>(0, 0) << " " << mVelocity.at<float>(0, 1) << " "
+//                       << mVelocity.at<float>(0, 2) << " " << mVelocity.at<float>(0, 3) << endl;
+//                writer << mVelocity.at<float>(1, 0) << " " << mVelocity.at<float>(1, 1) << " "
+//                       << mVelocity.at<float>(1, 2) << " " << mVelocity.at<float>(1, 3) << endl;
+//                writer << mVelocity.at<float>(2, 0) << " " << mVelocity.at<float>(2, 1) << " "
+//                       << mVelocity.at<float>(2, 2) << " " << mVelocity.at<float>(2, 3) << endl;
+//                writer << mVelocity.at<float>(3, 0) << " " << mVelocity.at<float>(3, 1) << " "
+//                       << mVelocity.at<float>(3, 2) << " " << mVelocity.at<float>(3, 3) << endl;
+//                writer.close();
+//                ///added module
+//                ///undis LiDAR point with motion from vision
+//                UndisLiDAR();
+//                ///extract plane segement
+//                RegionGrowing(mCurrentFrame,true);
+////                //todo --- lidar VO
+////                ///project plane
+//                ProjectPlanetoImage();
+////                ///update plane infor
+//                mpFrameDrawer->UpdateLiDAR(this);
+////                //todo associate the ORB feature with LiDAR points
             }
             else
             //否则速度为空
@@ -754,7 +778,7 @@ void Tracking::Track()
                     }
             }
 
-            //*Step 7 清楚恒速模型中 updatelastfrane中临时添加的mappoints（仅双目和rgbd）
+            //*Step 7 清楚恒速模型中 updatelastframe中临时添加的mappoints（仅双目和rgbd）
             // Delete temporal MapPoints
             for(list<MapPoint*>::iterator lit = mlpTemporalPoints.begin(), lend =  mlpTemporalPoints.end(); lit!=lend; lit++)
             {
@@ -892,16 +916,16 @@ void Tracking::MonocularInitialization()
         // Set Reference Frame
         if(mCurrentFrame.mvKeys.size()>100)
         {
-            //把当前帧赋给初始化帧（为何要用Frame套上？类型转换？）
+            //把当前帧赋给初始化帧
             mInitialFrame = Frame(mCurrentFrame);
-            //用当前帧更新上一帧，用在哪？
+            //把当前帧赋给上一帧
             mLastFrame = Frame(mCurrentFrame);
             //记录上一帧的特征点
             mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
             for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
                 mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
 
-            //不会工作的判断语句
+            //This will never work
             if(mpInitializer)
                 delete mpInitializer;
 
@@ -930,10 +954,10 @@ void Tracking::MonocularInitialization()
         // Step 3 当真帧和初始帧匹配
         ORBmatcher matcher(0.9,                                        //最佳和次佳特征点评分的比值阈值，越大则最佳次佳的区分度越小
                            true);                                      //检查特征点的方向
-        int nmatches = matcher.SearchForInitialization(mInitialFrame,  //参考帧
+        int nmatches = matcher.SearchForInitialization(mInitialFrame,  //初始帧
                                                        mCurrentFrame,  //当前帧
-                                                       mvbPrevMatched, //参考帧的特征点
-                                                       mvIniMatches,   //保存匹配关系，size = IniFrame point number
+                                                       mvbPrevMatched, //初始帧的特征点
+                                                       mvIniMatches,   //保存匹配关系，size = IniFrame kypt number
                                                        100);           //搜索框大小
 
         // Check if there are enough correspondences
@@ -974,11 +998,209 @@ void Tracking::MonocularInitialization()
             tcw.copyTo(Tcw.rowRange(0,3).col(3));
             mCurrentFrame.SetPose(Tcw);
 
+//            ///added module
+//            AssociateLiDARInit(10);
+
             // Step 8 创建初始化地图点MapPoints
             CreateInitialMapMonocular();
         }
     }
 }
+
+/**
+ * given a origin point, a ray, a plane norn and plane point
+ * return depth of intersect point
+ */
+    vector<float>
+    Tracking::RayPlaneDis(vector<float> ray_dir, vector<float> origin, vector<float> PlaneN, vector<float> PlaneP) {
+        ///ray = pt + t * dir
+        ///plane = plane norm and plane pt
+        ///t = (plane.n * plane.pt - plane.n * ray.origin) / (plane.n * ray_dir)
+        ///intersect = origin + t * ray_dir
+        cout<<" ray dir "<<ray_dir[0]<<" "<<ray_dir[1]<<" "<<ray_dir[2]<<" ";
+        cout<<" origin pt "<<origin[0]<<" "<<origin[1]<<" "<<origin[2]<<" ";
+        cout<<" Plane norm "<<PlaneN[0]<<" "<<PlaneN[1]<<" "<<PlaneN[2]<<" ";
+        cout<<" Plane pt "<<PlaneP[0]<<" "<<PlaneP[1]<<" "<<PlaneP[2]<<" "<<endl;
+        float t = (PlaneN[0] * PlaneP[0] + PlaneN[1] * PlaneP[1] + PlaneN[2] * PlaneP[2] - PlaneN[0] * origin[0] -
+                   PlaneN[1] * origin[1] - PlaneN[2] * origin[2]) /
+                  (PlaneN[0] * ray_dir[0] + PlaneN[1] * ray_dir[1] + PlaneN[2] * ray_dir[2]);
+        cout<<" "<<origin[0] + t * ray_dir[0]<<" "<<origin[1] + t * ray_dir[1]<<" "<<origin[2] + t * ray_dir[2]<<endl;
+        vector<float> intersectP;
+        intersectP.push_back(origin[0] + t * ray_dir[0]);
+        intersectP.push_back(origin[1] + t * ray_dir[1]);
+        intersectP.push_back(origin[2] + t * ray_dir[2]);
+        return intersectP;
+    }
+
+/**
+ * find keypoint's nearby projected lidar point
+ * retreve depth by fitting the nearby lidar point into a plane
+ * ray of keypoint intersect with plane provides the depth.
+ */
+    void Tracking::AssociateLiDARInit(float pixelThres) {
+        ///Step Traverse Mappoint, find closest 2d lidar Points (and related 3D lidar pts)
+        for (size_t i = 0; i < mvIniMatches.size(); i++) {
+            if (mvIniMatches[i] > -1) {
+                cv::Point2d p2d = mCurrentFrame.mvKeysUn[mvIniMatches[i]].pt;
+                vector<PtLsr> nearbyLsrPt;
+                float maxZ = -999, minZ = 999;
+                for (int j = 0; j < mCurrentFrame.mLaserPt_cam.size(); j++) {
+                    if (mCurrentFrame.mLaserPt_cam[j].index2d >= 0) {
+                        float disX = abs(p2d.x - mCurrentFrame.mLaserPt_cam[j].pt2d.x);
+                        float disY = abs(p2d.y - mCurrentFrame.mLaserPt_cam[j].pt2d.y);
+                        if (disX < pixelThres && disY < pixelThres && sqrt(disX * disX + disY * disY) < pixelThres) {
+                            nearbyLsrPt.push_back(mCurrentFrame.mLaserPt_cam[j]);
+                            if (maxZ < mCurrentFrame.mLaserPt_cam[j].pt3d.z)
+                                maxZ = mCurrentFrame.mLaserPt_cam[j].pt3d.z;
+                            if (minZ > mCurrentFrame.mLaserPt_cam[j].pt3d.z)
+                                minZ = mCurrentFrame.mLaserPt_cam[j].pt3d.z;
+                        }
+                    }
+                }
+                ///group by Z depth. step 0.3m
+                if (nearbyLsrPt.size() > 0) {
+                    float stepZ = 0.3;
+                    //cout<<"maxZ "<<maxZ <<" minZ "<<minZ<<endl;
+                    float length = maxZ - minZ;
+                    int groupNum = floor(length / stepZ + 1);
+                    //cout<<"hist group num "<<groupNum<<endl;
+                    vector<vector<PtLsr>> hist;
+                    for (int g = 0; g < groupNum; g++) {
+                        vector<PtLsr> thisHist;
+                        hist.push_back(thisHist);
+                    }
+                    //cout << "step test" << endl;
+                    for (int j = 0; j < nearbyLsrPt.size(); j++) {
+                        //cout << "z - minZ : " << (nearbyLsrPt[j].pt3d.z + 0.00001 - minZ);
+                        int index = floor((nearbyLsrPt[j].pt3d.z + 0.00001 - minZ) / stepZ);
+                        //cout << " index: " << index << " | ";
+                        hist[index].push_back(nearbyLsrPt[j]);//error?
+                    }
+                    //cout<<endl;
+                    ///find group with min average distance
+                    int minHistIndex = 0;
+                    float mindis = 9999;
+                    for (int g = 0; g < groupNum; g++) {
+                        float disSum = 0;
+                        for (int k = 0; k < hist[g].size(); k++) {
+                            float dis = sqrt((p2d.x - hist[g][k].pt2d.x) * (p2d.x - hist[g][k].pt2d.x) +
+                                             (p2d.y - hist[g][k].pt2d.y) * (p2d.y - hist[g][k].pt2d.y));
+                            disSum += dis;
+                        }
+                        float disAvg = disSum / hist[g].size();
+                        if (disAvg < mindis) {
+                            minHistIndex = g;
+                            mindis = mindis;
+                        }
+                    }
+                    //cout<<"closest group "<<minHistIndex<<endl;
+                    ///fit a plane with that group
+                    if(hist[minHistIndex].size()>5)
+                    {
+                        ofstream writer;
+                        string filename = "data//nearby//" + std::to_string(i) + ".txt";
+                        cout<<filename<<endl;
+                        writer.open(filename, ios::out);
+                        writer << p2d.x << " " << p2d.y << " " << -999 << endl;
+                        for (int j = 0; j < nearbyLsrPt.size(); j++) {
+                            writer << nearbyLsrPt[j].pt3d.x << " " << nearbyLsrPt[j].pt3d.y << " " << nearbyLsrPt[j].pt3d.z
+                                   << endl;
+                        }
+
+                        pcl::PointCloud<pcl::PointXYZ>::Ptr nearbyPoints2(new pcl::PointCloud<pcl::PointXYZ>);
+                        nearbyPoints2->resize(hist[minHistIndex].size());
+                        for(int pi =0; pi<hist[minHistIndex].size(); pi++)
+                        {
+                            nearbyPoints2->points[pi].x = hist[minHistIndex][pi].pt3d.x;
+                            nearbyPoints2->points[pi].y = hist[minHistIndex][pi].pt3d.y;
+                            nearbyPoints2->points[pi].z = hist[minHistIndex][pi].pt3d.z;
+                        }
+                        pcl::PointIndices inliersOutput;
+                        Plane foundPlane;//not fill
+                        int inPlaneNum = RANSACPlane(nearbyPoints2, foundPlane, inliersOutput);
+                        //cout<<"inplane num "<<inPlaneNum;
+                        ///Distance is the ray intersect with plane
+                        ///Pt_img -> Pt_cam
+                        vector<float> ray_dir;
+                        cv::Mat Pt = cv::Mat::ones(3,1,CV_32F);
+                        Pt.at<float>(0,0) = p2d.x;
+                        Pt.at<float>(1,0) = p2d.y;
+                        cv::Mat P_cam0 = mK.inv()*Pt;
+                        ray_dir.push_back(P_cam0.at<float>(0,0));
+                        ray_dir.push_back(P_cam0.at<float>(1,0));
+                        ray_dir.push_back(P_cam0.at<float>(2,0));
+                        vector<float> origin;
+                        origin.push_back(0);
+                        origin.push_back(0);
+                        origin.push_back(0);
+                        vector<float> planeN;
+                        planeN.push_back(foundPlane.A);
+                        planeN.push_back(foundPlane.B);
+                        planeN.push_back(foundPlane.C);
+                        vector<float> planeP;
+                        planeP.push_back(nearbyPoints2->points[0].x);
+                        planeP.push_back(nearbyPoints2->points[0].x);
+                        planeP.push_back(nearbyPoints2->points[0].x);
+                        vector<float> intersectP;
+                        intersectP = RayPlaneDis(ray_dir, origin, planeN, planeP);
+                        writer<<intersectP[0]<<" "<<intersectP[1]<<" "<<intersectP[2]<<endl;
+                        writer.close();
+                    }
+                }
+                //depth from Cur Frame
+                //cout<<"init frame pt index "<<i;
+//                int curLsrPtNum = mCurrentFrame.mLaserPt_cam.size();
+//                pcl::PointCloud<pcl::PointXYZ>::Ptr nearbyPoints2(new pcl::PointCloud<pcl::PointXYZ>);
+//                nearbyPoints2->resize(curLsrPtNum);
+//                int index2 = mvIniMatches[i];
+//                //cout<<" cur frame pt index2 "<<index2;
+//                cv::KeyPoint kp2 = mCurrentFrame.mvKeysUn[index2];
+//                int actualNum2 = 0;
+//                for (int pi = 0; pi < curLidPtNum; pi++) {
+//                    float distance = sqrt(
+//                            (kp2.pt.x - mCurrentFrame.mPjcLaserPts[pi].x) *
+//                            (kp2.pt.x - mCurrentFrame.mPjcLaserPts[pi].x)
+//                            +
+//                            (kp2.pt.y - mCurrentFrame.mPjcLaserPts[pi].y) *
+//                            (kp2.pt.y - mCurrentFrame.mPjcLaserPts[pi].y));
+//                    if (distance < pixelThres) {
+//                        nearbyPoints2->points[actualNum2].x = mCurrentFrame.mLaserPt_cam[pi][0];
+//                        nearbyPoints2->points[actualNum2].y = mCurrentFrame.mLaserPt_cam[pi][1];
+//                        nearbyPoints2->points[actualNum2].z = mCurrentFrame.mLaserPt_cam[pi][2];
+//                        actualNum2++;
+//                    }
+//                }
+//                nearbyPoints2->resize(actualNum2);
+                //cout<<" nearby laser num "<<actualNum2;
+//                ///fit a plane with nearby lidar points
+//                if (actualNum2 > 5) {
+//                    pcl::PointIndices inliersOUT;
+//                    Plane foundPlane;
+//                    int inPlaneNum = RANSACPlane(nearbyPoints2, foundPlane, inliersOUT);
+//                    //cout<<"inplane num "<<inPlaneNum;
+//                    //todo distance is the ray intersect with plane
+//                    vector<float> ray_dir;
+//                    ray_dir.push_back(mvIniP3D[i].x);
+//                    ray_dir.push_back(mvIniP3D[i].y);
+//                    ray_dir.push_back(mvIniP3D[i].z);
+//                    vector<float> origin;
+//                    origin.push_back(0);
+//                    origin.push_back(0);
+//                    origin.push_back(0);
+//                    vector<float> planeN;
+//                    planeN.push_back(foundPlane.A);
+//                    planeN.push_back(foundPlane.B);
+//                    planeN.push_back(foundPlane.C);
+//                    vector<float> planeP;
+//                    planeP.push_back(foundPlane.pointList[0].x);
+//                    planeP.push_back(foundPlane.pointList[0].y);
+//                    planeP.push_back(foundPlane.pointList[0].z);
+//                    float depth2 = RayPlaneDis(ray_dir, origin, planeN, planeP);
+//                    cout << " " << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
+//                }
+            }
+        }
+    }
 
 void Tracking::CreateInitialMapMonocular()
 {
@@ -995,6 +1217,34 @@ void Tracking::CreateInitialMapMonocular()
     mpMap->AddKeyFrame(pKFini);
     mpMap->AddKeyFrame(pKFcur);
 
+//    ///added module
+//    //LiDAR ICP on the init - cur frame
+//    ///extract plane segement
+//    RegionGrowing(mInitialFrame, false);
+//    RegionGrowing(mCurrentFrame, false);
+//    cv::Mat Tc1c2(4,4,CV_32F);
+//    LidarICP(mInitialFrame,mCurrentFrame,Tc1c2);
+//    cout<<"init map mono Lidar Tc1c2 "<<endl<<Tc1c2<<endl;
+//    cv::Mat Tcw = mCurrentFrame.mTcw;
+//    cout<<"init map mono Vision Tcw "<<endl<<Tcw<<endl;
+//    ///calc and apply ratio
+//    float lengthVision = sqrt(Tcw.at<float>(0, 3) * Tcw.at<float>(0, 3)
+//                              + Tcw.at<float>(1, 3) * Tcw.at<float>(1, 3)
+//                              + Tcw.at<float>(2, 3) * Tcw.at<float>(2, 3));
+//    float lengthLiDAR = sqrt(Tc1c2.at<float>(0, 3) * Tc1c2.at<float>(0, 3)
+//                              + Tc1c2.at<float>(1, 3) * Tc1c2.at<float>(1, 3)
+//                              + Tc1c2.at<float>(2, 3) * Tc1c2.at<float>(2, 3));
+//    float ratio = lengthLiDAR / lengthVision;
+//    cout<<"lidar vision ratio "<<ratio<<endl;
+////    for(size_t i=0; i<mvIniMatches.size();i++)
+////    {
+////        if(mvIniMatches[i]<0)
+////            continue;
+////        mvIniP3D[i].x = mvIniP3D[i].x * ratio;
+////        mvIniP3D[i].y = mvIniP3D[i].y * ratio;
+////        mvIniP3D[i].z = mvIniP3D[i].z * ratio;
+////    }
+
     // * Step 3 用初始化得到的3D点来生成地图点MapPoints
     // Create MapPoints and asscoiate to keyframes
     for(size_t i=0; i<mvIniMatches.size();i++)
@@ -1005,7 +1255,6 @@ void Tracking::CreateInitialMapMonocular()
         //Create MapPoint.
         //直接把三角化的点赋值给Mat作为空间点的世界坐标
         cv::Mat worldPos(mvIniP3D[i]);
-
         // * Step 3.1 用3D点构造MapPoint
         MapPoint* pMP = new MapPoint(worldPos,pKFcur,mpMap);
 
@@ -1044,11 +1293,11 @@ void Tracking::CreateInitialMapMonocular()
     Optimizer::GlobalBundleAdjustemnt(mpMap,20);
 
     // Set median depth to 1
-    //*Step 5 取场景的中值深度，用于尺度归一化
-    //?似乎只是为了绘制的时候看起来大小合适？
+    //* Step 5 取场景的中值深度，用于尺度归一化
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
+    cout<<"median depth "<<medianDepth<<endl;
     float invMedianDepth = 1.0f/medianDepth;
-
+    //invMedianDepth = ratio;
     if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)
     {
         cout << "Wrong initialization, reseting..." << endl;
@@ -1090,7 +1339,7 @@ void Tracking::CreateInitialMapMonocular()
     mCurrentFrame.mpReferenceKF = pKFcur;
 
     mLastFrame = Frame(mCurrentFrame);
-
+    //todo ? for local optimization
     mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
 
     mpMapDrawer->SetCurrentCameraPose(pKFcur->GetPose());
@@ -1275,7 +1524,7 @@ bool Tracking::TrackWithMotionModel()
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
 
-    //当前帧位姿=速度*上一帧位姿
+    //当前帧位姿=速度*上一帧位姿 //Tc2w
     mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
 
     //清空当前帧的地图点
@@ -1614,129 +1863,147 @@ void Tracking::CreateNewKeyFrame()
  * @brief Based on Velocity captured from VO
  * Undistort LiDAR point cloud
 */
-void Tracking::UndisLiDAR()
-{
-    //laser time, start time, end time
-    double t_l = mCurrentFrame.mLaserTimes[0];
-    double t_ls = mCurrentFrame.mLaserTimes[1];
-    double t_le = mCurrentFrame.mLaserTimes[2];
-    //last vision frame time, current frame time.
-    double t_last = mLastFrame.mTimeStamp;
-    double t_cur = mCurrentFrame.mTimeStamp;
-    //vision frame delta time.
-    double deltaTime = t_cur - t_last;
-    cv::Mat V = cv::Mat::zeros(3, 1, CV_64F);
-    V.at<double>(0, 0) = mVelocity.at<float>(0, 3) / deltaTime;
-    V.at<double>(1, 0) = mVelocity.at<float>(1, 3) / deltaTime;
-    V.at<double>(2, 0) = mVelocity.at<float>(2, 3) / deltaTime;
-    //cout << "Velocity " <<endl<< V << endl;
-    double timeToProj = t_cur - t_l;
-    cv::Mat timeToProjM = cv::Mat::zeros(3, 1, CV_64F);
-    timeToProjM.at<double>(0, 0) = timeToProj;
-    timeToProjM.at<double>(1, 0) = timeToProj;
-    timeToProjM.at<double>(2, 0) = timeToProj;
-    //cout << "timeToProjM " <<endl<< timeToProjM << endl;
-    cv::Mat P_undis = cv::Mat::zeros(3, 1, CV_64F);
-    cv::Mat P_distor = cv::Mat::zeros(3, 1, CV_64F);
-    for (int i = 0; i < mCurrentFrame.mLaserPoints.size(); i++) {
-        P_distor.at<double>(0, 0) = mCurrentFrame.mLaserPoints[i][0];
-        P_distor.at<double>(1, 0) = mCurrentFrame.mLaserPoints[i][1];
-        P_distor.at<double>(2, 0) = mCurrentFrame.mLaserPoints[i][2];
-        //cout << "P_distor " <<endl<< P_distor << endl;
-        if (t_l < t_cur)
-            //t_last ---> t_ls ---> t_l ---> t_cur ---> t_le
-            //forward from t_1 to t_cur
-            P_undis = P_distor + V.mul(timeToProjM);
-        else
-            //t_last ---> t_ls ---> t_cur ---> t_l ---> t_le
-            //backward from t_1 to t_cur
-        if (t_l > t_cur)
-            P_undis = P_distor - V.mul(timeToProjM);
-        else
-            //t_l==t_cur
-            P_undis = P_distor;
-        //cout << "P_undis " << endl << P_undis << endl;
-        vector<double> undisPoint{P_undis.at<double>(0, 0), P_undis.at<double>(1, 0), P_undis.at<double>(2, 0)};
-        mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
-    }
-}
+//    void Tracking::UndisLiDAR() {
+//        //laser time, start time, end time
+//        double t_l = mCurrentFrame.mLaserTimes[0];
+//        double t_ls = mCurrentFrame.mLaserTimes[1];
+//        double t_le = mCurrentFrame.mLaserTimes[2];
+//        //last vision frame time, current frame time.
+//        double t_last = mLastFrame.mTimeStamp;
+//        double t_cur = mCurrentFrame.mTimeStamp;
+//        //vision frame delta time.
+//        double deltaTime = t_cur - t_last;
+//        cv::Mat V = cv::Mat::zeros(3, 1, CV_64F);
+//        V.at<double>(0, 0) = mVelocity.at<float>(0, 3) / deltaTime;
+//        V.at<double>(1, 0) = mVelocity.at<float>(1, 3) / deltaTime;
+//        V.at<double>(2, 0) = mVelocity.at<float>(2, 3) / deltaTime;
+//        //cout << "Velocity " <<endl<< V << endl;
+//        double timeToProj = t_cur - t_l;
+//        cv::Mat timeToProjM = cv::Mat::zeros(3, 1, CV_64F);
+//        timeToProjM.at<double>(0, 0) = timeToProj;
+//        timeToProjM.at<double>(1, 0) = timeToProj;
+//        timeToProjM.at<double>(2, 0) = timeToProj;
+//        //cout << "timeToProjM " <<endl<< timeToProjM << endl;
+//        cv::Mat P_undis = cv::Mat::zeros(3, 1, CV_64F);
+//        cv::Mat P_distor = cv::Mat::zeros(3, 1, CV_64F);
+//        for (int i = 0; i < mCurrentFrame.mLaserPt_cam.size(); i++) {
+//            P_distor.at<double>(0, 0) = mCurrentFrame.mLaserPt_cam[i][0];
+//            P_distor.at<double>(1, 0) = mCurrentFrame.mLaserPt_cam[i][1];
+//            P_distor.at<double>(2, 0) = mCurrentFrame.mLaserPt_cam[i][2];
+//            //cout << "P_distor " <<endl<< P_distor << endl;
+//            if (t_l < t_cur)
+//                ///t_last ---> t_ls ---> t_l ---> t_cur ---> t_le
+//                ///forward from t_1 to t_cur
+//                P_undis = P_distor + V.mul(timeToProjM);
+//            else
+//                ///t_last ---> t_ls ---> t_cur ---> t_l ---> t_le
+//                ///backward from t_1 to t_cur
+//            if (t_l > t_cur)
+//                P_undis = P_distor - V.mul(timeToProjM);
+//            else
+//                ///t_l==t_cur
+//                P_undis = P_distor;
+//            //cout << "P_undis " << endl << P_undis << endl;
+//            vector<double> undisPoint{P_undis.at<double>(0, 0), P_undis.at<double>(1, 0), P_undis.at<double>(2, 0)};
+//            mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
+//        }
+//    }
 
 ///added module
-void Tracking::RegionGrowing()
-{
-    int LiDARNum = mCurrentFrame.mLaserPtsUndis.size();
-    pcl::PointCloud<pcl::PointXYZ>::Ptr LiDARCloud(new pcl::PointCloud<pcl::PointXYZ>);
-    LiDARCloud->points.resize(LiDARNum);
-    //fstream writer;
-    //writer.open("testDATA.txt",ios::out);
-    int actualCounter =0;
-    for(int li=0;li<LiDARNum;li++)
-    {
-        if(mCurrentFrame.mLaserPtsUndis[li][0] > 0 && mCurrentFrame.mLaserPtsUndis[li][0]<25
-        && mCurrentFrame.mLaserPtsUndis[li][1] >-6 && mCurrentFrame.mLaserPtsUndis[li][1]<6)
-        {
-            LiDARCloud->points[actualCounter].x = mCurrentFrame.mLaserPtsUndis[li][0];
-            LiDARCloud->points[actualCounter].y = mCurrentFrame.mLaserPtsUndis[li][1];
-            LiDARCloud->points[actualCounter].z = mCurrentFrame.mLaserPtsUndis[li][2];
-            //writer<<LiDARCloud->points[li].x<<" "<<LiDARCloud->points[li].y<<" "<<LiDARCloud->points[li].z<<endl;
-            actualCounter++;
-        }
-    }
-    LiDARCloud->points.resize(actualCounter);
-    //writer.close();
+//    void Tracking::RegionGrowing(Frame &inputFrame, bool Undistored) {
+//        pcl::PointCloud<pcl::PointXYZ>::Ptr LiDARCloud(new pcl::PointCloud<pcl::PointXYZ>);
+//        if (Undistored) {
+//            int LiDARNum = inputFrame.mLaserPtsUndis.size();
+//            LiDARCloud->points.resize(LiDARNum);
+//            int actualCounter = 0;
+//            for (int li = 0; li < LiDARNum; li++) {
+//                LiDARCloud->points[actualCounter].x = inputFrame.mLaserPtsUndis[li][0];
+//                LiDARCloud->points[actualCounter].y = inputFrame.mLaserPtsUndis[li][1];
+//                LiDARCloud->points[actualCounter].z = inputFrame.mLaserPtsUndis[li][2];
+//                actualCounter++;
+//            }
+//            LiDARCloud->points.resize(actualCounter);
+//        } else {
+//            int LiDARNum = inputFrame.mLaserPt_cam.size();
+//            LiDARCloud->points.resize(LiDARNum);
+//            int actualCounter = 0;
+//            for (int li = 0; li < LiDARNum; li++) {
+//                LiDARCloud->points[actualCounter].x = inputFrame.mLaserPt_cam[li][0];
+//                LiDARCloud->points[actualCounter].y = inputFrame.mLaserPt_cam[li][1];
+//                LiDARCloud->points[actualCounter].z = inputFrame.mLaserPt_cam[li][2];
+//                actualCounter++;
+//            }
+//            LiDARCloud->points.resize(actualCounter);
+//        }
+//        //cout<<"lidar cloud actual number "<<LiDARCloud->points.size()<<endl;
+//        ///estimating normals for each point
+//        pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+//        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+//        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+//        normal_estimator.setSearchMethod(tree);
+//        normal_estimator.setInputCloud(LiDARCloud);
+//        normal_estimator.setKSearch(50);
+//        normal_estimator.compute(*normals);
+//        ///region growing
+//        pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+//        reg.setMinClusterSize(1000);
+//        reg.setMaxClusterSize(100000);
+//        reg.setSearchMethod(tree);
+//        reg.setNumberOfNeighbours(100);//too little will cause run time error
+//        reg.setInputCloud(LiDARCloud);
+//        reg.setInputNormals(normals);
+//        reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
+//        reg.setCurvatureThreshold(2.0);
+//        ///extract each cluster
+//        clock_t startTime = clock();
+//        std::vector<pcl::PointIndices> clusters;
+//        reg.extract(clusters);
+//        clock_t endTime = clock();
+//        double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
+//        //cout << "Region Growing " << timeUsed << " sec ";
+//        ///call RANSAC plane fitting
+//        for (int ci = 0; ci < clusters.size(); ci++) {
+//            pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
+//            thisCloud->points.resize(clusters[ci].indices.size());
+//            thisCloud->height = 1;
+//            thisCloud->width = clusters[ci].indices.size();
+//            //cout<<" | cluster contains"<<clusters[ci].indices.size();
+//            for (int index = 0; index < clusters[ci].indices.size(); index++) {
+//                thisCloud->points[index].x = LiDARCloud->points[clusters[ci].indices[index]].x;
+//                thisCloud->points[index].y = LiDARCloud->points[clusters[ci].indices[index]].y;
+//                thisCloud->points[index].z = LiDARCloud->points[clusters[ci].indices[index]].z;
+//                //cout<<"cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
+//            }
+//            Plane foundPlane;
+//            startTime = clock();
+//            pcl::PointIndices inliersOUT;
+//            int inPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
+//            endTime = clock();
+//            double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
+//            //cout << " RANSAC plane " << timeUsed << " sec. Inliners num: " << inPlaneNum;
+//            if (inPlaneNum > 0) {
+//                int planeID = inputFrame.mvPlanes.size();
+//                foundPlane.PlaneId = planeID;
+//                inputFrame.mvPlanes.push_back(foundPlane);
+//            }
+//        }
+//        //cout << endl;
+//
+//        ///save LiDAR planes
+////    fstream writer;
+////    string fileName = "data//lidar//"+std::to_string(mCurrentFrame.mnId) + ".txt";
+////    writer.open(fileName,std::ios::out);
+////    for(int plni = 0; plni<mCurrentFrame.mvPlanes.size();plni++)
+////    {
+////        for(int pi=0;pi<mCurrentFrame.mvPlanes[plni].pointList.size();pi++)
+////        {
+////            writer<<mCurrentFrame.mvPlanes[plni].pointList[pi].x<<" "<<mCurrentFrame.mvPlanes[plni].pointList[pi].y<<" "<<mCurrentFrame.mvPlanes[plni].pointList[pi].z<<endl;
+////        }
+////    }
+////    writer.close();
+//    }
 
-    ///estimating normals for each point
-    pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-    normal_estimator.setSearchMethod(tree);
-    normal_estimator.setInputCloud(LiDARCloud);
-    normal_estimator.setKSearch(50);
-    normal_estimator.compute(*normals);
-    ///region growing
-    pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-    reg.setMinClusterSize(1000);
-    reg.setMaxClusterSize(100000);
-    reg.setSearchMethod(tree);
-    reg.setNumberOfNeighbours(100);//too little will cause run time error
-    reg.setInputCloud(LiDARCloud);
-    reg.setInputNormals(normals);
-    reg.setSmoothnessThreshold(3.0/180.0*M_PI);
-    reg.setCurvatureThreshold(2.0);
-    ///extract each cluster
-    clock_t startTime = clock();
-    std::vector<pcl::PointIndices> clusters;
-    reg.extract(clusters);
-    clock_t endTime = clock();
-    double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
-    cout << "Region Growing time used " << timeUsed << " sec" << endl;
-    ///call RANSAC plane fitting
-    for(int ci=0; ci < clusters.size();ci++)
-    {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
-        thisCloud->points.resize(clusters[ci].indices.size());
-        thisCloud->height=1;thisCloud->width=clusters[ci].indices.size();
-        cout<<"cluster contains "<<clusters[ci].indices.size()<<endl;
-        for(int index =0;index<clusters[ci].indices.size();index++)
-        {
-            thisCloud->points[index].x = LiDARCloud->points[clusters[ci].indices[index]].x;
-            thisCloud->points[index].y = LiDARCloud->points[clusters[ci].indices[index]].y;
-            thisCloud->points[index].z = LiDARCloud->points[clusters[ci].indices[index]].z;
-            //cout<<"cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
-        }
-        Plane foundPlane;
-        startTime = clock();
-        pcl::PointIndices inliersOUT;
-        int inPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
-        endTime = clock();
-        double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
-        cout << "RANSAC plane time used " << timeUsed << " sec. inliners num: "<<inPlaneNum;
-        if(inPlaneNum>0)
-            mCurrentFrame.mvPlanes.push_back(foundPlane);
-    }
-}
-
-int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOUT)
+int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput)
 {
     //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = inputCloud.makeShared();
     pcl::ModelCoefficients::Ptr  coefficients(new pcl::ModelCoefficients);
@@ -1748,13 +2015,13 @@ int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &fou
     //Mandatory
     seg.setMethodType(pcl::SACMODEL_PLANE);
     seg.setModelType(pcl::SAC_RANSAC);
-    seg.setDistanceThreshold(0.01);
+    seg.setDistanceThreshold(0.001);
 
     seg.setInputCloud(cloud);
     seg.segment(*inliers, *coefficients);
     if(inliers->indices.size()==0)
         return 0;
-    inliersOUT = *inliers;
+    inliersOutput = *inliers;
     foundPlane.A = coefficients->values[0];foundPlane.B = coefficients->values[1];
     foundPlane.C = coefficients->values[2];foundPlane.D = coefficients->values[3];
     double sumX =0,sumY=0,sumZ=0;
@@ -1766,12 +2033,114 @@ int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &fou
         sumX += x;
         sumY += y;
         sumZ += z;
-        foundPlane.pointList.push_back(cv::Point3d(x,y,z));
+        //foundPlane.points3D.push_back(cv::Point3d(x,y,z));
         //cout<<"inliner push back "<<x<<" "<<y<<" "<<z<<endl;
     }
     foundPlane.centreP = cv::Point3d (sumX/inliers->indices.size(), sumY/inliers->indices.size(),sumZ/inliers->indices.size());
     return inliers->indices.size();
 }
+
+//void Tracking::LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation)
+//{
+//    int numInit = 30000;
+//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>);
+//    cloud1->points.resize(numInit);
+//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZ>);
+//    cloud2->points.resize(numInit);
+//    int actualNum = 0;
+//    for (int plnIndex1 = 0; plnIndex1 < inputFrame1.mvPlanes.size(); plnIndex1++) {
+//        for (int ptIndex = 0; ptIndex < inputFrame1.mvPlanes[plnIndex1].pointList.size(); ptIndex++) {
+//            cloud1->points[actualNum].x = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].x;
+//            cloud1->points[actualNum].y = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].y;
+//            cloud1->points[actualNum].z = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].z;
+//            actualNum++;
+//        }
+//    }
+//    cloud1->points.resize(actualNum);
+//    int actualNum2 = 0;
+//    for (int plnIndex2 = 0; plnIndex2 < inputFrame2.mvPlanes.size(); plnIndex2++) {
+//        for (int ptIndex = 0; ptIndex < inputFrame2.mvPlanes[plnIndex2].pointList.size(); ptIndex++) {
+//            cloud2->points[actualNum2].x = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].x;
+//            cloud2->points[actualNum2].y = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].y;
+//            cloud2->points[actualNum2].z = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].z;
+//            actualNum2++;
+//        }
+//    }
+//    cloud2->points.resize(actualNum2);
+//    ///ICP
+////    Eigen::Matrix4f init;
+////    cv::Mat pose2 = inputFrame2.GetPose();
+////    //Todo float or double?
+////    init << pose2.at<float>(0,0), pose2.at<float>(0,1), pose2.at<float>(0,2), pose2.at<float>(0,3),
+////            pose2.at<float>(1,0), pose2.at<float>(1,1), pose2.at<float>(1,2), pose2.at<float>(1,3),
+////            pose2.at<float>(2,0), pose2.at<float>(2,1), pose2.at<float>(2,2), pose2.at<float>(2,3),
+////            pose2.at<float>(3,0), pose2.at<float>(3,1), pose2.at<float>(3,2), pose2.at<float>(3,3);
+//    pcl::PointCloud<pcl::PointXYZ> cloudRegistered;
+//    cloudRegistered.points.resize(actualNum);
+//    pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> ICPer;
+//    ICPer.setInputSource(cloud1);
+//    ICPer.setInputTarget(cloud2);
+//    //icper.setMaxCorrespondenceDistance(1);
+//    //icper.setTransformationEpsilon(1e-8);//?
+//    //icper.setEuclideanFitnessEpsilon(0.01);
+//    ICPer.setMaximumIterations(100);
+//    ICPer.align(cloudRegistered);
+//    Eigen::Matrix4f Tc1c2 = ICPer.getFinalTransformation();
+//    transformation.at<float>(0,0) = Tc1c2(0,0);transformation.at<float>(0,1) = Tc1c2(0,1);transformation.at<float>(0,2) = Tc1c2(0,2);transformation.at<float>(0,3) = Tc1c2(0,3);
+//    transformation.at<float>(1,0) = Tc1c2(1,0);transformation.at<float>(1,1) = Tc1c2(1,1);transformation.at<float>(1,2) = Tc1c2(1,2);transformation.at<float>(1,3) = Tc1c2(1,3);
+//    transformation.at<float>(2,0) = Tc1c2(2,0);transformation.at<float>(2,1) = Tc1c2(2,1);transformation.at<float>(2,2) = Tc1c2(2,2);transformation.at<float>(2,3) = Tc1c2(2,3);
+//    transformation.at<float>(3,0) = Tc1c2(3,0);transformation.at<float>(3,1) = Tc1c2(3,1);transformation.at<float>(3,2) = Tc1c2(3,2);transformation.at<float>(3,3) = Tc1c2(3,3);
+//}
+
+/**
+ * This function will associate the ORB feature and Plane
+ * TODO: what if a vision feature point is close to two plane?
+ * TODO: what if a plane contains no ORB feature?
+ */
+//    bool Tracking::associateVisionLiDAR() {
+//        //Step 1 : associate in 2D
+//        int keyPtNum = mCurrentFrame.mvKeysUn.size();
+//        int planeNum = mCurrentFrame.mvPlanes.size();
+//        for (int kpIndex = 0; kpIndex < keyPtNum; kpIndex++) {
+//            double minDis = 65535;
+//            int foundPlaneIndex = -1;
+//            int foundLiDARPtIndex = -1;
+//            for (int plnIndex = 0; plnIndex < planeNum; plnIndex++) {
+//                int planePtNum = mCurrentFrame.mvPlanes[plnIndex].pointList2D.size();//todo check if the 3D num match 2D num (sometime projection out of boundires)
+//                for (int ldPtIndex = 0; ldPtIndex < planePtNum; ldPtIndex++) {
+//                    double xdiff = mCurrentFrame.mvKeysUn[kpIndex].pt.x -
+//                                   mCurrentFrame.mvPlanes[plnIndex].pointList2D[ldPtIndex].x;
+//                    double ydiff = mCurrentFrame.mvKeysUn[kpIndex].pt.y -
+//                                   mCurrentFrame.mvPlanes[plnIndex].pointList2D[ldPtIndex].y;
+//                    double distance = sqrt(xdiff * xdiff + ydiff * ydiff);
+//                    if (distance < 5 && distance < minDis) {
+//                        minDis = distance;
+//                        foundPlaneIndex = plnIndex;
+//                        foundLiDARPtIndex = ldPtIndex;
+//                    }
+//                }
+//            }
+//            //Step 2: associate in 3D
+//            if(mCurrentFrame.mvpMapPoints[kpIndex]!=NULL)//todo 是这么用的吗？
+//            {
+//                mCurrentFrame.mvPlanes[foundPlaneIndex].vpMapPointMatches.push_back(mCurrentFrame.mvpMapPoints[kpIndex]);
+//                mCurrentFrame.mvPlanes[foundPlaneIndex].mindices.push_back(kpIndex);
+//            }
+//        }
+//        //test distance to plane
+//        for(int plnIndex = 0; plnIndex < planeNum; plnIndex++)
+//        {
+//            int mpNum = mCurrentFrame.mvPlanes[plnIndex].vpMapPointMatches.size();
+//            double fenmu = sqrt(mCurrentFrame.mvPlanes[plnIndex].A * mCurrentFrame.mvPlanes[plnIndex].A
+//                                + mCurrentFrame.mvPlanes[plnIndex].B * mCurrentFrame.mvPlanes[plnIndex].B
+//                                + mCurrentFrame.mvPlanes[plnIndex].C * mCurrentFrame.mvPlanes[plnIndex].C);
+//            for(int mpIndex = 0; mpIndex < mpNum; mpIndex++)
+//            {
+//                //todo establish plane world pose.
+//                //mCurrentFrame.mvPlanes[plnIndex].A*mCurrentFrame.mvPlanes[plnIndex].vpMapPointMatches[mpIndex]->GetWorldPos())
+//            }
+//        }
+//    }
 
 void Tracking::SearchLocalPoints()
 {

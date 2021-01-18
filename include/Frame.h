@@ -41,20 +41,34 @@ class MapPoint;
 class KeyFrame;
 
 ///added module
-class Plane{
-public:
-    double A,B,C,D;
-    double phi, theta, dis;
-    int count;
-    int PlaneId;
-    vector<int> keyPointList;
-    Plane(double Ain, double Bin, double Cin, double Din):A(Ain),B(Bin),C(Cin),D(Din){PlaneId=-1;}
-    Plane(double phiin, double thetain, double disin):phi(phiin),theta(thetain),dis(disin){PlaneId=-1;}
-    Plane(){PlaneId=-1;}
-    cv::Point3d centreP;
-    vector<cv::Point3d> pointList;
-    vector<cv::Point2d> pointList2D;
-};
+    class PtLsr {
+    public:
+        cv::Point2d pt2d;
+        cv::Point3d pt3d;
+        int index2d;
+        int index3d;
+        int response;
+    };
+
+    class Plane {
+    public:
+        double A, B, C, D;
+        double phi, theta, dis;
+        int count;
+        int PlaneId;//Id in frame
+        int planeIdGlobal;//In in map/global
+        Plane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) { PlaneId = -1; }
+        Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
+        Plane() { PlaneId = -1; }
+
+        cv::Point3d centreP;
+//        vector<cv::Point3d> pointList;
+//        vector<cv::Point2d> pointList2D;
+        vector<PtLsr> points3D;
+        vector<int> keyPointList; //todo store keypoint in this plane
+        vector<int> mindices;     //todo indexs of keypoint in image
+        std::vector<MapPoint *> vpMapPointMatches; //todo pointer to Map point that contained in this plane
+    };
 
 class Frame
 {
@@ -73,7 +87,9 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     ///added module
-    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes,ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
+          const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+          cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -127,13 +143,18 @@ public:
     double mTimeStamp;
 
     ///added module
+    cv::Mat mTcamlid;
+    void ProjectLiDARtoCam();
+    void ProjectLiDARtoImg(cv::Mat, int cols, int rows);
     vector<std::vector<double>> mLaserPoints;
-    vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
+    //vector<std::vector<double>> mLaserPt_cam;
+    vector<PtLsr> mLaserPt_cam;
+    //vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
     vector<double> mLaserTimes; //{middle time, start, end}
-    vector<cv::KeyPoint> mPjcLaserPts;
-    vector<cv::KeyPoint> mPjcLaserPtsUndis;
-    vector<vector<cv::Point>> planNorms;
-
+    //vector<cv::Point> mPjcLaserPts;
+    //vector<cv::KeyPoint> mPjcLaserPtsUndis;
+    //vector<vector<cv::Point>> planNorms;
+    //std::vector<Plane> mvPlanes;
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;
@@ -154,9 +175,6 @@ public:
     // Threshold close/far points. Close points are inserted from 1 view.
     // Far points are inserted as in the monocular case from 2 views.
     float mThDepth;
-
-    ///added module
-    std::vector<Plane> mvPlanes;
 
     // Number of KeyPoints.
     int N;

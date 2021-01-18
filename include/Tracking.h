@@ -164,8 +164,13 @@ namespace ORB_SLAM2
 
         ///Added Module
         void UndisLiDAR();
-        void RegionGrowing();
+        //void ApplyLiDARRatio();
+        void RegionGrowing(Frame &inputFrame,bool Undistored);
         int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOUT);
+        void LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation);
+        bool associateVisionLiDAR();
+        void AssociateLiDARInit(float);
+        vector<float> RayPlaneDis(vector<float> ray_dir, vector<float> origin, vector<float> PlaneN, vector<float> PlaneP);
 
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.
