@@ -34,6 +34,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+///Added Module
+class MapPlane;
 
 class Map
 {
@@ -43,7 +45,10 @@ public:
     void AddKeyFrame(KeyFrame* pKF);
     void AddMapPoint(MapPoint* pMP);
     void EraseMapPoint(MapPoint* pMP);
-    //todo AddMapPlane();
+    ///Added Module
+    void AddMapPlane(MapPlane* pMPln);
+    int GetMapPlaneNum();
+    std::vector<MapPlane*> GetAllMapPlanes();
     //todo EraseMapPlane();
     void EraseKeyFrame(KeyFrame* pKF);
     void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
@@ -71,6 +76,8 @@ public:
 protected:
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
+    ///added module
+    std::set<MapPlane*> mspMapPlanes;
 
     std::vector<MapPoint*> mvpReferenceMapPoints;
 

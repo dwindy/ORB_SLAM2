@@ -33,11 +33,15 @@ using namespace std;
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
+///Added Module - copied from rgb_tum.cc
+void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
+                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
+
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    if(argc != 5)
     {
-        cerr << endl << "Usage: ./mono_tum path_to_vocabulary path_to_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./mono_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association" << endl;
         return 1;
     }
     cout<<"Info 1 system get in"<<endl;
@@ -46,11 +50,18 @@ int main(int argc, char **argv)
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
     vector<double> vTimestamps;
-    string strFile = string(argv[3])+"/rgb.txt";
-    LoadImages(strFile, vstrImageFilenames, vTimestamps);
+    //string strFile = string(argv[3])+"/rgb.txt";
+    //LoadImages(strFile, vstrImageFilenames, vTimestamps);
+    ///Added Module
+    vector<string> vstrImageFilenamesD;
+    string strAssociationFilename = string(argv[4]);
+    LoadImages(strAssociationFilename, vstrImageFilenames, vstrImageFilenamesD, vTimestamps);
 
     int nImages = vstrImageFilenames.size();
     cout<<"Info 3 loaded "<<nImages<<" images"<<endl;
+
+    int nDepths = vstrImageFilenamesD.size();
+    cout<<"Info 3.5 loaded "<<nDepths<<" depths"<<endl;
 
     cout<<"Info 4 create SLAM instance -> ORB_SLAM2::System SLAM()"<<endl;
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
@@ -66,10 +77,14 @@ int main(int argc, char **argv)
 
     // Main loop
     cv::Mat im;
-    for(int ni=0; ni<nImages; ni++) //读取N图像
+    ///Added Module
+    cv::Mat imD;
+    for(int ni=0; ni<nImages; ni++)
     {
         // Read image from file
         im = cv::imread(string(argv[3])+"/"+vstrImageFilenames[ni],CV_LOAD_IMAGE_UNCHANGED);
+        ///Added Module
+        imD = cv::imread(string(argv[3])+"/"+vstrImageFilenamesD[ni],CV_LOAD_IMAGE_UNCHANGED);
         double tframe = vTimestamps[ni];
 
         if(im.empty())
@@ -86,7 +101,9 @@ int main(int argc, char **argv)
 #endif
 
         // Pass the image to the SLAM system
-        SLAM.TrackMonocular(im,tframe);
+        //SLAM.TrackMonocular(im,tframe);
+        ///Added Module
+        SLAM.TrackMonocular(im, imD, tframe);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -157,5 +174,29 @@ void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vecto
             vstrImageFilenames.push_back(sRGB);
         }
         counter++;
+    }
+}
+
+///Added Module - copied from rigb_tum.cc
+void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
+                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps) {
+    ifstream fAssociation;
+    fAssociation.open(strAssociationFilename.c_str());
+    while (!fAssociation.eof()) {
+        string s;
+        getline(fAssociation, s);
+        if (!s.empty()) {
+            stringstream ss;
+            ss << s;
+            double t;
+            string sRGB, sD;
+            ss >> t;
+            vTimestamps.push_back(t);
+            ss >> sD;
+            vstrImageFilenamesD.push_back(sD);
+            ss >> t;
+            ss >> sRGB;
+            vstrImageFilenamesRGB.push_back(sRGB);
+        }
     }
 }

@@ -37,11 +37,21 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         mnMaxKFid=pKF->mnId;
 }
 
-void Map::AddMapPoint(MapPoint *pMP)
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mspMapPoints.insert(pMP);
-}
+    void Map::AddMapPoint(MapPoint *pMP) {
+        unique_lock<mutex> lock(mMutexMap);
+        mspMapPoints.insert(pMP);
+    }
+
+///Added module
+    void Map::AddMapPlane(MapPlane *pMPln) {
+        unique_lock<mutex> lock(mMutexMap);
+        mspMapPlanes.insert(pMPln);
+    }
+
+    int Map::GetMapPlaneNum() {
+        unique_lock<mutex> lock(mMutexMap);
+        return mspMapPlanes.size();
+    }
 
 void Map::EraseMapPoint(MapPoint *pMP)
 {
@@ -89,6 +99,12 @@ vector<MapPoint*> Map::GetAllMapPoints()
 {
     unique_lock<mutex> lock(mMutexMap);
     return vector<MapPoint*>(mspMapPoints.begin(),mspMapPoints.end());
+}
+
+vector<MapPlane*> Map::GetAllMapPlanes()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return vector<MapPlane*>(mspMapPlanes.begin(),mspMapPlanes.end());
 }
 
 long unsigned int Map::MapPointsInMap()

@@ -39,7 +39,7 @@ class Map;
 class MapPoint;
 class Frame;
 class KeyFrameDatabase;
-class PtLsr;
+class PtRGBD;
 
 class KeyFrame
 {
@@ -50,7 +50,7 @@ public:
     cv::Mat mTcamlid;
     void ProjectLiDARtoCam();
     vector<std::vector<double>> mLaserPoints;
-    vector<PtLsr> mLaserPt_cam;
+    vector<PtRGBD> mLaserPt_cam;
     vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
     vector<double> mLaserTimes; //{middle time, start, end}
     vector<cv::Point> mPjcLaserPts;

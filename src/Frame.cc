@@ -60,27 +60,26 @@ namespace ORB_SLAM2
     ///added module
     //Copy Constructor
     Frame::Frame(const Frame &frame)
-            :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
-             mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
-             mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
-             mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),
-             mvDepth(frame.mvDepth), mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
-             mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
-             mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
-             mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
-             mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
-             mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
-             mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
-             //added LiDAR modules
-             mLaserPt_cam(frame.mLaserPt_cam),mLaserPoints(frame.mLaserPoints)//,mLaserPtsUndis(frame.mLaserPtsUndis),
-             //mLaserTimes(frame.mLaserTimes),mPjcLaserPts(frame.mPjcLaserPts),mPjcLaserPtsUndis(frame.mPjcLaserPtsUndis),
-             //mvPlanes(frame.mvPlanes)
+            : mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft),
+              mpORBextractorRight(frame.mpORBextractorRight),
+              mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+              mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
+              mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn), mvuRight(frame.mvuRight),
+              mvDepth(frame.mvDepth), mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
+              mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
+              mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
+              mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
+              mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
+              mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
+              mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
+              ///Added Module
+              mvPtRGBD(frame.mvPtRGBD),mvPlanes(frame.mvPlanes)
     {
-        for(int i=0;i<FRAME_GRID_COLS;i++)
-            for(int j=0; j<FRAME_GRID_ROWS; j++)
-                mGrid[i][j]=frame.mGrid[i][j];
+        for (int i = 0; i < FRAME_GRID_COLS; i++)
+            for (int j = 0; j < FRAME_GRID_ROWS; j++)
+                mGrid[i][j] = frame.mGrid[i][j];
 
-        if(!frame.mTcw.empty())
+        if (!frame.mTcw.empty())
             SetPose(frame.mTcw);
     }
 
@@ -147,8 +146,8 @@ namespace ORB_SLAM2
 
     Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
                  const float &bf,                                                                                      //baseline * f
-                 const float &thDepth)                                                                                 //区分远近点的深度阈值
-            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //单目没有右相机
+                 const float &thDepth)                                                                                 //threshold to decide near / far points
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //Mono has no right camera
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
     {
         // Frame ID
@@ -173,7 +172,20 @@ namespace ORB_SLAM2
 
         UndistortKeyPoints();
 
+        //restore depth for keypoint
         ComputeStereoFromRGBD(imDepth);
+        ///Added Module
+        fx = K.at<float>(0,0);
+        fy = K.at<float>(1,1);
+        cx = K.at<float>(0,2);
+        cy = K.at<float>(1,2);
+        invfx = 1.0f/fx;
+        invfy = 1.0f/fy;
+        ///restore 3d points
+        ComputeRGBDPoints(imGray, imDepth);
+        ///Find Plane
+        RegionGrowing();
+        //cout<<"found "<<mvPlanes.size()<<" plane "<<endl;
 
         mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
         mvbOutlier = vector<bool>(N,false);
@@ -290,86 +302,86 @@ namespace ORB_SLAM2
 
         ///added module
         //Project LiDAR point to Cam coordination
-        ProjectLiDARtoCam();
-        ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
+//        ProjectLiDARtoCam();
+//        ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
     }
 
-    void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
-        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-        P_rect_00.at<double>(2, 2) = 1;
-        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-        int ptNum = mLaserPt_cam.size();
-        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-        int counter = 0;
-        for (int pi = 0; pi < ptNum; pi++) {
-            cv::Point pt;
-            X.at<double>(0, 0) = mLaserPt_cam[pi].pt3d.x;
-            X.at<double>(1, 0) = mLaserPt_cam[pi].pt3d.y;
-            X.at<double>(2, 0) = mLaserPt_cam[pi].pt3d.z;
-            X.at<double>(3, 0) = 1;
-            Y = P_rect_00 * R_rect_00 * X;
-            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
-                mLaserPt_cam[pi].index2d = -1;
-                continue;
-            }
-            mLaserPt_cam[pi].pt2d = pt;
-            mLaserPt_cam[pi].index2d = counter;
-            counter++;
-        }
-        cout << "Lidar points " << mLaserPt_cam.size() << " in image frame " << counter << endl;
-    }
-    /**
-     * Project LiDAR point from LiDAR coordination to Cam coordination
-     */
-    void Frame::ProjectLiDARtoCam()
-    {
-        int lsrPtNum = mLaserPoints.size();
-        if(lsrPtNum>0)
-        {
-            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
-            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
-            int counter = 0;
-            for(int li=0; li<lsrPtNum;li++)
-            {
-                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-                double maxX=25.0, maxY = 6.0, minZ = -1.8;
-                if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
-                    || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
-                    || mLaserPoints[li][2] < minZ
-                    || mLaserPoints[li][3] > -minZ)
-                {
-                    continue;
-                }
-                P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
-                P_lidar.at<double>(1, 0) = mLaserPoints[li][1];
-                P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
-                P_lidar.at<double>(3, 0) = 1;
-                P_cam = mTcamlid * P_lidar;
-                vector<double> thisP;
-                thisP.push_back(P_cam.at<double>(0, 0));
-                thisP.push_back(P_cam.at<double>(1, 0));
-                thisP.push_back(P_cam.at<double>(2, 0));
-                thisP.push_back(mLaserPoints[li][3]);
-                cv::Point3d newP;
-                newP.x = P_cam.at<double>(0, 0);
-                newP.y = P_cam.at<double>(1, 0);
-                newP.z = P_cam.at<double>(2, 0);
-                PtLsr newPtLsr;
-                newPtLsr.pt3d = newP;
-                newPtLsr.index3d =counter;
-                counter++;
-                mLaserPt_cam.push_back(newPtLsr);
-            }
-        }
-        //cout<<"frame "<<mnId<<" mLaserPt_cam "<<mLaserPt_cam.size()<<endl;
-    }
+//    void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
+//        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+//        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
+//        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
+//        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
+//        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
+//        P_rect_00.at<double>(2, 2) = 1;
+//        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+//        int ptNum = mLaserPt_cam.size();
+//        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
+//        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
+//        int counter = 0;
+//        for (int pi = 0; pi < ptNum; pi++) {
+//            cv::Point pt;
+//            X.at<double>(0, 0) = mLaserPt_cam[pi].pt3d.x;
+//            X.at<double>(1, 0) = mLaserPt_cam[pi].pt3d.y;
+//            X.at<double>(2, 0) = mLaserPt_cam[pi].pt3d.z;
+//            X.at<double>(3, 0) = 1;
+//            Y = P_rect_00 * R_rect_00 * X;
+//            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+//            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+//            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+//                mLaserPt_cam[pi].index2d = -1;
+//                continue;
+//            }
+//            mLaserPt_cam[pi].pt2d = pt;
+//            mLaserPt_cam[pi].index2d = counter;
+//            counter++;
+//        }
+//        cout << "Lidar points " << mLaserPt_cam.size() << " in image frame " << counter << endl;
+//    }
+//    /**
+//     * Project LiDAR point from LiDAR coordination to Cam coordination
+//     */
+//    void Frame::ProjectLiDARtoCam()
+//    {
+//        int lsrPtNum = mLaserPoints.size();
+//        if(lsrPtNum>0)
+//        {
+//            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+//            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
+//            int counter = 0;
+//            for(int li=0; li<lsrPtNum;li++)
+//            {
+//                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
+//                double maxX=25.0, maxY = 6.0, minZ = -1.8;
+//                if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
+//                    || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
+//                    || mLaserPoints[li][2] < minZ
+//                    || mLaserPoints[li][3] > -minZ)
+//                {
+//                    continue;
+//                }
+//                P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
+//                P_lidar.at<double>(1, 0) = mLaserPoints[li][1];
+//                P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
+//                P_lidar.at<double>(3, 0) = 1;
+//                P_cam = mTcamlid * P_lidar;
+//                vector<double> thisP;
+//                thisP.push_back(P_cam.at<double>(0, 0));
+//                thisP.push_back(P_cam.at<double>(1, 0));
+//                thisP.push_back(P_cam.at<double>(2, 0));
+//                thisP.push_back(mLaserPoints[li][3]);
+//                cv::Point3d newP;
+//                newP.x = P_cam.at<double>(0, 0);
+//                newP.y = P_cam.at<double>(1, 0);
+//                newP.z = P_cam.at<double>(2, 0);
+//                PtLsr newPtLsr;
+//                newPtLsr.pt3d = newP;
+//                newPtLsr.index3d =counter;
+//                counter++;
+//                mLaserPt_cam.push_back(newPtLsr);
+//            }
+//        }
+//        //cout<<"frame "<<mnId<<" mLaserPt_cam "<<mLaserPt_cam.size()<<endl;
+//    }
 
 /**
  * @brief 单目帧构造函数
@@ -674,7 +686,8 @@ namespace ORB_SLAM2
     }
 
 /**
- * @brief 用内参对特征去畸变，结果保存在mvKeysUn中
+ * @brief Undistor keypoint with camera parameters
+ * Store in mvKeysUn[]
  */
     void Frame::UndistortKeyPoints()
     {
@@ -981,6 +994,26 @@ namespace ORB_SLAM2
         }
     }
 
+    /**
+     * Added Module, transfer the input depth image and RGB image to 3D points
+     * @param imGray
+     * @param imDepth
+     */
+    void Frame::ComputeRGBDPoints(const cv::Mat &imGray, const cv::Mat &imDepth) {
+        for (int v = 0; v < imGray.rows; v++) {
+            for (int u = 0; u < imGray.cols; u++) {
+                float u_u0_by_fx = (u - cx) / fx;
+                float v_v0_by_fy = (v - cy) / fy;
+                //int index = u+v*imGray.cols;
+                float d = imDepth.ptr<float>(v)[u];
+                cv::Point3d P3d;
+                P3d.x = (u_u0_by_fx) * (d);
+                P3d.y = (v_v0_by_fy) * (d);
+                P3d.z = d;
+                mvPtRGBD.push_back(P3d);
+            }
+        }
+    }
 
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
     {
@@ -997,14 +1030,23 @@ namespace ORB_SLAM2
 
             const float d = imDepth.at<float>(v,u);
 
-            if(d>0)
-            {
+            if (d > 0) {
                 mvDepth[i] = d;
-                mvuRight[i] = kpU.pt.x-mbf/d;
+                mvuRight[i] = kpU.pt.x - mbf / d;
+            }
+                ///Added Module
+            else {
+                mvDepth[i] = 0;
+                mvuRight[i] = 0;
             }
         }
     }
 
+    /**
+     * given index of keypoint, return 3d point under World Coordinate System
+     * @param i
+     * @return P3d^W
+     */
     cv::Mat Frame::UnprojectStereo(const int &i)
     {
         const float z = mvDepth[i];
@@ -1021,4 +1063,144 @@ namespace ORB_SLAM2
             return cv::Mat();
     }
 
+    /**
+     * find plane feature from RGBD pointlist
+     */
+    int Frame::RegionGrowing() {
+        if (mvPtRGBD.size() <= 3) {
+            return 0;
+        }
+//        ofstream writer;
+//        writer.open("data/RGB/initCloud.txt");
+        pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloud(new pcl::PointCloud<pcl::PointXYZ>);
+        int RGBDNum = mvPtRGBD.size();
+        RGBDCloud->resize(RGBDNum);
+        int actualNum = 0;
+        for (int pi = 0; pi < RGBDNum; pi++) {
+            if (mvPtRGBD[pi].z > 0) {
+                RGBDCloud->points[actualNum].x = mvPtRGBD[pi].x;
+                RGBDCloud->points[actualNum].y = mvPtRGBD[pi].y;
+                RGBDCloud->points[actualNum].z = mvPtRGBD[pi].z;
+                actualNum++;
+                //writer<<RGBDCloud->points[actualNum].x<<" "<<RGBDCloud->points[actualNum].y<<" "<<RGBDCloud->points[actualNum].z<<endl;
+                //writer<<mvPtRGBD[pi].x<<" "<<mvPtRGBD[pi].y<<" "<<mvPtRGBD[pi].z<<endl;
+            }
+        }
+        //writer.close();
+        RGBDCloud->resize(actualNum);
+        //cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
+        //Downsampling the point cloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::VoxelGrid<pcl::PointXYZ> sor;
+        sor.setInputCloud(RGBDCloud);
+        sor.setLeafSize(0.05f,0.05f,0.05f);
+        sor.filter(*RGBDCloudDownSample);
+        //cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
+        //estimating normals for each point
+        pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+        normal_estimator.setSearchMethod(tree);
+        normal_estimator.setInputCloud(RGBDCloudDownSample);
+        normal_estimator.setKSearch(50);
+        normal_estimator.compute(*normals);
+        //region growing
+        pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+        reg.setMinClusterSize(200);
+        reg.setMaxClusterSize(50000);
+        reg.setSearchMethod(tree);
+        reg.setNumberOfNeighbours(100);//too little will cause runtime error
+        reg.setInputCloud(RGBDCloudDownSample);
+        reg.setInputNormals(normals);
+        reg.setSmoothnessThreshold(2.0/180.0/M_PI);
+        reg.setCurvatureThreshold(2.0);
+        //extract each cluster
+        clock_t  startTime = clock();
+        std::vector<pcl::PointIndices> clusters;
+        reg.extract(clusters);
+        clock_t  endTime = clock();
+        double timeUsed = double(endTime - startTime)/CLOCKS_PER_SEC;
+        //cout<<"region growing "<<timeUsed<<" sec ";
+        //Call RANSAC plane fitting for each Cluster
+        for (int ci = 0; ci < clusters.size(); ci++) {
+            pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
+            thisCloud->points.resize(clusters[ci].indices.size());
+            thisCloud->height = 1;
+            thisCloud->width = clusters[ci].indices.size();
+            //cout << " | cluster contains " << clusters[ci].indices.size();
+            for (int index = 0; index < clusters[ci].indices.size(); index++) {
+                thisCloud->points[index].x = RGBDCloudDownSample->points[clusters[ci].indices[index]].x;
+                thisCloud->points[index].y = RGBDCloudDownSample->points[clusters[ci].indices[index]].y;
+                thisCloud->points[index].z = RGBDCloudDownSample->points[clusters[ci].indices[index]].z;
+                //cout<<" cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
+            }
+            Plane foundPlane;
+            startTime = clock();
+            pcl::PointIndices inliersOUT;
+            int intPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
+            mvPlanes.push_back(foundPlane);
+            endTime = clock();
+            double timeUsed = double(endTime-startTime)/CLOCKS_PER_SEC;
+            //cout<<"RANSAC plane "<<timeUsed<<" sec. Inliners: "<<intPlaneNum;
+        }
+        //cout<<endl;
+    }
+
+    /**
+     * input a pointcloud, run RANSAC to fit a plane, return inliner number
+     * @param in : cloud datasource
+     * @param in&out : foundPlane, to fill up
+     * @param in&out : inliersOutput
+     * @return inliner point number
+     */
+    int Frame::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane,
+                           pcl::PointIndices &inliersOutput) {
+        //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = inputCloud.makeShared();
+        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        //create the segmentation objects
+        pcl::SACSegmentation<pcl::PointXYZ> seg;
+        //Optional
+        seg.setOptimizeCoefficients(true);
+        //Mandatory
+        seg.setMethodType(pcl::SACMODEL_PLANE);
+        seg.setModelType(pcl::SAC_RANSAC);
+        seg.setDistanceThreshold(0.001);
+
+        seg.setInputCloud(cloud);
+        seg.segment(*inliers, *coefficients);
+        if (inliers->indices.size() == 0)
+            return 0;
+        inliersOutput = *inliers;
+        foundPlane.A = coefficients->values[0];
+        foundPlane.B = coefficients->values[1];
+        foundPlane.C = coefficients->values[2];
+        foundPlane.D = coefficients->values[3];
+        double sumX = 0, sumY = 0, sumZ = 0;
+        for (int i = 0; i < inliers->indices.size(); i++) {
+            double x = cloud->points[inliers->indices[i]].x;
+            double y = cloud->points[inliers->indices[i]].y;
+            double z = cloud->points[inliers->indices[i]].z;
+            sumX += x;
+            sumY += y;
+            sumZ += z;
+            cv::Point3d newP = cv::Point3d(x, y, z);
+            PtRGBD newPtRGBD;
+            newPtRGBD.pt3d = newP;
+            foundPlane.planePts.push_back(newPtRGBD);
+        }
+        foundPlane.centreP = cv::Point3d(sumX / inliers->indices.size(), sumY / inliers->indices.size(),
+                                         sumZ / inliers->indices.size());
+        return inliers->indices.size();
+    }
+
+    /**
+     * (phi, theta, d) | (nx,ny,nz,d)
+     * phi = arctan(ny/nx), theta = arccos(nz)
+     * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
+     */
+    void Plane::Norm2Angle() {
+        this->phi = atan(this->A / this->B) * 180 / 3.141592653;
+        this->theta = acos(this->C) * 180 / 3.141592653;
+    }
 } //namespace ORB_SLAM

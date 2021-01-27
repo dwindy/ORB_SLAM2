@@ -77,8 +77,10 @@ namespace ORB_SLAM2
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
         ///added module
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes);
+        cv::Mat GrabImageMonocular(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
         void ProjectLiDARtoImage();
         void ProjectPlanetoImage();
+        void MapPointAlignPlane(float threshold);
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -170,6 +172,7 @@ namespace ORB_SLAM2
         void LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation);
         bool associateVisionLiDAR();
         void AssociateLiDARInit(float);
+        void AssociateDepthInit();
         vector<float> RayPlaneDis(vector<float> ray_dir, vector<float> origin, vector<float> PlaneN, vector<float> PlaneP);
 
         // In case of performing only localization, this flag is true when there are no matches to

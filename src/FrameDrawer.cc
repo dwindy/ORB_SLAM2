@@ -153,50 +153,60 @@ cv::Mat FrameDrawer::DrawFrame()
         }
         ///added module
         //draw projected raw laser points
-        int PjcLsrNum = mvPjcLsrPts.size();
-        if(PjcLsrNum>0)
-        {
-            for(int i=0;i<PjcLsrNum;i++)
-            {
-                //color
-                float maxVal = 20.0;
-                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
-                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
-                cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,green,red),-1);
-            }
-        }
-        //draw plan points
-        int planeNum = mvPlanePoints.size();
-        if (planeNum > 0) {
-            for (int i = 0; i < planeNum; i++) {
-                for (int pi = 0; pi < mvPlanePoints[i].size(); pi++) {
-                    switch (i) {
-                        case 0:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
-                            break;
-                        case 1:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
-                            break;
-                        case 2:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
-                            break;
-                        case 3:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
-                            break;
-                        case 4:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
-                            break;
-                        case 5:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
-                            break;
-                        default:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);
-                            break;
-                    }
+//        int PjcLsrNum = mvPjcLsrPts.size();
+//        if(PjcLsrNum>0)
+//        {
+//            for(int i=0;i<PjcLsrNum;i++)
+//            {
+//                //color
+//                float maxVal = 20.0;
+//                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+//                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+//                cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,green,red),-1);
+//            }
+//        }
+    }
+    //draw plan points
+    int planeNum = mvPlanePoints.size();
+    if (planeNum > 0) {
+        for (int i = 0; i < planeNum; i++) {
+            for (int pi = 0; pi < mvPlanePoints[i].size(); pi++) {
+                switch (i) {
+                    case 0:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
+                        break;
+                    case 1:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
+                        break;
+                    case 2:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
+                        break;
+                    case 3:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
+                        break;
+                    case 4:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
+                        break;
+                    case 5:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
+                        break;
+                    case 6:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 127, 0), -1);
+                        break;
+                    case 7:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 127, 127), -1);
+                        break;
+                    case 8:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 0, 127), -1);
+                        break;
+                    default:
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);
+                        break;
                 }
             }
         }
     }
+
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
 
@@ -251,12 +261,19 @@ void FrameDrawer::Update(Tracking *pTracker) {
     mvbMap = vector<bool>(N, false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
-    ///added module
+    ///Added Module
 //    if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
 //    {
 //        mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
 //        //cout<<"mvPjcLsrPts "<<mvPjcLsrPts.size()<<endl;
 //    }
+    if(pTracker->mCurrentFrame.mPjcRGBDPts.size()>0)
+    {
+        mvPlanePoints = pTracker->mCurrentFrame.mPjcRGBDPts;
+//        cout<<" "<<pTracker->mCurrentFrame.mPjcRGBDPts[0][1].x<<" "<<pTracker->mCurrentFrame.mPjcRGBDPts[0][1].y<<endl;
+//        cout<<" "<<mvPlanePoints[0][1].x<<" "<<mvPlanePoints[0][1].y<<endl;
+//        cout<<"pass "<<mvPlanePoints.size()<<" to frameDraer"<<endl;
+    }
 //    if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
 //    {
 //        mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;

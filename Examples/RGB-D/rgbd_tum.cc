@@ -40,7 +40,8 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association" << endl;
         return 1;
     }
-
+    cout<<"Info 1 system get in"<<endl;
+    cout<<"Info 2 load images"<<endl;
     // Retrieve paths to images
     vector<string> vstrImageFilenamesRGB;
     vector<string> vstrImageFilenamesD;
@@ -50,6 +51,9 @@ int main(int argc, char **argv)
 
     // Check consistency in the number of images and depthmaps
     int nImages = vstrImageFilenamesRGB.size();
+    cout<<"Info 3 loaded "<<nImages<<" images"<<endl;
+    int nDepths = vstrImageFilenamesD.size();
+    cout<<"Info 3.5 loaded "<<nDepths<<" depths"<<endl;
     if(vstrImageFilenamesRGB.empty())
     {
         cerr << endl << "No images found in provided path." << endl;
@@ -61,6 +65,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    cout<<"Info 4 create SLAM instance -> ORB_SLAM2::System SLAM()"<<endl;
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,true);
 
@@ -139,29 +144,53 @@ int main(int argc, char **argv)
     return 0;
 }
 
+//void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
+//                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps)
+//{
+//    ifstream fAssociation;
+//    fAssociation.open(strAssociationFilename.c_str());
+//    while(!fAssociation.eof())
+//    {
+//        string s;
+//        getline(fAssociation,s);
+//        if(!s.empty())
+//        {
+//            stringstream ss;
+//            ss << s;
+//            double t;
+//            string sRGB, sD;
+//            ss >> t;
+//            vTimestamps.push_back(t);
+//            ss >> sRGB;
+//            vstrImageFilenamesRGB.push_back(sRGB);
+//            ss >> t;
+//            ss >> sD;
+//            vstrImageFilenamesD.push_back(sD);
+//
+//        }
+//    }
+//}
+
+///Added Module - copied from rigb_tum.cc
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
-                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps)
-{
+                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps) {
     ifstream fAssociation;
     fAssociation.open(strAssociationFilename.c_str());
-    while(!fAssociation.eof())
-    {
+    while (!fAssociation.eof()) {
         string s;
-        getline(fAssociation,s);
-        if(!s.empty())
-        {
+        getline(fAssociation, s);
+        if (!s.empty()) {
             stringstream ss;
             ss << s;
             double t;
             string sRGB, sD;
             ss >> t;
             vTimestamps.push_back(t);
-            ss >> sRGB;
-            vstrImageFilenamesRGB.push_back(sRGB);
-            ss >> t;
             ss >> sD;
             vstrImageFilenamesD.push_back(sD);
-
+            ss >> t;
+            ss >> sRGB;
+            vstrImageFilenamesRGB.push_back(sRGB);
         }
     }
 }

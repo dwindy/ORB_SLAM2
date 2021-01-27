@@ -32,6 +32,21 @@
 
 #include <opencv2/opencv.hpp>
 
+///added module
+#include <math.h>
+#include <pcl-1.8/pcl/point_cloud.h>
+#include <pcl-1.8/pcl/segmentation/region_growing.h>
+#include <pcl-1.8/pcl/search/search.h>
+#include <pcl-1.8/pcl/search/kdtree.h>
+#include <pcl-1.8/pcl/features/normal_3d.h>
+//#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
+#include <pcl-1.8/pcl/ModelCoefficients.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/registration/icp.h>
+#include <pcl/filters/voxel_grid.h>
+
 namespace ORB_SLAM2
 {
 #define FRAME_GRID_ROWS 48
@@ -41,7 +56,7 @@ class MapPoint;
 class KeyFrame;
 
 ///added module
-    class PtLsr {
+    class PtRGBD {
     public:
         cv::Point2d pt2d;
         cv::Point3d pt3d;
@@ -61,10 +76,11 @@ class KeyFrame;
         Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
         Plane() { PlaneId = -1; }
 
+        void Norm2Angle();
         cv::Point3d centreP;
 //        vector<cv::Point3d> pointList;
 //        vector<cv::Point2d> pointList2D;
-        vector<PtLsr> points3D;
+        vector<PtRGBD> planePts;
         vector<int> keyPointList; //todo store keypoint in this plane
         vector<int> mindices;     //todo indexs of keypoint in image
         std::vector<MapPoint *> vpMapPointMatches; //todo pointer to Map point that contained in this plane
@@ -87,6 +103,9 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     ///added module
+//    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
+//          const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+//          cv::Mat &distCoef, const float &bf, const float &thDepth);
     Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
           const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
           cv::Mat &distCoef, const float &bf, const float &thDepth);
@@ -128,6 +147,11 @@ public:
 
     // Associate a "right" coordinate to a keypoint if there is valid depth in the depthmap.
     void ComputeStereoFromRGBD(const cv::Mat &imDepth);
+    ///Added Module
+    void ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth);
+    void ComputeRGBDPoints(const cv::Mat &imGray, const cv::Mat &imDepth);
+    int RegionGrowing();
+    int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
@@ -144,17 +168,16 @@ public:
 
     ///added module
     cv::Mat mTcamlid;
-    void ProjectLiDARtoCam();
-    void ProjectLiDARtoImg(cv::Mat, int cols, int rows);
+//    void ProjectLiDARtoCam();
+//    void ProjectLiDARtoImg(cv::Mat, int cols, int rows);
     vector<std::vector<double>> mLaserPoints;
     //vector<std::vector<double>> mLaserPt_cam;
-    vector<PtLsr> mLaserPt_cam;
-    //vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
+    vector<PtRGBD> mLaserPt_cam;
     vector<double> mLaserTimes; //{middle time, start, end}
-    //vector<cv::Point> mPjcLaserPts;
+    vector<vector<cv::Point2d>> mPjcRGBDPts;//for pass to framedrawer
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
     //vector<vector<cv::Point>> planNorms;
-    //std::vector<Plane> mvPlanes;
+    std::vector<Plane> mvPlanes;
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;
@@ -184,6 +207,8 @@ public:
     // In the RGB-D case, RGB images can be distorted.
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
     std::vector<cv::KeyPoint> mvKeysUn;
+    ///Added Module
+    std::vector<cv::Point3d> mvPtRGBD; //not in use but might helpful for debug
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.
