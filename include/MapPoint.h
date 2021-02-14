@@ -157,11 +157,8 @@ protected:
     class MapPlane
     {
     public:
-        ///Plane pose is Plane norm
-        MapPlane(float A, float B, float C, float D, KeyFrame* pRefKF, Map* pMap);
-        MapPlane(float Phi, float Theta, float D, KeyFrame* pRefKF, Map* pMap);
-        MapPlane(float A, float B, float C, float D, Map *pMap, Frame *pFrame, const int &idxF);
-        MapPlane(float Phi, float Theta, float D, Map *pMap, Frame *pFrame, const int &idxF);
+        ///added module
+        MapPlane(Plane inputPlane, KeyFrame* pRefKF, Map* pMap);
         void setPhiTheta(float Phi, float Theta, float D);
         void setABCD(float A, float B, float C, float D);
 
@@ -208,6 +205,7 @@ protected:
         ///Added Module
         float A,B,C,D;
         float phi,theta;
+        double PI0,PI1,PI2;
 
         long unsigned int mnId;
         static long unsigned int nNextId;

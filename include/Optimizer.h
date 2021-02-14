@@ -40,6 +40,13 @@ public:
     void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
                                  int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
                                  const bool bRobust = true);
+
+    ///Added Module
+    void static BundleAdjustment_withPlane(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
+                                           const vector<MapPlane *> &vpMPln,
+                                           int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
+                                           const bool bRobust);
+    void static PlaneOptimization(Map *mpMap, Frame* pFrame, vector<int> matchPlanes);
     void static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
                                        const unsigned long nLoopKF=0, const bool bRobust = true);
     void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);

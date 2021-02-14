@@ -172,8 +172,11 @@ namespace ORB_SLAM2
         void LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation);
         bool associateVisionLiDAR();
         void AssociateLiDARInit(float);
-        void AssociateDepthInit();
-        vector<float> RayPlaneDis(vector<float> ray_dir, vector<float> origin, vector<float> PlaneN, vector<float> PlaneP);
+        double AssociateDepthInit();
+        int SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float angleThres, float disThres);
+        int SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, float angleThres, float disThres);
+        int SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres);
+        int SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float disThres);
 
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.

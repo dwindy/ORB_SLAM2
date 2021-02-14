@@ -195,15 +195,15 @@ Tracking::Tracking(System *pSys, //系统实例?
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
-    ///Added Module
-    //for Mono-Depth
-    mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
-    cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
-    mDepthMapFactor = fSettings["DepthMapFactor"];
-    if(fabs(mDepthMapFactor)<1e-5)
-        mDepthMapFactor=1;
-    else
-        mDepthMapFactor = 1.0f/mDepthMapFactor;
+//    ///Added Module
+//    //for Mono-Depth
+//    mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
+//    cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+//    mDepthMapFactor = fSettings["DepthMapFactor"];
+//    if(fabs(mDepthMapFactor)<1e-5)
+//        mDepthMapFactor=1;
+//    else
+//        mDepthMapFactor = 1.0f/mDepthMapFactor;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -535,13 +535,13 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
         P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
         P_rect_00.at<double>(2, 2) = 1;
         //cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-        int planNum = mCurrentFrame.mvPlanes.size();
-        for (int indexPln = 0; indexPln < planNum; indexPln++) {
+        size_t planNum = mCurrentFrame.mvPlanes.size();
+        for (size_t indexPln = 0; indexPln < planNum; indexPln++) {
             cv::Mat X(4, 1, CV_64F);//3D LiDAR point
             cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
             cv::Point pt;
             vector<cv::Point2d> thisPlanePt;
-            for (int indexPt = 0; indexPt < mCurrentFrame.mvPlanes[indexPln].planePts.size(); indexPt++) {
+            for (size_t indexPt = 0; indexPt < mCurrentFrame.mvPlanes[indexPln].planePts.size(); indexPt++) {
                 X.at<double>(0, 0) = mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt3d.x;
                 X.at<double>(1, 0) = mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt3d.y;
                 X.at<double>(2, 0) = mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt3d.z;
@@ -566,6 +566,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
+        cout<<"Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
     ///Added Module --- project current frame plane points to image
     ProjectPlanetoImage();
 
@@ -737,6 +738,8 @@ void Tracking::Track()
         mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
         //*Step 3 在跟踪得到当前帧初始状态后 对local map进行跟踪 得到更多匹配 优化当前位姿
+        //Local Map contains co-vision Keyframes and its related keyframes,
+        //But this function didn't change the trackkeyframe/trackmotion result too much. --- xin
         // If we have an initial estimation of the camera pose and matching. Track the local map.
         if(!mbOnlyTracking)
         {
@@ -772,46 +775,8 @@ void Tracking::Track()
                 cv::Mat LastTwc = cv::Mat::eye(4, 4, CV_32F);
                 mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0, 3).colRange(0, 3));
                 mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
-                //Velocity = Tcl = Tcw * Twl
+                //Velocity = Tcl = Tcw * Twlast
                 mVelocity = mCurrentFrame.mTcw * LastTwc;
-                //cout << mCurrentFrame.mnId << " velocity " << mCurrentFrame.mTcw << endl;
-//                ///save keypoints
-//                fstream writer; string fileName = "data//keypoint//"+std::to_string(mCurrentFrame.mnId)+".txt";
-//                writer.open(fileName, std::ios::out);
-//                for (int ki = 0; ki < mCurrentFrame.mvpMapPoints.size(); ki++) {
-//                    if (mCurrentFrame.mvpMapPoints[ki]) {
-//                        writer << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(0, 0) << " "
-//                               << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(1, 0) << " "
-//                               << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(2, 0) << " "
-//                               << mCurrentFrame.mvpMapPoints[ki]->mnId<<endl;
-//                    }
-//                }
-//                writer.close();
-                ///save velocity
-//                fstream writer;
-//                string fileName = "data//velocity//" + std::to_string(mCurrentFrame.mnId) + ".txt";
-//                cout << "file name " << fileName << endl;
-//                writer.open(fileName, std::ios::out);
-//                writer << mVelocity.at<float>(0, 0) << " " << mVelocity.at<float>(0, 1) << " "
-//                       << mVelocity.at<float>(0, 2) << " " << mVelocity.at<float>(0, 3) << endl;
-//                writer << mVelocity.at<float>(1, 0) << " " << mVelocity.at<float>(1, 1) << " "
-//                       << mVelocity.at<float>(1, 2) << " " << mVelocity.at<float>(1, 3) << endl;
-//                writer << mVelocity.at<float>(2, 0) << " " << mVelocity.at<float>(2, 1) << " "
-//                       << mVelocity.at<float>(2, 2) << " " << mVelocity.at<float>(2, 3) << endl;
-//                writer << mVelocity.at<float>(3, 0) << " " << mVelocity.at<float>(3, 1) << " "
-//                       << mVelocity.at<float>(3, 2) << " " << mVelocity.at<float>(3, 3) << endl;
-//                writer.close();
-//                ///added module
-//                ///undis LiDAR point with motion from vision
-//                UndisLiDAR();
-//                ///extract plane segement
-//                RegionGrowing(mCurrentFrame,true);
-////                //todo --- lidar VO
-////                ///project plane
-//                ProjectPlanetoImage();
-////                ///update plane infor
-//                mpFrameDrawer->UpdateLiDAR(this);
-////                //todo associate the ORB feature with LiDAR points
             }
             else
             //否则速度为空
@@ -819,7 +784,7 @@ void Tracking::Track()
             //更新显示的位姿
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
-            //*Step 6 清楚观测不到的地图点
+            //*Step 6 remove观测不到的地图点
             // Clean VO matches
             for(int i=0; i<mCurrentFrame.N; i++)
             {
@@ -905,60 +870,98 @@ void Tracking::Track()
 }//Tracking
 
 
-void Tracking::StereoInitialization()
-{
-    if(mCurrentFrame.N>500)
-    {
-        // Set Frame pose to the origin
-        mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
+    void Tracking::StereoInitialization() {
+        if (mCurrentFrame.N > 500) {
+            // Set Frame pose to the origin
+            mCurrentFrame.SetPose(cv::Mat::eye(4, 4, CV_32F));
 
-        // Create KeyFrame
-        KeyFrame* pKFini = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
+            // Create KeyFrame
+            KeyFrame *pKFini = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
 
-        // Insert KeyFrame in the map
-        mpMap->AddKeyFrame(pKFini);
+            // Insert KeyFrame in the map
+            mpMap->AddKeyFrame(pKFini);
 
-        // Create MapPoints and asscoiate to KeyFrame
-        for(int i=0; i<mCurrentFrame.N;i++)
-        {
-            float z = mCurrentFrame.mvDepth[i];
-            if(z>0)
-            {
-                cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
-                MapPoint* pNewMP = new MapPoint(x3D,pKFini,mpMap);
-                pNewMP->AddObservation(pKFini,i);
-                pKFini->AddMapPoint(pNewMP,i);
-                pNewMP->ComputeDistinctiveDescriptors();
-                pNewMP->UpdateNormalAndDepth();
-                mpMap->AddMapPoint(pNewMP);
+            // Create MapPoints and asscoiate to KeyFrame
+            for (int i = 0; i < mCurrentFrame.N; i++) {
+                float z = mCurrentFrame.mvDepth[i];
+                if (z > 0) {
+                    cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
+                    MapPoint *pNewMP = new MapPoint(x3D, pKFini, mpMap);
+                    pNewMP->AddObservation(pKFini, i);
+                    pKFini->AddMapPoint(pNewMP, i);
+                    pNewMP->ComputeDistinctiveDescriptors();
+                    pNewMP->UpdateNormalAndDepth();
+                    mpMap->AddMapPoint(pNewMP);
 
-                mCurrentFrame.mvpMapPoints[i]=pNewMP;
+                    mCurrentFrame.mvpMapPoints[i] = pNewMP;
+                }
             }
+
+            ///Added Module
+            //Add Plane feature to Map
+            for (size_t i = 0; i < mCurrentFrame.mvPlanes.size(); i++) {
+                //Wall constrain
+                double A = mCurrentFrame.mvPlanes[i].A;
+                double B = mCurrentFrame.mvPlanes[i].B;
+                double C = mCurrentFrame.mvPlanes[i].C;
+                double D = mCurrentFrame.mvPlanes[i].D;
+                if ((abs(abs(A) - 1) + abs(abs(B) - 0) + abs(abs(C) - 0)) < 0.1) {
+                    if (A > 0)
+                        mCurrentFrame.mvPlanes[i].A = 1;
+                    else
+                        mCurrentFrame.mvPlanes[i].A = -1;
+                    mCurrentFrame.mvPlanes[i].B = 0;
+                    mCurrentFrame.mvPlanes[i].C = 0;
+                }
+                if ((abs(abs(A) - 0) + abs(abs(B) - 1) + abs(abs(C) - 0)) < 0.1) {
+                    if (B > 0)
+                        mCurrentFrame.mvPlanes[i].B = 1;
+                    else
+                        mCurrentFrame.mvPlanes[i].B = -1;
+                    mCurrentFrame.mvPlanes[i].A = 0;
+                    mCurrentFrame.mvPlanes[i].C = 0;
+                }
+                if ((abs(abs(A) - 0) + abs(abs(B) - 0) + abs(abs(C) - 1)) < 0.1) {
+                    if (C > 0)
+                        mCurrentFrame.mvPlanes[i].C = 1;
+                    else
+                        mCurrentFrame.mvPlanes[i].C = -1;
+                    mCurrentFrame.mvPlanes[i].B = 0;
+                    mCurrentFrame.mvPlanes[i].A = 0;
+                }
+                mCurrentFrame.mvPlanes[i].Norm2Angle();
+                mCurrentFrame.mvPlanes[i].NormD2CP();
+                MapPlane *newMapPlane = new MapPlane(mCurrentFrame.mvPlanes[i], pKFini, mpMap);
+                cout << "Map add plane " << newMapPlane->A << " " << newMapPlane->B << " " << newMapPlane->C << " "<< newMapPlane->D
+                     << " PI " << newMapPlane->PI0 << " " << newMapPlane->PI1 << " "<< newMapPlane->PI2
+                     << " globalID "<< newMapPlane->mnId << endl;
+                mpMap->AddMapPlane(newMapPlane);
+            }
+
+            cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
+            cout << "New map created with " << mpMap->GetMapPlaneNum() << " planes" << endl;
+
+            mpLocalMapper->InsertKeyFrame(pKFini);
+
+            mLastFrame = Frame(mCurrentFrame);
+            mnLastKeyFrameId = mCurrentFrame.mnId;
+            mpLastKeyFrame = pKFini;
+
+            mvpLocalKeyFrames.push_back(pKFini);
+            mvpLocalMapPoints = mpMap->GetAllMapPoints();
+            mpReferenceKF = pKFini;
+            //? CurFrame.RefKF = itslef?
+            mCurrentFrame.mpReferenceKF = pKFini;
+
+            mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+
+            mpMap->mvpKeyFrameOrigins.push_back(pKFini);
+
+            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+
+            mState = OK;
         }
-
-        cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
-
-        mpLocalMapper->InsertKeyFrame(pKFini);
-
-        mLastFrame = Frame(mCurrentFrame);
-        mnLastKeyFrameId=mCurrentFrame.mnId;
-        mpLastKeyFrame = pKFini;
-
-        mvpLocalKeyFrames.push_back(pKFini);
-        mvpLocalMapPoints=mpMap->GetAllMapPoints();
-        mpReferenceKF = pKFini;
-        //? CurFrame.RefKF = itslef?
-        mCurrentFrame.mpReferenceKF = pKFini;
-
-        mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
-        mpMap->mvpKeyFrameOrigins.push_back(pKFini);
-
-        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
-
-        mState=OK;
     }
-}
 
 /**
  * @brief 单目相机初始化成功后用三角化的点生成Mappoints地图点
@@ -1001,6 +1004,7 @@ void Tracking::MonocularInitialization()
         //Step 2 如果当前帧的特征点太少 删除初始化器
         if((int)mCurrentFrame.mvKeys.size()<=100)
         {
+            cout<<"mCurrentFrame.mvKeys.size() "<<mCurrentFrame.mvKeys.size()<<" delete initializer"<<endl;
             delete mpInitializer;
             mpInitializer = static_cast<Initializer*>(NULL);
             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
@@ -1021,6 +1025,7 @@ void Tracking::MonocularInitialization()
         // Step 4 是否找到足够的匹配
         if(nmatches<100)
         {
+            cout<<"nmatches "<<nmatches<<" <100"<<endl;
             delete mpInitializer;
             mpInitializer = static_cast<Initializer*>(NULL);
             return;
@@ -1055,49 +1060,21 @@ void Tracking::MonocularInitialization()
             tcw.copyTo(Tcw.rowRange(0,3).col(3));
             mCurrentFrame.SetPose(Tcw);
 
-            ///added module
-            ///replace triangulized 3D point's depth with corresponding RGBD point
-            AssociateDepthInit();
-
             // Step 8 创建初始化地图点MapPoints
             CreateInitialMapMonocular();
         }
     }
 }
 
-/**
- * given a origin point, a ray, a plane norn and plane point
- * return depth of intersect point
- */
-    vector<float>
-    Tracking::RayPlaneDis(vector<float> ray_dir, vector<float> origin, vector<float> PlaneN, vector<float> PlaneP) {
-        ///ray = pt + t * dir
-        ///plane = plane norm and plane pt
-        ///t = (plane.n * plane.pt - plane.n * ray.origin) / (plane.n * ray_dir)
-        ///intersect = origin + t * ray_dir
-        cout<<" ray dir "<<ray_dir[0]<<" "<<ray_dir[1]<<" "<<ray_dir[2]<<" ";
-        cout<<" origin pt "<<origin[0]<<" "<<origin[1]<<" "<<origin[2]<<" ";
-        cout<<" Plane norm "<<PlaneN[0]<<" "<<PlaneN[1]<<" "<<PlaneN[2]<<" ";
-        cout<<" Plane pt "<<PlaneP[0]<<" "<<PlaneP[1]<<" "<<PlaneP[2]<<" "<<endl;
-        float t = (PlaneN[0] * PlaneP[0] + PlaneN[1] * PlaneP[1] + PlaneN[2] * PlaneP[2] - PlaneN[0] * origin[0] -
-                   PlaneN[1] * origin[1] - PlaneN[2] * origin[2]) /
-                  (PlaneN[0] * ray_dir[0] + PlaneN[1] * ray_dir[1] + PlaneN[2] * ray_dir[2]);
-        cout<<" "<<origin[0] + t * ray_dir[0]<<" "<<origin[1] + t * ray_dir[1]<<" "<<origin[2] + t * ray_dir[2]<<endl;
-        vector<float> intersectP;
-        intersectP.push_back(origin[0] + t * ray_dir[0]);
-        intersectP.push_back(origin[1] + t * ray_dir[1]);
-        intersectP.push_back(origin[2] + t * ray_dir[2]);
-        return intersectP;
-    }
-
     /**
      * Replace the iniP3D[] with RGB-D point
      * find 2d keypoint's related RGB-D depth (Z).
      * regain X Y by fx fy cx cy
      */
-    void Tracking::AssociateDepthInit() {
+    double Tracking::AssociateDepthInit() {
         //ofstream writer;
         //writer.open("data//RGB//ini.txt");
+        double sumRatio = 0;
         for (size_t i = 0; i < mvIniMatches.size(); i++) {
             if (mvIniMatches[i] > -1) {
                 //writer<<" 1 "<<mvIniP3D[i].x<<" "<<mvIniP3D[i].y<<" "<<mvIniP3D[i].z<<endl;
@@ -1107,6 +1084,9 @@ void Tracking::MonocularInitialization()
                 float y3d_ini = (p2d_ini.y - mInitialFrame.cy) / mInitialFrame.fy * depth_ini;
                 //writer << 2 << " " << x3d_ini << " " << y3d_ini << " " << depth_ini << endl;
                 cv::Point3d P3dRGBD;
+//                sumRatio += x3d_ini / mvIniP3D[i].x;
+//                sumRatio += y3d_ini / mvIniP3D[i].y;
+                sumRatio += depth_ini / mvIniP3D[i].z;
                 P3dRGBD.x = x3d_ini;
                 P3dRGBD.y = y3d_ini;
                 P3dRGBD.z = depth_ini;
@@ -1121,6 +1101,8 @@ void Tracking::MonocularInitialization()
 //                writer << 3 << " " << p3d_tri.x << " " << p3d_tri.y << " " << p3d_tri.z << endl;
             }
         }
+        double avgRatio = sumRatio / mvIniMatches.size();
+        return avgRatio;
         //writer.close();
     }
 
@@ -1129,7 +1111,7 @@ void Tracking::MonocularInitialization()
      * regist Founded Plane ID
      */
     void Tracking::MapPointAlignPlane(float disThres) {
-        int mapPlaneNum = mpMap->GotMapPlaneNum();
+        int mapPlaneNum = mpMap->GetMapPlaneNum();
         if (mapPlaneNum > 0) {
             //ofstream writer;
             //writer.open("data/alignPlane.txt");
@@ -1176,6 +1158,10 @@ void Tracking::MonocularInitialization()
 
 void Tracking::CreateInitialMapMonocular()
 {
+    ///added module
+    ///replace triangulized 3D point's depth with corresponding RGBD point
+    //double ratio = AssociateDepthInit();
+
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
@@ -1230,22 +1216,33 @@ void Tracking::CreateInitialMapMonocular()
     pKFini->UpdateConnections();
     pKFcur->UpdateConnections();
 
-    ///Added Module
-    ///add plane feature to map
-    for (int i = 0; i < mInitialFrame.mvPlanes.size(); i++) {
-        MapPlane *newMapPlane = new MapPlane(mInitialFrame.mvPlanes[i].phi, mInitialFrame.mvPlanes[i].theta,
-                                             mInitialFrame.mvPlanes[i].D, pKFcur, mpMap);
-        newMapPlane->setABCD(mInitialFrame.mvPlanes[i].A, mInitialFrame.mvPlanes[i].B, mInitialFrame.mvPlanes[i].C,
-                             mInitialFrame.mvPlanes[i].D);
-        mpMap->AddMapPlane(newMapPlane);
-    }
+//    ///Added Module
+//    ///add plane feature to map
+//    ofstream writer;
+//    writer.open("data/G2O/planes.txt", ios::out);
+//    for (size_t i = 0; i < mInitialFrame.mvPlanes.size(); i++) {
+//        MapPlane *newMapPlane = new MapPlane(mInitialFrame.mvPlanes[i], pKFcur, mpMap);
+//        mpMap->AddMapPlane(newMapPlane);
+//        writer << mInitialFrame.mvPlanes[i].A << " " << mInitialFrame.mvPlanes[i].B << " "
+//               << mInitialFrame.mvPlanes[i].C << " " << mInitialFrame.mvPlanes[i].D << endl;
+//    }
+//    writer.close();
 
-    ///register the mappoint to mapplane
-    MapPointAlignPlane(0.10);
+//    ///added
+//    //* apply ratio to pose
+//    cv::Mat Tc2w_orin = pKFcur->GetPose();
+//    //Tc2w.col(3).rowRange(0,3) = Tc2w.col(3).rowRange(0,3)*invMedianDepth;
+//    cout<<"original Tc2w "<<Tc2w_orin<<endl;
+//    Tc2w_orin.col(3).rowRange(0,3) = Tc2w_orin.col(3).rowRange(0,3)*ratio;
+//    cout<<" ratio "<<ratio<<" to "<<Tc2w_orin<<endl;
+//    pKFcur->SetPose(Tc2w_orin);
+
+//    ///register the mappoint to mapplane
+//    MapPointAlignPlane(0.10);
 
     // Bundle Adjustment
     cout << "New Map created with " << mpMap->MapPointsInMap() << " points" << endl;
-    cout << "New Map created with " << mpMap->GetMapPlaneNum() << " points" << endl;
+    cout << "New Map created with " << mpMap->GetMapPlaneNum() << " planes" << endl;
 
     //* Step 4 全局BA
     Optimizer::GlobalBundleAdjustemnt(mpMap,20);
@@ -1255,9 +1252,9 @@ void Tracking::CreateInitialMapMonocular()
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     cout << "median depth " << medianDepth;
     float invMedianDepth = 1.0f / medianDepth;
-    cout << " inverse is " << invMedianDepth << endl;
+    cout << " inverse is " << invMedianDepth << " going to set to 1 "<<endl;
     ///Added Module
-    invMedianDepth = 1; ///because we use RGB-D depth for init3D. Does not need unify the depth to 1.
+    //invMedianDepth = 1; ///because we use RGB-D depth for init3D. Does not need unify the depth to 1.
     if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)
     {
         cout << "Wrong initialization, reseting..." << endl;
@@ -1326,6 +1323,232 @@ void Tracking::CheckReplacedInLastFrame()
     }
 }
 
+/**
+ * @brief search map plane and current frame plane pair
+ * @param map
+ * @param curFrameSearchPlane
+ * @param matchPlanes
+ * @return [current plane 2 map plane index]
+ */
+    int Tracking::SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, float angleThres,
+                                        float disThres) {
+        ///Step1 Got current pose guessing
+        cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
+        Eigen::Matrix3d rotation_matrix;
+        rotation_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2),
+                           Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2),
+                           Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2);
+        Eigen::Vector3d translation_vector;
+        translation_vector << Tcw.at<float>(0, 3), Tcw.at<float>(1, 3), Tcw.at<float>(2, 3);
+//        cout<<"mVelocity"<<endl<<mVelocity<<endl;
+//        cout<<"mLastFrame"<<endl<<mLastFrame.mTcw<<endl;
+//        cout<<"Tcw"<<endl<<Tcw<<endl;
+        ///Step2 Transfer from Map to Cur Frame
+        vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
+        vector<Plane> pjtPlanes;
+        pjtPlanes.resize(mapPlanes.size());
+        for (size_t plni = 0; plni < mapPlanes.size(); plni++) {
+//            cout<<"map Plane ID "<<mapPlanes[plni]->mnId<<"--------------"<<endl;
+            Eigen::Vector3d n_world(mapPlanes[plni]->A, mapPlanes[plni]->B, mapPlanes[plni]->C);
+//            cout<<"map Plane "<<mapPlanes[plni]->A<<" "<<mapPlanes[plni]->B<<" "<<mapPlanes[plni]->C<<" "<<mapPlanes[plni]->D<<endl;
+            ///[nx',ny',nz']^T = R * [nx,ny,nz]^T;
+            auto n_proj = rotation_matrix * n_world;
+//            cout<<"projected Plane "<<n_proj[0]<<" "<<n_proj[1]<<" "<<n_proj[2];
+            ///d' = d - t *dot* [nx',ny',nz']^T;
+            auto d_proj = -translation_vector[0] * n_proj[0]
+                          - translation_vector[1] * n_proj[1]
+                          - translation_vector[2] * n_proj[2]
+                          + mapPlanes[plni]->D;
+//            cout<<" "<<d_proj<<endl;
+            ///phi = arctan(ny/nx), theta = arccos(nz)
+            double phi_proj = atan(n_proj[1] / n_proj[0]) * 180 / 3.141592653;
+            double theta_proj = acos(n_proj[2]) * 180 / 3.141592653;
+//            cout<<"projected Plane "<<phi_proj<<" "<<theta_proj<<endl;
+            Plane projPlane(n_proj[0], n_proj[1], n_proj[2], d_proj);
+            projPlane.phi = phi_proj;
+            projPlane.theta = theta_proj;
+            projPlane.IdGlobal = mapPlanes[plni]->mnId;
+            pjtPlanes[plni] = projPlane;
+        }
+        ///Step3 Pair projected map planes and current frame planes
+        int foundNum = 0;
+        for (size_t localIndex = 0; localIndex < curFrame.mvPlanes.size(); localIndex++) {
+            //todo confirm angle range
+            double phi_dif_min = 180;
+            double theta_dif_min = 180;
+            double distance_dif_min = 999;
+            int minPlaneID = -1;
+//            cout << "cur frame plane index " << localIndex << " : " << curFrame.mvPlanes[localIndex].phi << " "
+//                 << curFrame.mvPlanes[localIndex].theta << " " << curFrame.mvPlanes[localIndex].D << " ";
+            for (size_t mapPlnIndex = 0; mapPlnIndex < pjtPlanes.size(); mapPlnIndex++) {
+                double phi_dif = curFrame.mvPlanes[localIndex].phi - pjtPlanes[mapPlnIndex].phi;
+                double theta_dif = curFrame.mvPlanes[localIndex].theta - pjtPlanes[mapPlnIndex].theta;
+                double distance_dif = curFrame.mvPlanes[localIndex].D - pjtPlanes[mapPlnIndex].D;
+//                cout<<"candidate plane "<<pjtPlanes[mapPlnIndex].phi<<" "<<pjtPlanes[mapPlnIndex].theta<<" "<<pjtPlanes[mapPlnIndex].D<<endl;
+                if (abs(phi_dif) < angleThres && abs(theta_dif) < angleThres && abs(distance_dif) < disThres) {
+                    if (phi_dif < phi_dif_min && theta_dif < theta_dif_min && distance_dif < distance_dif_min) {
+                        phi_dif_min = phi_dif;
+                        theta_dif_min = theta_dif;
+                        distance_dif_min = distance_dif;
+                        minPlaneID = pjtPlanes[mapPlnIndex].IdGlobal;
+                        foundNum++;
+//                        cout << "map world plane ID " << minPlaneID << " " << pjtPlanes[mapPlnIndex].phi << " "
+//                             << pjtPlanes[mapPlnIndex].theta << " " << pjtPlanes[mapPlnIndex].D << " ";
+//                        cout << "differences " << phi_dif << " " << theta_dif << " " << distance_dif;
+//                        cout << " matched !" << endl;
+                    }
+                }
+            }
+            matchPlanes.push_back(minPlaneID);
+//            cout << "cur plane index : " << localIndex << " push back map plane id : " << minPlaneID << endl;
+        }
+        return foundNum;
+    }
+/**
+ * @brief search map plane and current frame plane pair
+ * @param map
+ * @param curFrameSearchPlane
+ * @param matchPlanes
+ * @return [current plane 2 map plane index]
+ */
+    int Tracking::SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float angleThres, float disThres) {
+        int foundNum = 0;
+        vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
+        for (size_t plni = 0; plni < curFrame.mvPlanes.size(); plni++) {
+            //todo confirm angle range
+            double phi_dif_min = 180;
+            double theta_dif_min = 180;
+            double distance_dif_min = 999;
+            int minPlaneID = -1;
+            cout<<"cur frame plane index "<<plni<<" : "<<curFrame.mvPlanes[plni].phi<<" "<<curFrame.mvPlanes[plni].theta<<" "<<curFrame.mvPlanes[plni].D<<" ";
+            for (size_t mapPlnIndex = 0; mapPlnIndex < mapPlanes.size(); mapPlnIndex++) {
+                double phi_dif = curFrame.mvPlanes[plni].phi - mapPlanes[mapPlnIndex]->phi;
+                double theta_dif = curFrame.mvPlanes[plni].theta - mapPlanes[mapPlnIndex]->theta;
+                double distance_dif =curFrame.mvPlanes[plni].D - mapPlanes[mapPlnIndex]->D;
+                if (abs(phi_dif) < angleThres && abs(theta_dif) < angleThres && abs(distance_dif) < disThres) {
+                    if(phi_dif < phi_dif_min && theta_dif < theta_dif_min && distance_dif < distance_dif_min){
+                        phi_dif_min = phi_dif;
+                        theta_dif_min = theta_dif;
+                        distance_dif_min = distance_dif;
+                        minPlaneID = mapPlanes[mapPlnIndex]->mnId;
+                        foundNum++;//TODO BUG there is a bug, this number might be update more than one time
+                        cout<<"map world plane ID "<<minPlaneID<<" "<<mapPlanes[mapPlnIndex]->phi<<" "<<mapPlanes[mapPlnIndex]->theta<<" "<<mapPlanes[mapPlnIndex]->D<<" ";
+                        cout<<"differences "<<phi_dif<<" "<<theta_dif<<" "<<distance_dif;
+                        cout<<" matched !"<<endl;
+                    }
+                }
+            }
+            matchPlanes.push_back(minPlaneID);
+            cout<<"cur plane "<<plni<<" push back map plane id "<<minPlaneID<<endl;
+        }
+        return foundNum;
+    }
+
+    /**
+     * @brief Search Map Plane PI and Local Plane PI pairs
+     * @param map
+     * @param curFrame
+     * @param matchPlanes
+     * @param disThres
+     * @return pair number
+     */
+    int Tracking::SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float disThres) {
+        bool foundFlag = false;
+        int foundNum = 0;
+        vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
+        for (size_t plni = 0; plni < curFrame.mvPlanes.size(); plni++) {
+            double minDistance = 65535;
+            int minPlaneID = -1;
+            for (size_t mapPlnIndex = 0; mapPlnIndex < mapPlanes.size(); mapPlnIndex++) {
+                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0,mapPlanes[mapPlnIndex]->PI1,mapPlanes[mapPlnIndex]->PI2);
+                Eigen::Vector3d diffvector = mapVector - curFrame.mvPlanes[plni].PI;
+                if (diffvector.norm() < minDistance && diffvector.norm() < disThres) {
+                    minDistance = diffvector.norm();
+                    minPlaneID = mapPlanes[mapPlnIndex]->mnId;
+                    foundFlag = true;
+//                    cout<<" diff vector "<<diffvector.transpose()<<" | "<<diffvector.norm()<<" | ";
+//                    cout<<" map "<<mapVector.transpose()<<" local "<<curFrame.mvPlanes[plni].PI.transpose()<<endl;
+                }
+            }
+            if (foundFlag)
+                foundNum++;
+            matchPlanes.push_back(minPlaneID);
+        }
+        return foundNum;
+    }
+
+    /**
+     * search Map plane and local plane pair
+     * @param map
+     * @param curFrame
+     * @param matchPlanes
+     * @param disThres
+     * @return match number
+     */
+    int Tracking::SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres) {
+        ///Step1 Got current pose guessing
+        cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
+        Eigen::Matrix4d Tcw_matrix;
+        Tcw_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2), Tcw.at<float>(0, 3),
+                Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
+                Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
+                Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
+        Eigen::Matrix3d rotation_matrix;
+        rotation_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2),
+                Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2),
+                Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2);
+        Eigen::Vector3d translation_vector;
+        translation_vector << Tcw.at<float>(0, 3), Tcw.at<float>(1, 3), Tcw.at<float>(2, 3);
+//        cout << "mVelocity" << endl << mVelocity << endl;
+//        cout << "mLastFrame" << endl << mLastFrame.mTcw << endl;
+//        cout << "Tcw" << endl << Tcw << endl;
+        ///Step2 Transfer from Map to Cur Frame
+        vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
+        vector<Eigen::Vector3d> pjtPlanes;
+        pjtPlanes.resize(mapPlanes.size());
+        for (size_t plni = 0; plni < mapPlanes.size(); plni++) {
+//            cout<<"map plane ID "<<mapPlanes[plni]->mnId<<" ";
+            Eigen::Vector3d PI_world(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2);
+            Eigen::Vector3d n_world = PI_world / PI_world.norm();
+            double d_world = PI_world.norm();
+//            cout << "PI world " << PI_world.transpose() << " | n world " << n_world.transpose() << " | d world " << d_world
+//                 << endl;
+            ///[xl,yl,zl]^T = R^L_A * nA
+            Eigen::Vector3d n_proj = rotation_matrix * n_world;
+//            cout << "n_proj " << n_proj.transpose();
+            ///dl = - (nA * P^A_L) + dA
+            Eigen::Vector3d t_A_L = Tcw_matrix.inverse().block<3, 1>(0, 3);
+            auto d_proj = d_world - (t_A_L).dot(n_world);
+//            cout << " | d_proj " << d_proj << endl;
+            ///PI' = nL * dL;
+            Eigen::Vector3d PI_proj = (n_proj) * (d_proj);
+//            cout << "PI_proj " << PI_proj.transpose() << endl;
+            pjtPlanes[plni] = PI_proj;
+        }
+        ///Step3 Pair projected map planes and current frame planes
+        int foundNum = 0;
+        for (size_t localIndex = 0; localIndex < curFrame.mvPlanes.size(); localIndex++) {
+            double minDis = 65535;
+            int minPlaneID = -1;
+            int minPlaneIndex = -1;
+            bool found = false;
+            for (size_t mapPlnIndex = 0; mapPlnIndex < pjtPlanes.size(); mapPlnIndex++) {
+                Eigen::Vector3d diff_vector = curFrame.mvPlanes[localIndex].PI - pjtPlanes[mapPlnIndex];
+                if (diff_vector.norm() < minDis && diff_vector.norm() < disThres) {
+                    minDis = diff_vector.norm();
+                    minPlaneID = mapPlanes[mapPlnIndex]->mnId;
+                    minPlaneIndex = mapPlnIndex;
+                    found = true;
+                }
+            }
+            if (found)
+                foundNum++;
+            matchPlanes.push_back(minPlaneID);
+//            cout << "cur plane " << localIndex << " PI : " << curFrame.mvPlanes[localIndex].PI.transpose()
+//                 << " push back map plane id : " << minPlaneID << " " << pjtPlanes[minPlaneIndex].transpose() << endl;
+        }
+        return foundNum;
+    }
 
 /**
  * @brief 对参考关键帧的MapPoints进行跟踪（一般是运动模式匹配到的特征点比较少，或者刚初始化完成）
@@ -1353,12 +1576,12 @@ void Tracking::CheckReplacedInLastFrame()
         //存储当前帧的特征点和3D地图点的匹配关系
         mCurrentFrame.mvpMapPoints = vpMapPointMatches;
         //* Step3 将上一帧的位姿作为当前帧位姿的初始值 加速poseoptimization
-        mCurrentFrame.SetPose(mLastFrame.mTcw);
+        mCurrentFrame.SetPose(mLastFrame.mTcw);//Tcw because in g2o: Mappoint -> local Frame -> 2d Observe
 
         //*Step4 优化重投影误差来（3D-2D）获得位姿
         Optimizer::PoseOptimization(&mCurrentFrame);
 
-        //*Step 5 剔除outlier
+        //*Step 5
         // Discard outliers
         int nmatchesMap = 0;
         for (int i = 0; i < mCurrentFrame.N; i++) {
@@ -1376,6 +1599,14 @@ void Tracking::CheckReplacedInLastFrame()
             }
         }
 
+//        ///Added Module
+//        vector<int> matchPlanes;
+//        //cout<<"search plane ---------------------"<<endl;
+////        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes,15,0.3);
+//        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes, 10);
+//        if (nplnmatches > 0)
+//            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+
         return nmatchesMap >= 10;
     }
 
@@ -1388,8 +1619,7 @@ void Tracking::UpdateLastFrame()
     //Transfrom^lastframe_refence 从参考帧到上一帧的变换
     cv::Mat Tlr = mlRelativeFramePoses.back();
 
-    //Tlw = Tlr * Trw  
-    //?为什么视频说是上一帧在世界系下的位姿？应该类似getPose返回Tcw,这里是设置Tlw。
+    //Tlw = Tlr * Trw
     mLastFrame.SetPose(Tlr*pRef->GetPose());
 
     //单目或者上一帧是关键帧，程序结束，就设置了当前帧的位姿
@@ -1531,6 +1761,12 @@ bool Tracking::TrackWithMotionModel()
         }
     }
 
+//    ///Added Module
+//    vector<int> matchPlanes;
+//    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, matchPlanes, 3);
+//    if (nplnmatches >= 2)
+//        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+
     //纯跟踪模式以匹配数目来判断是否跟踪成功
     if(mbOnlyTracking)
     {
@@ -1606,7 +1842,7 @@ bool Tracking::TrackLocalMap()
 /**
  * @brief 判断当前帧是否需要插入关键帧
  * step 1 纯VO模式不插入关键帧 如果局部地图线城被闭环检测使用 则不插入关键帧
- * step 2 如果距离上一次重定位比较远 或者 关键帧数目超出最大限制 不插入关键帧
+ * step 2 如果距离上一次重定位比较jin 或者 关键帧数目超出最大限制 不插入关键帧
  * step 3 得到参考关键帧跟踪到的地图点的数目
  * step 4 查询局部地图管理器是否繁忙
  * step 5 RGBD和stero，统计可以添加的有效地图点的总数 和 跟踪到的地图点数量
@@ -1624,7 +1860,7 @@ bool Tracking::NeedNewKeyFrame()
 
     const int nKFs = mpMap->KeyFramesInMap();
 
-    //*Step 距离上次重定位比较远 或者 超出数量
+    //*Step 距离上次重定位比较远jin 或者 超出数量
     // Do not insert keyframes if not enough frames have passed from last relocalisation
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
         return false;
@@ -1733,7 +1969,7 @@ void Tracking::CreateNewKeyFrame()
     //跟 tracking::udpatelastframe里面更新地图点类似
     if(mSensor!=System::MONOCULAR)
     {
-        //更新几个位姿
+        //更新几个位姿 mRcw mRwc mtcw mOw
         mCurrentFrame.UpdatePoseMatrices();
 
         //*Step 3.1 当前帧有深度值的特征点
@@ -1863,140 +2099,6 @@ void Tracking::CreateNewKeyFrame()
 //            mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
 //        }
 //    }
-
-///added module
-//    void Tracking::RegionGrowing(Frame &inputFrame, bool Undistored) {
-//        pcl::PointCloud<pcl::PointXYZ>::Ptr LiDARCloud(new pcl::PointCloud<pcl::PointXYZ>);
-//        if (Undistored) {
-//            int LiDARNum = inputFrame.mLaserPtsUndis.size();
-//            LiDARCloud->points.resize(LiDARNum);
-//            int actualCounter = 0;
-//            for (int li = 0; li < LiDARNum; li++) {
-//                LiDARCloud->points[actualCounter].x = inputFrame.mLaserPtsUndis[li][0];
-//                LiDARCloud->points[actualCounter].y = inputFrame.mLaserPtsUndis[li][1];
-//                LiDARCloud->points[actualCounter].z = inputFrame.mLaserPtsUndis[li][2];
-//                actualCounter++;
-//            }
-//            LiDARCloud->points.resize(actualCounter);
-//        } else {
-//            int LiDARNum = inputFrame.mLaserPt_cam.size();
-//            LiDARCloud->points.resize(LiDARNum);
-//            int actualCounter = 0;
-//            for (int li = 0; li < LiDARNum; li++) {
-//                LiDARCloud->points[actualCounter].x = inputFrame.mLaserPt_cam[li][0];
-//                LiDARCloud->points[actualCounter].y = inputFrame.mLaserPt_cam[li][1];
-//                LiDARCloud->points[actualCounter].z = inputFrame.mLaserPt_cam[li][2];
-//                actualCounter++;
-//            }
-//            LiDARCloud->points.resize(actualCounter);
-//        }
-//        //cout<<"lidar cloud actual number "<<LiDARCloud->points.size()<<endl;
-//        ///estimating normals for each point
-//        pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-//        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-//        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-//        normal_estimator.setSearchMethod(tree);
-//        normal_estimator.setInputCloud(LiDARCloud);
-//        normal_estimator.setKSearch(50);
-//        normal_estimator.compute(*normals);
-//        ///region growing
-//        pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-//        reg.setMinClusterSize(1000);
-//        reg.setMaxClusterSize(100000);
-//        reg.setSearchMethod(tree);
-//        reg.setNumberOfNeighbours(100);//too little will cause run time error
-//        reg.setInputCloud(LiDARCloud);
-//        reg.setInputNormals(normals);
-//        reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
-//        reg.setCurvatureThreshold(2.0);
-//        ///extract each cluster
-//        clock_t startTime = clock();
-//        std::vector<pcl::PointIndices> clusters;
-//        reg.extract(clusters);
-//        clock_t endTime = clock();
-//        double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
-//        //cout << "Region Growing " << timeUsed << " sec ";
-//        ///call RANSAC plane fitting
-//        for (int ci = 0; ci < clusters.size(); ci++) {
-//            pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
-//            thisCloud->points.resize(clusters[ci].indices.size());
-//            thisCloud->height = 1;
-//            thisCloud->width = clusters[ci].indices.size();
-//            //cout<<" | cluster contains"<<clusters[ci].indices.size();
-//            for (int index = 0; index < clusters[ci].indices.size(); index++) {
-//                thisCloud->points[index].x = LiDARCloud->points[clusters[ci].indices[index]].x;
-//                thisCloud->points[index].y = LiDARCloud->points[clusters[ci].indices[index]].y;
-//                thisCloud->points[index].z = LiDARCloud->points[clusters[ci].indices[index]].z;
-//                //cout<<"cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
-//            }
-//            Plane foundPlane;
-//            startTime = clock();
-//            pcl::PointIndices inliersOUT;
-//            int inPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
-//            endTime = clock();
-//            double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
-//            //cout << " RANSAC plane " << timeUsed << " sec. Inliners num: " << inPlaneNum;
-//            if (inPlaneNum > 0) {
-//                int planeID = inputFrame.mvPlanes.size();
-//                foundPlane.PlaneId = planeID;
-//                inputFrame.mvPlanes.push_back(foundPlane);
-//            }
-//        }
-//        //cout << endl;
-//
-//        ///save LiDAR planes
-////    fstream writer;
-////    string fileName = "data//lidar//"+std::to_string(mCurrentFrame.mnId) + ".txt";
-////    writer.open(fileName,std::ios::out);
-////    for(int plni = 0; plni<mCurrentFrame.mvPlanes.size();plni++)
-////    {
-////        for(int pi=0;pi<mCurrentFrame.mvPlanes[plni].pointList.size();pi++)
-////        {
-////            writer<<mCurrentFrame.mvPlanes[plni].pointList[pi].x<<" "<<mCurrentFrame.mvPlanes[plni].pointList[pi].y<<" "<<mCurrentFrame.mvPlanes[plni].pointList[pi].z<<endl;
-////        }
-////    }
-////    writer.close();
-//    }
-
-    int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane,
-                              pcl::PointIndices &inliersOutput) {
-        //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = inputCloud.makeShared();
-        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-        //create the segmentation objects
-        pcl::SACSegmentation<pcl::PointXYZ> seg;
-        //Optional
-        seg.setOptimizeCoefficients(true);
-        //Mandatory
-        seg.setMethodType(pcl::SACMODEL_PLANE);
-        seg.setModelType(pcl::SAC_RANSAC);
-        seg.setDistanceThreshold(0.001);
-
-        seg.setInputCloud(cloud);
-        seg.segment(*inliers, *coefficients);
-        if (inliers->indices.size() == 0)
-            return 0;
-        inliersOutput = *inliers;
-        foundPlane.A = coefficients->values[0];
-        foundPlane.B = coefficients->values[1];
-        foundPlane.C = coefficients->values[2];
-        foundPlane.D = coefficients->values[3];
-        double sumX = 0, sumY = 0, sumZ = 0;
-        for (int i = 0; i < inliers->indices.size(); i++) {
-            double x = cloud->points[inliers->indices[i]].x;
-            double y = cloud->points[inliers->indices[i]].y;
-            double z = cloud->points[inliers->indices[i]].z;
-            sumX += x;
-            sumY += y;
-            sumZ += z;
-            //foundPlane.points3D.push_back(cv::Point3d(x,y,z));
-            //cout<<"inliner push back "<<x<<" "<<y<<" "<<z<<endl;
-        }
-        foundPlane.Norm2Angle();
-        foundPlane.centreP = cv::Point3d(sumX / inliers->indices.size(), sumY / inliers->indices.size(),
-                                         sumZ / inliers->indices.size());
-        return inliers->indices.size();
-    }
 
 //void Tracking::LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation)
 //{
@@ -2209,7 +2311,8 @@ void Tracking::UpdateLocalPoints()
 
 /**
  *@brief 更新局部关键帧
- 遍历当前帧的mappoints，将观测到这些mappoints的关键帧和相邻关键帧以及父子关键帧，作为mvplocalkeyframes
+ *遍历当前帧的mappoints，将观测到这些mappoints的关键帧和相邻关键帧以及父子关键帧，作为mvplocalkeyframes
+ * | 最後會更新mpReferenceKF 和 mCurrentFrame.mpReferenceKF,設定爲當前最高共視的幀
  */
 void Tracking::UpdateLocalKeyFrames()
 {

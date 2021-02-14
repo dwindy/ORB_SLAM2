@@ -225,7 +225,7 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     return Tcw;
 }
 
-    ///Added Module --- RGBD
+    ///Added Module --- RGBD-enhanced Mono
     cv::Mat System::TrackMonocular(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp) {
         if (mSensor != MONOCULAR) {
             cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular." << endl;
@@ -429,11 +429,11 @@ void System::SaveTrajectoryTUM(const string &filename)
         // If the reference keyframe was culled, traverse the spanning tree to get a suitable keyframe.
         while(pKF->isBad())
         {
-            Trw = Trw*pKF->mTcp;
+            Trw = Trw*pKF->mTcp;///?
             pKF = pKF->GetParent();
         }
 
-        Trw = Trw*pKF->GetPose()*Two;
+        Trw = Trw*pKF->GetPose()*Two;///?
 
         cv::Mat Tcw = (*lit)*Trw;
         cv::Mat Rwc = Tcw.rowRange(0,3).colRange(0,3).t();

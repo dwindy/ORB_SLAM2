@@ -448,59 +448,20 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
 }
 
 ///Added module
-    MapPlane::MapPlane(float A, float B, float C, float D, KeyFrame *pRefKF, Map *pMap) :
+    MapPlane::MapPlane(Plane inputPlane, KeyFrame *pRefKF, Map *pMap) :
             mnFirstKFid(pRefKF->mnId), mnFirstFrame(pRefKF->mnFrameId), nObs(0), mnTrackReferenceForFrame(0),
             mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
             mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
             mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap) {
-        this->A = A;
-        this->B = B;
-        this->C = C;
-        this->D = D;
-
-        // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
-        unique_lock<mutex> lock(mpMap->mMutexPointCreation);
-        mnId = nNextId++;
-    }
-
-    MapPlane::MapPlane(float Phi, float Theta, float D, KeyFrame *pRefKF, Map *pMap) :
-            mnFirstKFid(pRefKF->mnId), mnFirstFrame(pRefKF->mnFrameId), nObs(0), mnTrackReferenceForFrame(0),
-            mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
-            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
-            mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap) {
-        this->A = A;
-        this->B = B;
-        this->C = C;
-        this->D = D;
-
-        // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
-        unique_lock<mutex> lock(mpMap->mMutexPointCreation);
-        mnId = nNextId++;
-    }
-
-    MapPlane::MapPlane(float Phi, float Theta, float D, Map *pMap, Frame *pFrame, const int &idxF) :
-            mnFirstKFid(-1), mnFirstFrame(pFrame->mnId), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
-            mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
-            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame *>(NULL)), mnVisible(1),
-            mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(pMap) {
-        this->phi = Phi;
-        this->theta = Theta;
-        this->D = D;
-
-        // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
-        unique_lock<mutex> lock(mpMap->mMutexPointCreation);
-        mnId = nNextId++;
-    }
-
-    MapPlane::MapPlane(float A, float B, float C, float D, Map *pMap, Frame *pFrame, const int &idxF) :
-            mnFirstKFid(-1), mnFirstFrame(pFrame->mnId), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
-            mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
-            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame *>(NULL)), mnVisible(1),
-            mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(pMap) {
-        this->A = A;
-        this->B = B;
-        this->C = C;
-        this->D = D;
+        A = inputPlane.A;
+        B = inputPlane.B;
+        C = inputPlane.C;
+        D = inputPlane.D;
+        theta = inputPlane.theta;
+        phi = inputPlane.phi;
+        PI0 = inputPlane.PI[0];
+        PI1 = inputPlane.PI[1];
+        PI2 = inputPlane.PI[2];
 
         // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
         unique_lock<mutex> lock(mpMap->mMutexPointCreation);

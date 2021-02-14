@@ -34,31 +34,146 @@
 
 #include<mutex>
 
+///Added module
+#include <cmath>
+#include "Thirdparty/g2o/g2o/core/optimization_algorithm_gauss_newton.h"
 namespace ORB_SLAM2
 {
 
 
 void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
-    vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
-    vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
+    vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
+    vector<MapPoint *> vpMP = pMap->GetAllMapPoints();
+    vector<MapPlane *> vpMPln = pMap->GetAllMapPlanes();
     BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
 }
 
+///Added Module
+//Define the Plane vertex
+    class VertexPlane : public g2o::BaseVertex<3, Eigen::Vector3d> {
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+        VertexPlane() {}
+
+        virtual void setToOriginImpl() override {
+            _estimate = Eigen::Vector3d( 0, 0, 0);
+        };
+
+        ///todo Are we going to update the Plane?
+        virtual void oplusImpl(const double *update) override {}
+
+        virtual bool read(istream &in) {}
+
+        virtual bool write(ostream &out) const {}
+    };
+
+//Define the VertexSE3Expmap-Plane(PI form) edge (plane as point)
+class Edge3D3D : public g2o::BaseBinaryEdge<3, Eigen::Vector3d, g2o::VertexSE3Expmap,g2o::VertexSBAPointXYZ>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+    virtual void computeError()override{
+        auto pose = (g2o::VertexSE3Expmap *) _vertices[0];
+        auto Pw = (g2o::VertexSBAPointXYZ *) _vertices[1];
+        Eigen::Vector3d Pw_pjt = pose->estimate().map(Pw->estimate());
+        _error = _measurement - Pw_pjt;
+//        cout<<" Pose "<<endl<<pose->estimate()<<endl;
+//        cout<<" Pw "<<Pw->estimate().transpose()<<endl;
+//        cout<<" Pw_pjt "<<Pw_pjt.transpose()<<endl;
+//        cout<<" measre "<<_measurement.transpose()<<endl;
+//        cout<<" error  "<<_error.transpose()<<endl;
+    }
+
+    virtual void linearizeOplus() override{
+        auto pose = (g2o::VertexSE3Expmap *) _vertices[0];
+        auto Pw = (g2o::VertexSBAPointXYZ *) _vertices[1];
+        Eigen::Vector3d Pw_pjt = pose->estimate().map(Pw->estimate());
+        //In g2o VertexSE3Expmap, R first then t
+        _jacobianOplusXi << 0, -Pw_pjt[2], Pw_pjt[1],-1, 0, 0,
+                            Pw_pjt[2], 0, -Pw_pjt[0],0, -1, 0,
+                            -Pw_pjt[1], Pw_pjt[0], 0, 0, 0, -1;
+    }
+
+    void printError(){
+        auto pose = (g2o::VertexSE3Expmap *) _vertices[0];
+        auto Pw = (g2o::VertexSBAPointXYZ *) _vertices[1];
+        Eigen::Vector3d Pw_pjt = pose->estimate().map(Pw->estimate());
+        Eigen::Vector3d error = _measurement - Pw_pjt;
+        //cout<<" Pose "<<endl<<pose->estimate()<<endl;
+        cout<<" Pw "<<Pw->estimate().transpose()<<endl;
+        cout<<" Pw_pjt "<<Pw_pjt.transpose()<<endl;
+        cout<<" measre "<<_measurement.transpose()<<endl;
+        cout<<" error  "<< error.transpose()<<endl;
+    }
+
+    virtual bool read(istream &in) {}
+
+    virtual bool write(ostream &out) const {}
+};
+
+//Define the VertexSE3Expmap-Plane edge
+//Observation 3 dimension -> PI
+    class EdgePlanePlane : public g2o::BaseBinaryEdge<3, Eigen::Vector3d, g2o::VertexSE3Expmap, VertexPlane> {
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+        virtual void computeError() override {
+//            cout << "call compute Error--------------------------" << endl;
+            auto pose = (g2o::VertexSE3Expmap *) _vertices[0];
+            auto vPlane = (VertexPlane *) _vertices[1];//PI
+            Eigen::Vector3d n_world = vPlane->estimate() / vPlane->estimate().norm(); // norm = PI/|PI|
+            double d_world = vPlane->estimate().norm();// d = |PI|
+            auto rotation = pose->estimate().rotation();
+            auto translation = pose->estimate().translation();
+            Eigen::Matrix3d rotation_matrix = rotation.toRotationMatrix();
+            Eigen::Matrix<double, 3, 1> translation_matrix = translation;
+            ///way 1
+            cout << "rotation " << endl << rotation_matrix << endl << " translation " << endl << translation_matrix
+                 << endl;
+            cout << "world PI " << vPlane->estimate()[0] << " " << vPlane->estimate()[1] << " "
+                 << vPlane->estimate()[2] <<" norm "<<n_world.transpose()<<" d "<<d_world<<endl;
+            cout << "obser PI " << _measurement[0] << " " << _measurement[1] << " " << _measurement[2] << endl;
+            //project from map to local
+            ///[xl,yl,zl]^T = R^L_A * nA
+            auto n_proj = rotation * n_world; //todo rotation is quaterion or matrix?
+            cout << "n_proj " << n_proj.transpose() << endl;
+            ///dl = - (nA * P^A_L) + dA
+            auto t_A_L = pose->estimate().inverse().translation();
+            auto d_proj = d_world - (t_A_L).dot(n_world);
+            cout << "d_proj " << d_proj << endl;
+            ///PI' = nL * dL;
+            Eigen::Vector3d PI_proj = (n_proj) * (d_proj);
+            cout << "PI proj " << PI_proj.transpose()<<endl;
+            //_error = PI_proj - _measurement; //paper is project - measurement
+            _error = _measurement - PI_proj;
+            cout << "_error " << _error.transpose() << endl;
+        }
+        void printError(){
+            computeError();
+//            cout <<" error "<<_error.transpose()<<" chi2 "<<chi2()<<endl;
+        }
+
+        virtual bool read(istream &in) {}
+
+        virtual bool write(ostream &out) const {}
+    };
 
 void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
                                  int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
+    //bool label of not include points
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
 
+    //declare a Optimizer and Solver
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
     linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
+    //and Solver ptr
     g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-
+    //declare optimization algorithm
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
 
@@ -73,9 +188,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         KeyFrame* pKF = vpKFs[i];
         if(pKF->isBad())
             continue;
+        //declare a LEE algebra vertex
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
         vSE3->setEstimate(Converter::toSE3Quat(pKF->GetPose()));
         vSE3->setId(pKF->mnId);
+        //first frame need fixed
         vSE3->setFixed(pKF->mnId==0);
         optimizer.addVertex(vSE3);
         if(pKF->mnId>maxKFid)
@@ -91,20 +208,22 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         MapPoint* pMP = vpMP[i];
         if(pMP->isBad())
             continue;
+        //declare a 3d Point vertex
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
         const int id = pMP->mnId+maxKFid+1;
         vPoint->setId(id);
+        //yes point can be mariginalized
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
 
-       const map<KeyFrame*,size_t> observations = pMP->GetObservations();
+        //get observation for each 3D point
+        const map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
         int nEdges = 0;
         //SET EDGES
         for(map<KeyFrame*,size_t>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
         {
-
             KeyFrame* pKF = mit->first;
             if(pKF->isBad() || pKF->mnId>maxKFid)
                 continue;
@@ -112,17 +231,17 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             nEdges++;
 
             const cv::KeyPoint &kpUn = pKF->mvKeysUn[mit->second];
-
+            //Mono
             if(pKF->mvuRight[mit->second]<0)
             {
                 Eigen::Matrix<double,2,1> obs;
                 obs << kpUn.pt.x, kpUn.pt.y;
-
+                //declare a Edge SE3ProjectXYZ type
                 g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
-
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));//id: g2o id of cur 3d point
+                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));//id: corresponding KF id (also g2o id)
                 e->setMeasurement(obs);
+                //set information matrix based on the octave level
                 const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
                 e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
 
@@ -132,7 +251,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                     e->setRobustKernel(rk);
                     rk->setDelta(thHuber2D);
                 }
-
+                //set edge attribution
                 e->fx = pKF->fx;
                 e->fy = pKF->fy;
                 e->cx = pKF->cx;
@@ -147,7 +266,6 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
                 g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
-
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
                 e->setMeasurement(obs);
@@ -171,7 +289,6 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 optimizer.addEdge(e);
             }
         }
-
         if(nEdges==0)
         {
             optimizer.removeVertex(vPoint);
@@ -208,7 +325,20 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             pKF->mnBAGlobalForKF = nLoopKF;
         }
     }
+    ///print points
+    for(size_t i=0; i<vpMP.size(); i++)
+    {
+        if(vbNotIncludedMP[i])
+            continue;
 
+        MapPoint* pMP = vpMP[i];
+
+        if(pMP->isBad())
+            continue;
+        cout<<pMP->GetWorldPos().at<float>(0)<<" "<<pMP->GetWorldPos().at<float>(1)<<" "<<pMP->GetWorldPos().at<float>(2)<<endl;
+    }
+    cout << "after BA" << endl;
+    cout<<"-----------------------------------"<<endl;
     //Points
     for(size_t i=0; i<vpMP.size(); i++)
     {
@@ -225,6 +355,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         {
             pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
             pMP->UpdateNormalAndDepth();
+            cout<<pMP->GetWorldPos().at<float>(0)<<" "<<pMP->GetWorldPos().at<float>(1)<<" "<<pMP->GetWorldPos().at<float>(2)<<endl;
         }
         else
         {
@@ -233,14 +364,176 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             pMP->mnBAGlobalForKF = nLoopKF;
         }
     }
-
+    for (size_t i = 0; i < vpKFs.size(); i++) {
+        KeyFrame *pKF = vpKFs[i];
+        if (pKF->isBad())
+            continue;
+        cout << pKF->mnId << endl;
+        cout << pKF->GetPose() << endl;
+    }
 }
+
+/**
+ * @brief Plane optimization
+ * @param mpMap : map
+ * @param pFrame : current frame
+ * @param matchPlanes : current plane to map plane pair relations
+ */
+    void Optimizer::PlaneOptimization(Map *mpMap, Frame *pFrame, vector<int> matchPlanes) {
+        //Declare g2p optimizer
+        typedef g2o::BlockSolver<g2o::BlockSolverTraits<6, 3>> BlockSolverType;
+        typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType;
+        auto *solverinstance = new LinearSolverType();
+        auto *blockersolverinstance = new BlockSolverType(solverinstance);
+        auto solver = new g2o::OptimizationAlgorithmLevenberg(blockersolverinstance);
+        //auto solver = new g2o::OptimizationAlgorithmGaussNewton(blockersolverinstance);
+        g2o::SparseOptimizer optimizer;//sparse?
+        optimizer.setAlgorithm(solver);
+        optimizer.setVerbose(true);
+
+        //Set Frame Pose Vertex
+        g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+//        cv::Mat play = cv::Mat::eye(4,4,CV_32F);
+//        play.at<float>(0,3) = 0.005;
+//        play.at<float>(1,3) = 0.005;
+//        play.at<float>(2,3) = 0.005;
+//        vSE3->setEstimate(Converter::toSE3Quat(play));
+//        cout<<"vSE3 estimeta "<<vSE3->estimate()<<endl;
+        vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+//        if(pFrame->mnId==50)
+//        {
+            cout << "pose before plane optimization " << endl;
+            cout << pFrame->mTcw << endl;
+            vector<float> q1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
+            cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
+                 << " " << pFrame->mTcw.at<float>(0, 3) << " " << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3)
+                 << " " << q1[0] << " " << q1[1] << " " << q1[2] << " "<< q1[3] << endl;
+//        }
+
+
+        vSE3->setId(0);
+        vSE3->setFixed(false);
+        optimizer.addVertex(vSE3);
+
+        int PlaneVertexNum = 0;
+        vector<int> planeVertexID;
+        //std::vector<EdgePlanePlane *> allEdges;
+        std::vector<Edge3D3D *>all3d3dEdges;
+        int edgeNum = 0;
+        //Set Plane Vertex and Pose-Plane Edge
+        vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
+        for (size_t i = 0; i < pFrame->mvPlanes.size(); i++) {
+            if (matchPlanes[i] >= 0) {
+                //set map plane vertex
+                int mapPlaneID = matchPlanes[i];
+                int mapIndex = -1;
+                //cout<<"looking for "<<mapPlaneID<<" : ";
+                for (size_t temp = 0; temp < mapPlanes.size(); temp++) {
+                    if (mapPlanes[temp]->mnId == mapPlaneID)
+                    {
+                        mapIndex = temp;
+                        //cout<<mapPlanes[temp]->mnId<<" ";
+                    }
+                }
+                //cout<<endl;
+                ///Set PlaneVertex
+//                MapPlane *thisMapPlane = mapPlanes[mapIndex];
+//                VertexPlane *newVertex = new VertexPlane();
+//                newVertex->setEstimate(Eigen::Vector3d(thisMapPlane->PI0,thisMapPlane->PI1,thisMapPlane->PI2));
+//                newVertex->setId(1 + PlaneVertexNum);
+//                newVertex->setFixed(true);
+//                optimizer.addVertex(newVertex);
+//                planeVertexID.push_back(1 + PlaneVertexNum);
+
+                ///Set PlaneVertex
+                MapPlane *thisMapPlane = mapPlanes[mapIndex];
+                g2o::VertexSBAPointXYZ *newVertex = new g2o::VertexSBAPointXYZ();
+                newVertex->setEstimate(Eigen::Vector3d(thisMapPlane->PI0,thisMapPlane->PI1,thisMapPlane->PI2));
+                newVertex->setId(1 + PlaneVertexNum);
+                newVertex->setFixed(true);
+                optimizer.addVertex(newVertex);
+                planeVertexID.push_back(1 + PlaneVertexNum);
+                //cout << "add new world plane vertex " << 1 + PlaneVertexNum << " : PI : " << thisMapPlane->PI0<<" "<<thisMapPlane->PI1<<" "<<thisMapPlane->PI2<<" "<< " map plane id "
+                //     << thisMapPlane->mnId << endl;
+                //cout << "  edge local plane observe : PI : " << pFrame->mvPlanes[i].PI.transpose()<< " local plane index " << i << endl;
+//                //Set Pose-Plane Edge
+//                EdgePlanePlane *newEdge = new EdgePlanePlane;
+//                newEdge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+//                newEdge->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(1 + PlaneVertexNum)));
+//                newEdge->setMeasurement(pFrame->mvPlanes[i].PI);
+//                newEdge->setInformation(Eigen::Matrix<double, 3, 3>::Identity());
+//                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+//                newEdge->setRobustKernel(rk);
+//                const float thHuber2D = sqrt(5.99);
+//                rk->setDelta(thHuber2D);
+//                //newEdge->setId();
+//                optimizer.addEdge(newEdge);
+//                //store edge
+//                allEdges.push_back(newEdge);
+                //Set 3d3d plane Edge
+                Edge3D3D *newEdge = new Edge3D3D;
+                newEdge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+                newEdge->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(1 + PlaneVertexNum)));
+                newEdge->setMeasurement(pFrame->mvPlanes[i].PI);
+                newEdge->setInformation(Eigen::Matrix<double, 3, 3>::Identity());//
+                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+                newEdge->setRobustKernel(rk);
+                const float thHuber2D = sqrt(5.99);
+                const float thHuber3D = sqrt(7.815);
+                rk->setDelta(thHuber3D);
+                //newEdge->setId();
+                optimizer.addEdge(newEdge);
+                //store edge
+                all3d3dEdges.push_back(newEdge);
+                //vertex index ++
+                PlaneVertexNum++;
+                edgeNum++;
+                //newEdge->printError();
+
+            } else
+                planeVertexID.push_back(-1);
+        }
+
+        cout<<"Edge error : "<<endl;
+        for (size_t i = 0; i < all3d3dEdges.size(); i++) {
+            all3d3dEdges[i]->computeError();
+            cout<<all3d3dEdges[i]->chi2()<<" ";
+        }
+        cout<<endl;
+
+        //run optimizer
+        optimizer.initializeOptimization();
+        optimizer.optimize(10);
+
+        cout<<"Edge error : "<<endl;
+        for (size_t i = 0; i < all3d3dEdges.size(); i++) {
+            all3d3dEdges[i]->computeError();
+            cout<<all3d3dEdges[i]->chi2()<<" ";
+        }
+        cout<<endl;
+
+        // Recover optimized pose and return number of inliers
+        g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
+        g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
+        cv::Mat pose = Converter::toCvMat(SE3quat_recov);
+//        if (pFrame->mnId == 50) {
+            cout << "after plane optimize" << endl;
+            cout << pose << endl;
+            vector<float> q = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
+            cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
+                 << " " << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3)
+                 << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+//            //
+//        }
+        //pFrame->SetPose(pose);
+    }
+
 
 /**
  * @brief Pose only optimization
  * 3D-2D 最小化重投影误差 e=(u,v)-project(Tcw*Pw)
  * 
- * 1. Vertex: g2o::VertexSE3Expmap(),当前帧得Tcw
+ * 1. Vertex: g2o::VertexSE3Expmap(),当前帧Tcw
  * 2. Edge：
  *      -g2o:EdgeSE3ProjectXYZOnlyPose(), BaseUnaryEdge
  *          +Vertex: 待优化当前帧的Tcw
@@ -272,6 +565,18 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     //*Step 2: 添加顶点,待优化帧的Tcw
     g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
     vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+
+//    if (pFrame->mnId == 50) {
+//        cout << "pose before pose optimization " << endl;
+//        cout << pFrame->mTcw << endl;
+//        vector<float> q1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
+//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | " << pFrame->mTcw.at<float>(0, 3) << " "
+//             << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3) << " | " << q1[0] << " " << q1[1]
+//             << " "
+//             << q1[2] << " "
+//             << q1[3] << endl;
+//    }
+
     //设置ID
     vSE3->setId(0);
     //要优化所以不能fixed
@@ -296,7 +601,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     const float deltaMono = sqrt(5.991);
     const float deltaStereo = sqrt(7.815);
 
-    //*Step3 添加一元边
+    //*Step 3: 添加一元边
     {
     //使用地图点构建图的时候，不希望地图点被修改。
     unique_lock<mutex> lock(MapPoint::mGlobalMutex);
@@ -415,7 +720,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
             const size_t idx = vnIndexEdgeMono[i];
 
-            //? 优化结束后computeerror的目的？
+            //? 优化结束后compute error的目的？
             if(pFrame->mvbOutlier[idx])
             {
                 e->computeError();
@@ -467,7 +772,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 e->setLevel(0);
                 pFrame->mvbOutlier[idx]=false;
             }
-
+            //Only first two optimization need kernel
             if(it==2)
                 e->setRobustKernel(0);
         }
@@ -482,7 +787,24 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
     cv::Mat pose = Converter::toCvMat(SE3quat_recov);
     pFrame->SetPose(pose);
-
+//    if (pFrame->mnId == 50) {
+//        cout << "points" << endl;
+//        int printCount = 0;
+//        for (int i = 0; i < pFrame->mvpMapPoints.size(); i++) {
+//            if (pFrame->mvpMapPoints[i]) {
+//                cout << pFrame->mvpMapPoints[i]->GetWorldPos() << endl;
+//                printCount++;
+//            }
+//            if (printCount >= 3)
+//                break;
+//        }
+//        cout << "pose after pose optimization " << endl;
+//        cout << pose << endl;
+//        vector<float> q2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
+//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | "
+//             << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
+//             << q2[0] << " " << q2[1] << " " << q2[2] << " " << q2[3] << endl;
+//    }
     return nInitialCorrespondences-nBad;
 }
 
@@ -855,7 +1177,25 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         KeyFrame* pKF = *lit;
         g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
         g2o::SE3Quat SE3quat = vSE3->estimate();
+//        ///print
+//        cout << "pose before localBundle optimization " << endl;
+//        //cout << pKF->mTcw << endl;
+//        vector<float> q1 = Converter::toQuaternion(pKF->GetPose()(cv::Rect(0, 0, 3, 3)));
+//        cout << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " | " << pKF->GetPose().at<float>(0, 3) << " "
+//             << pKF->GetPose().at<float>(1, 3) << " " << pKF->GetPose().at<float>(2, 3) << " | " << q1[0] << " " << q1[1] << " "
+//             << q1[2] << " "
+//             << q1[3] << endl;
+
         pKF->SetPose(Converter::toCvMat(SE3quat));
+
+//        ///print
+//        auto pose = Converter::toCvMat(SE3quat);
+//        cout << "pose after localBundle optimization " << endl;
+//        //cout << Converter::toCvMat(SE3quat) << endl;
+//        vector<float> q2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
+//        cout << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " | "
+//             << pose.at<float>(0, 3) << " "<< pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
+//             << q2[0] << " " << q2[1] << " "<< q2[2] << " "<< q2[3] << endl;
     }
 
     //Points

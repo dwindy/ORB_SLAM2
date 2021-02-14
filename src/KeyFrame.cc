@@ -72,6 +72,7 @@ long unsigned int KeyFrame::nNextId=0;
             mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
             mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
             ///added modules
+            ,mvPlanes(F.mvPlanes)
 //            mvPtRGBD(F.mvPtRGBD)//mLaserPoints(F.mLaserPoints),mLaserPt_cam(F.mLaserPt_cam)//,mLaserPtsUndis(F.mLaserPtsUndis),
 //            //mLaserTimes(F.mLaserTimes), mPjcLaserPts(F.mPjcLaserPts), mPjcLaserPtsUndis(F.mPjcLaserPtsUndis),
 //            //planNorms(F.planNorms)//, mvPlanes(mvPlanes)
@@ -122,12 +123,14 @@ void KeyFrame::SetPose(const cv::Mat &Tcw_)
     Cw = Twc*center;
 }
 
+//return Tcw
 cv::Mat KeyFrame::GetPose()
 {
     unique_lock<mutex> lock(mMutexPose);
     return Tcw.clone();
 }
 
+//return Twc
 cv::Mat KeyFrame::GetPoseInverse()
 {
     unique_lock<mutex> lock(mMutexPose);

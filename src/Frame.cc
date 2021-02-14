@@ -144,14 +144,15 @@ namespace ORB_SLAM2
         AssignFeaturesToGrid();
     }
 
-    Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
+    Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
+                 ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
                  const float &bf,                                                                                      //baseline * f
                  const float &thDepth)                                                                                 //threshold to decide near / far points
-            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //Mono has no right camera
-              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
-    {
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
+              mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //Mono has no right camera
+              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
-        mnId=nNextId++;
+        mnId = nNextId++;
 
         // Scale Level Info
         mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -163,52 +164,57 @@ namespace ORB_SLAM2
         mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
         // ORB extraction
-        ExtractORB(0,imGray);
+        ExtractORB(0, imGray);
 
         N = mvKeys.size();
 
-        if(mvKeys.empty())
+        if (mvKeys.empty())
             return;
 
         UndistortKeyPoints();
 
-        //restore depth for keypoint
-        ComputeStereoFromRGBD(imDepth);
         ///Added Module
-        fx = K.at<float>(0,0);
-        fy = K.at<float>(1,1);
-        cx = K.at<float>(0,2);
-        cy = K.at<float>(1,2);
-        invfx = 1.0f/fx;
-        invfy = 1.0f/fy;
+        // Set no stereo information
+        //MonoCular does not need right camera infor
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
+        //restore depth for keypoint
+        //ComputeStereoFromRGBD(imDepth);
+        ComputeStereoFromRGBD_ICLNUIM(imDepth);
+        fx = K.at<float>(0, 0);
+        fy = K.at<float>(1, 1);
+        cx = K.at<float>(0, 2);
+        cy = K.at<float>(1, 2);
+        invfx = 1.0f / fx;
+        invfy = 1.0f / fy;
         ///restore 3d points
         ComputeRGBDPoints(imGray, imDepth);
         ///Find Plane
         RegionGrowing();
         //cout<<"found "<<mvPlanes.size()<<" plane "<<endl;
+        ///Fix depth of Plane Point
 
-        mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
-        mvbOutlier = vector<bool>(N,false);
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+        mvbOutlier = vector<bool>(N, false);
 
         // This is done only for the first Frame (or after a change in the calibration)
-        if(mbInitialComputations)
-        {
+        if (mbInitialComputations) {
             ComputeImageBounds(imGray);
 
-            mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
-            mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
 
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
-            invfx = 1.0f/fx;
-            invfy = 1.0f/fy;
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
 
-            mbInitialComputations=false;
+            mbInitialComputations = false;
         }
 
-        mb = mbf/fx;
+        mb = mbf / fx;
 
         AssignFeaturesToGrid();
     }
@@ -237,7 +243,7 @@ namespace ORB_SLAM2
               mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         //Step 1 帧ID增加
-        mnId=nNextId++;
+        mnId = nNextId++;
 
         // Scale Level Info
         //Step 2 图像金字塔参数
@@ -252,11 +258,11 @@ namespace ORB_SLAM2
         // ORB extraction
         //Step 3 提取特征点 0 左图 1 右图
         //提取ORB特征
-        ExtractORB(0,imGray);
+        ExtractORB(0, imGray);
 
         N = mvKeys.size();
 
-        if(mvKeys.empty())
+        if (mvKeys.empty())
             return;
 
         //Step 4 OpenCV的去畸变函数
@@ -264,38 +270,37 @@ namespace ORB_SLAM2
 
         // Set no stereo information
         //单目，右边图像的对应点和深度都赋-1
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
 
         //初始化本帧的地图点-给null
-        mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         //初始化outlier，给false
-        mvbOutlier = vector<bool>(N,false);
+        mvbOutlier = vector<bool>(N, false);
 
         // This is done only for the first Frame (or after a change in the calibration)
         //标志位，只在第一帧或者相机标定参数变化后执行
-        if(mbInitialComputations)
-        {
+        if (mbInitialComputations) {
             //计算去畸变图像的边界
             ComputeImageBounds(imGray);
 
             //一个图像像素相当于多少个图像网格列（grid cols）/ (col length)
-            mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
             //一个图像像素相当于多少个图像网格行（grid rows）/ (row height)
-            mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
 
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
-            invfx = 1.0f/fx;
-            invfy = 1.0f/fy;
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
 
-            mbInitialComputations=false;
+            mbInitialComputations = false;
         }
 
         //计算baseline，单目用不到其实
-        mb = mbf/fx;
+        mb = mbf / fx;
 
         //把特征点分配到网格中，默认64/48
         AssignFeaturesToGrid();
@@ -394,15 +399,16 @@ namespace ORB_SLAM2
  * @param[in] bf //baseline*f
  * @param[int]thDepth //区分远近点的深度阈值
  */
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc,
+                 cv::Mat &K, cv::Mat &distCoef,
                  const float &bf,
                  const float &thDepth)
-            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
-              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
-    {
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
+              mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
+              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         //Step 1 帧ID增加
-        mnId=nNextId++;
+        mnId = nNextId++;
 
         // Scale Level Info
         //Step 2 图像金字塔参数
@@ -417,11 +423,11 @@ namespace ORB_SLAM2
         // ORB extraction
         //Step 3 提取特征点 0 左图 1 右图
         //提取ORB特征
-        ExtractORB(0,imGray);
+        ExtractORB(0, imGray);
 
         N = mvKeys.size();
 
-        if(mvKeys.empty())
+        if (mvKeys.empty())
             return;
 
         //Step 4 OpenCV的去畸变函数
@@ -429,38 +435,37 @@ namespace ORB_SLAM2
 
         // Set no stereo information
         //单目，右边图像的对应点和深度都赋-1
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
 
         //初始化本帧的地图点-给null
-        mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         //初始化outlier，给false
-        mvbOutlier = vector<bool>(N,false);
+        mvbOutlier = vector<bool>(N, false);
 
         // This is done only for the first Frame (or after a change in the calibration)
         //标志位，只在第一帧或者相机标定参数变化后执行
-        if(mbInitialComputations)
-        {
+        if (mbInitialComputations) {
             //计算去畸变图像的边界
             ComputeImageBounds(imGray);
 
             //一个图像像素相当于多少个图像网格列（grid cols）/ (col length)
-            mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
             //一个图像像素相当于多少个图像网格行（grid rows）/ (row height)
-            mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
 
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
-            invfx = 1.0f/fx;
-            invfy = 1.0f/fy;
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
 
-            mbInitialComputations=false;
+            mbInitialComputations = false;
         }
 
         //计算baseline，单目用不到其实
-        mb = mbf/fx;
+        mb = mbf / fx;
 
         //把特征点分配到网格中，默认64/48
         AssignFeaturesToGrid();
@@ -1013,6 +1018,23 @@ namespace ORB_SLAM2
                 mvPtRGBD.push_back(P3d);
             }
         }
+//        if(mvKeysUn.size()>0){
+//            for(int i=0;i<mvKeysUn.size();i++)
+//            {
+//                const float &v = mvKeysUn[i].pt.y;
+//                const float &u = mvKeysUn[i].pt.x;
+//                float u_u0_by_fx = (u-cx) / fx;
+//                float v_v0_by_fy = (v-cy) / fy;
+//                int u_dis = int(mvKeys[i].pt.x);
+//                int v_dis = int(mvKeys[i].pt.y);
+//                float d = imDepth.ptr<float>(v_dis)[u_dis];
+//                cv::Point3d P3d;
+//                P3d.x = (u_u0_by_fx) * (d);
+//                P3d.y = (v_v0_by_fy) * (d);
+//                P3d.z = d;
+//                mvKeyPt3D.push_back(P3d);
+//            }
+//        }
     }
 
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
@@ -1034,10 +1056,25 @@ namespace ORB_SLAM2
                 mvDepth[i] = d;
                 mvuRight[i] = kpU.pt.x - mbf / d;
             }
-                ///Added Module
-            else {
-                mvDepth[i] = 0;
-                mvuRight[i] = 0;
+        }
+    }
+    void Frame::ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth)
+    {
+        mvuRight = vector<float>(N,-1);
+        mvDepth = vector<float>(N,-1);
+
+        for(int i=0; i<N; i++)
+        {
+            const cv::KeyPoint &kp = mvKeys[i];
+            const cv::KeyPoint &kpU = mvKeysUn[i];
+
+            const float &v = kp.pt.y;
+            const float &u = kp.pt.x;
+
+            const float d = imDepth.at<float>(v,u);
+            if (d > 0) {
+                mvDepth[i] = d;
+                mvuRight[i] = kpU.pt.x - mbf / d;
             }
         }
     }
@@ -1138,6 +1175,7 @@ namespace ORB_SLAM2
             startTime = clock();
             pcl::PointIndices inliersOUT;
             int intPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
+            foundPlane.PlaneId = mvPlanes.size();
             mvPlanes.push_back(foundPlane);
             endTime = clock();
             double timeUsed = double(endTime-startTime)/CLOCKS_PER_SEC;
@@ -1176,6 +1214,16 @@ namespace ORB_SLAM2
         foundPlane.B = coefficients->values[1];
         foundPlane.C = coefficients->values[2];
         foundPlane.D = coefficients->values[3];
+        /** AX+BY+CZ+D=0
+         *  change to form AX+BY+CZ = -D
+         *  And make sure (-D)>0 to adjust the Norm direction
+         */
+        if (foundPlane.D > 0) {
+            foundPlane.A = -foundPlane.A;
+            foundPlane.B = -foundPlane.B;
+            foundPlane.C = -foundPlane.C;
+            foundPlane.D = -foundPlane.D;
+        }
         double sumX = 0, sumY = 0, sumZ = 0;
         for (int i = 0; i < inliers->indices.size(); i++) {
             double x = cloud->points[inliers->indices[i]].x;
@@ -1189,9 +1237,36 @@ namespace ORB_SLAM2
             newPtRGBD.pt3d = newP;
             foundPlane.planePts.push_back(newPtRGBD);
         }
+        foundPlane.Norm2Angle();
+        foundPlane.NormD2CP();
         foundPlane.centreP = cv::Point3d(sumX / inliers->indices.size(), sumY / inliers->indices.size(),
                                          sumZ / inliers->indices.size());
         return inliers->indices.size();
+    }
+
+    /**
+    * given a origin point, a ray direction, a plane norm and plane point
+    * return the intersect point of ray-plane
+    */
+    vector<float> Frame::RayPlaneIntersect(vector<float> dir, vector<float> origin, vector<float> PlaneNorm, vector<float> PlanePoint) {
+        /* PointPoint-IntersectPoint is pendenticular to plane norm
+         * (PP-Pro)*PlaneNorm = 0
+         * IntersectPoint (Pro) = origin + ratio * Dir
+         * we got : (PP - origin - ratio*dir)*PN = 0
+         * ratio = (PP-origin)*PN / (Dir*PN)
+         */
+        double devided = (PlanePoint[0] - origin[0]) * PlaneNorm[0] +
+                         (PlanePoint[1] - origin[1]) * PlaneNorm[1] +
+                         (PlanePoint[2] - origin[2]) * PlaneNorm[2];
+        double devidor = dir[0] + PlaneNorm[0] +
+                         dir[1] + PlaneNorm[1] +
+                         dir[2] + PlaneNorm[2];
+        double ratio = devided / devidor;
+        vector<float> intersect;
+        intersect.push_back(origin[0] + ratio*dir[0]);
+        intersect.push_back(origin[1] + ratio*dir[1]);
+        intersect.push_back(origin[2] + ratio*dir[2]);
+        return intersect;
     }
 
     /**
@@ -1200,7 +1275,38 @@ namespace ORB_SLAM2
      * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
      */
     void Plane::Norm2Angle() {
-        this->phi = atan(this->A / this->B) * 180 / 3.141592653;
-        this->theta = acos(this->C) * 180 / 3.141592653;
+        //cout << "Norm2Angle() with ABCD " << this->A << " " << this->B << " " << this->C << " " << this->D;
+        double phi = atan2(this->B, this->A) * 180 / 3.141592653;
+//        if (phi >= 180)
+//            phi = fmod(phi, 180);
+//        if (phi < 0)
+//            phi = phi + 180;
+        this->phi = phi;
+        double devidor = sqrt(this->A * this->A + this->B * this->B + this->C * this->C);
+        double theta = acos(this->C / devidor) * 180 / 3.141592653;
+//        if (theta >= 180)
+//            theta = fmod(theta, 180);
+//        if (theta < 0)
+//            theta = theta + 180;
+        this->theta = theta;
+        //cout << " | theta " << this->theta << " phi " << this->phi << endl;
+    }
+
+    /**
+     * (nx, ny, nz, d) to Close Point Represents
+     * PI = norm * distance
+     */
+    void Plane::NormD2CP() {
+        if (this->D < 0) {
+            this->A = -this->A;
+            this->B = -this->B;
+            this->C = -this->C;
+            this->D = -this->D;
+        }
+        if (this->D > 0) {
+            PI[0] = this->A * this->D;
+            PI[1] = this->B * this->D;
+            PI[2] = this->C * this->D;
+        }
     }
 } //namespace ORB_SLAM

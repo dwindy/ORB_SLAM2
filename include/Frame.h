@@ -68,15 +68,22 @@ class KeyFrame;
     class Plane {
     public:
         double A, B, C, D;
-        double phi, theta, dis;
+        /**
+        * (phi, theta, d) | (nx,ny,nz,d)
+        * phi = arctan(ny/nx), theta = arccos(nz)
+        * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
+        */
+        double phi, theta, dis; //in degree
+        Eigen::Vector3d PI;
         int count;
-        int PlaneId;//Id in frame
-        int planeIdGlobal;//In in map/global
+        int PlaneId;//Id in cur frame
+        int IdGlobal;//In in map/global
         Plane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) { PlaneId = -1; }
         Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
         Plane() { PlaneId = -1; }
 
         void Norm2Angle();
+        void NormD2CP();
         cv::Point3d centreP;
 //        vector<cv::Point3d> pointList;
 //        vector<cv::Point2d> pointList2D;
@@ -152,6 +159,8 @@ public:
     void ComputeRGBDPoints(const cv::Mat &imGray, const cv::Mat &imDepth);
     int RegionGrowing();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput);
+    void PointOnPlane();
+    vector<float> RayPlaneIntersect(vector<float> dir, vector<float> origin, vector<float> PlaneNorm, vector<float> PlanePoint);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
@@ -208,7 +217,8 @@ public:
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
     std::vector<cv::KeyPoint> mvKeysUn;
     ///Added Module
-    std::vector<cv::Point3d> mvPtRGBD; //not in use but might helpful for debug
+    std::vector<cv::Point3d> mvPtRGBD; //All 3d Points
+    std::vector<cv::Point3d> mvKeyPt3D;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.
