@@ -171,7 +171,8 @@ int main(int argc, char **argv)
 //    }
 //}
 
-///Added Module - copied from rigb_tum.cc
+///Added Module - copied from rgbd_tum.cc
+//switch the order of RGB and Depth
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps) {
     ifstream fAssociation;

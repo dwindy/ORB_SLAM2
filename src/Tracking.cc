@@ -412,120 +412,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
-
-/////added module
-//    void Tracking::ProjectLiDARtoImage() {
-////    ///test
-////    int testNum = 10;
-////    vector<vector<double>> testPoints;
-////    for(int i=0;i<testNum;i++)
-////    {
-////        vector<double> thisPoint = {1,0,-2};
-////        thisPoint[0] +=i*2;
-////        testPoints.push_back(thisPoint);
-////    }
-////    mCurrentFrame.mLaserPoints = testPoints;
-//
-//        ///project distorted Laser points to Image frame
-//        int lsrPtNum = mCurrentFrame.mLaserPoints.size();
-//
-//        if (lsrPtNum > 0) {
-//            cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-//            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-//            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-//            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-//            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-//            P_rect_00.at<double>(2, 2) = 1;
-//            cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-//
-//            cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-//            cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-//            for (int li = 0; li < lsrPtNum; li++) {
-//                // filter the not needed points
-//                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
-//                if (mCurrentFrame.mLaserPoints[li][0] > maxX || mCurrentFrame.mLaserPoints[li][0] < 0.0
-//                    || mCurrentFrame.mLaserPoints[li][1] > maxY || mCurrentFrame.mLaserPoints[li][1] < -maxY
-//                    || mCurrentFrame.mLaserPoints[li][2] < minZ
-//                    || mCurrentFrame.mLaserPoints[li][3] >
-//                       -minZ) //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-//                {
-//                    continue;
-//                }
-//
-//                X.at<double>(0, 0) = mCurrentFrame.mLaserPoints[li][0];
-//                X.at<double>(1, 0) = mCurrentFrame.mLaserPoints[li][1];
-//                X.at<double>(2, 0) = mCurrentFrame.mLaserPoints[li][2];
-//                X.at<double>(3, 0) = 1;
-//
-//                //cout<<"LiDAR point "<<X.t()<<endl;
-//                Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-//                //cout<<"Y "<<Y<<endl;
-//                cv::Point pt;
-//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//                //cout<<"image frame "<<pt.x<<" "<<pt.y<<endl;
-//                if (pt.x < 0 || pt.x >= mImGray.cols || pt.y < 0 || pt.y >= mImGray.rows) {
-//                    continue;
-//                }
-//                //distance as response
-//                double responseVal = sqrt(
-//                        X.at<double>(0, 0) * X.at<double>(0, 0) + X.at<double>(1, 0) * X.at<double>(1, 0) +
-//                        X.at<double>(2, 0) * X.at<double>(2, 0));
-//                cv::KeyPoint thisPoint(pt, 0, -1, responseVal, 0, -1);
-//                //mCurrentFrame.mPjcLaserPts.push_back(thisPoint);
-//                mCurrentFrame.mPjcLaserPts.push_back(pt);
-//            }
-//        }
-//        ///project undistorted laser points
-//        lsrPtNum = mCurrentFrame.mLaserPtsUndis.size();
-//        if (lsrPtNum > 0) {
-//            cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-//            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-//            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-//            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-//            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-//            P_rect_00.at<double>(2, 2) = 1;
-//            cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-//
-//            cv::Mat X(4, 1, CV_64F);
-//            cv::Mat Y(3, 1, CV_64F);
-//            for (int li = 0; li < lsrPtNum; li++) {
-//                // filter the not needed points
-//                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
-//                if (mCurrentFrame.mLaserPtsUndis[li][0] > maxX || mCurrentFrame.mLaserPtsUndis[li][0] < 0.0
-//                    || mCurrentFrame.mLaserPtsUndis[li][1] > maxY || mCurrentFrame.mLaserPtsUndis[li][1] < -maxY
-//                    || mCurrentFrame.mLaserPtsUndis[li][2] < minZ
-//                    || mCurrentFrame.mLaserPtsUndis[li][3] < 0.01) {
-//                    continue;
-//                }
-//
-//                X.at<double>(0, 0) = mCurrentFrame.mLaserPtsUndis[li][0];
-//                X.at<double>(1, 0) = mCurrentFrame.mLaserPtsUndis[li][1];
-//                X.at<double>(2, 0) = mCurrentFrame.mLaserPtsUndis[li][2];
-//                X.at<double>(3, 0) = 1;
-//
-//                cout << "X " << X << endl;
-//                Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-//                cout << "Y " << Y << endl;
-//                cv::Point pt;
-//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//                if (pt.x < 0 || pt.x > mImGray.cols || pt.y < 0 || pt.y > mImGray.rows) {
-//                    //cout<<X.t()<<" | ";cout<<pt<<endl;
-//                    continue;
-//                }
-//                //distance as response
-//                double responseVal = sqrt(
-//                        X.at<double>(0, 0) * X.at<double>(0, 0) + X.at<double>(1, 0) * X.at<double>(1, 0) +
-//                        X.at<double>(2, 0) * X.at<double>(2, 0));
-//                cv::KeyPoint thisPoint(pt, 0, -1, responseVal, 0, -1);
-//                mCurrentFrame.mPjcLaserPtsUndis.push_back(thisPoint);
-//            }
-//        }
-//    }
-
     /**
-    * project plane's 3D point to 2D frame
+    * project plane's 3D point to 2D frame for showing
     */
     void Tracking::ProjectPlanetoImage() {
         cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
@@ -566,7 +454,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
-        cout<<"Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
+        cout<<"Track Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
     ///Added Module --- project current frame plane points to image
     ProjectPlanetoImage();
 
@@ -873,6 +761,10 @@ void Tracking::Track()
     void Tracking::StereoInitialization() {
         if (mCurrentFrame.N > 500) {
             // Set Frame pose to the origin
+            //mCurrentFrame.SetPose(cv::Mat::eye(4, 4, CV_32F));
+            ///Added module
+            cv::Mat initPose = cv::Mat::eye(4,4,CV_32F);
+            initPose.at<float>(2,3)=-2.5;
             mCurrentFrame.SetPose(cv::Mat::eye(4, 4, CV_32F));
 
             // Create KeyFrame
@@ -897,46 +789,47 @@ void Tracking::Track()
                 }
             }
 
-            ///Added Module
+            ///Added Module---
             //Add Plane feature to Map
             for (size_t i = 0; i < mCurrentFrame.mvPlanes.size(); i++) {
-                //Wall constrain
-                double A = mCurrentFrame.mvPlanes[i].A;
-                double B = mCurrentFrame.mvPlanes[i].B;
-                double C = mCurrentFrame.mvPlanes[i].C;
-                double D = mCurrentFrame.mvPlanes[i].D;
-                if ((abs(abs(A) - 1) + abs(abs(B) - 0) + abs(abs(C) - 0)) < 0.1) {
-                    if (A > 0)
-                        mCurrentFrame.mvPlanes[i].A = 1;
-                    else
-                        mCurrentFrame.mvPlanes[i].A = -1;
-                    mCurrentFrame.mvPlanes[i].B = 0;
-                    mCurrentFrame.mvPlanes[i].C = 0;
-                }
-                if ((abs(abs(A) - 0) + abs(abs(B) - 1) + abs(abs(C) - 0)) < 0.1) {
-                    if (B > 0)
-                        mCurrentFrame.mvPlanes[i].B = 1;
-                    else
-                        mCurrentFrame.mvPlanes[i].B = -1;
-                    mCurrentFrame.mvPlanes[i].A = 0;
-                    mCurrentFrame.mvPlanes[i].C = 0;
-                }
-                if ((abs(abs(A) - 0) + abs(abs(B) - 0) + abs(abs(C) - 1)) < 0.1) {
-                    if (C > 0)
-                        mCurrentFrame.mvPlanes[i].C = 1;
-                    else
-                        mCurrentFrame.mvPlanes[i].C = -1;
-                    mCurrentFrame.mvPlanes[i].B = 0;
-                    mCurrentFrame.mvPlanes[i].A = 0;
-                }
-                mCurrentFrame.mvPlanes[i].Norm2Angle();
-                mCurrentFrame.mvPlanes[i].NormD2CP();
+//                //Wall constrain - Vertical and Horizontal
+//                double A = mCurrentFrame.mvPlanes[i].A;
+//                double B = mCurrentFrame.mvPlanes[i].B;
+//                double C = mCurrentFrame.mvPlanes[i].C;
+//                double D = mCurrentFrame.mvPlanes[i].D;
+//                if ((abs(abs(A) - 1) + abs(abs(B) - 0) + abs(abs(C) - 0)) < 0.1) {
+//                    if (A > 0)
+//                        mCurrentFrame.mvPlanes[i].A = 1;
+//                    else
+//                        mCurrentFrame.mvPlanes[i].A = -1;
+//                    mCurrentFrame.mvPlanes[i].B = 0;
+//                    mCurrentFrame.mvPlanes[i].C = 0;
+//                }
+//                if ((abs(abs(A) - 0) + abs(abs(B) - 1) + abs(abs(C) - 0)) < 0.1) {
+//                    if (B > 0)
+//                        mCurrentFrame.mvPlanes[i].B = 1;
+//                    else
+//                        mCurrentFrame.mvPlanes[i].B = -1;
+//                    mCurrentFrame.mvPlanes[i].A = 0;
+//                    mCurrentFrame.mvPlanes[i].C = 0;
+//                }
+//                if ((abs(abs(A) - 0) + abs(abs(B) - 0) + abs(abs(C) - 1)) < 0.1) {
+//                    if (C > 0)
+//                        mCurrentFrame.mvPlanes[i].C = 1;
+//                    else
+//                        mCurrentFrame.mvPlanes[i].C = -1;
+//                    mCurrentFrame.mvPlanes[i].B = 0;
+//                    mCurrentFrame.mvPlanes[i].A = 0;
+//                }
+//                mCurrentFrame.mvPlanes[i].Norm2Angle();
+//                mCurrentFrame.mvPlanes[i].NormD2CP();
                 MapPlane *newMapPlane = new MapPlane(mCurrentFrame.mvPlanes[i], pKFini, mpMap);
                 cout << "Map add plane " << newMapPlane->A << " " << newMapPlane->B << " " << newMapPlane->C << " "<< newMapPlane->D
                      << " PI " << newMapPlane->PI0 << " " << newMapPlane->PI1 << " "<< newMapPlane->PI2
                      << " globalID "<< newMapPlane->mnId << endl;
                 mpMap->AddMapPlane(newMapPlane);
             }
+            ///---end
 
             cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
             cout << "New map created with " << mpMap->GetMapPlaneNum() << " planes" << endl;
@@ -950,7 +843,7 @@ void Tracking::Track()
             mvpLocalKeyFrames.push_back(pKFini);
             mvpLocalMapPoints = mpMap->GetAllMapPoints();
             mpReferenceKF = pKFini;
-            //? CurFrame.RefKF = itslef?
+            //CurFrame.RefKF = itslef
             mCurrentFrame.mpReferenceKF = pKFini;
 
             mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
@@ -1353,7 +1246,7 @@ void Tracking::CheckReplacedInLastFrame()
 //            cout<<"map Plane "<<mapPlanes[plni]->A<<" "<<mapPlanes[plni]->B<<" "<<mapPlanes[plni]->C<<" "<<mapPlanes[plni]->D<<endl;
             ///[nx',ny',nz']^T = R * [nx,ny,nz]^T;
             auto n_proj = rotation_matrix * n_world;
-//            cout<<"projected Plane "<<n_proj[0]<<" "<<n_proj[1]<<" "<<n_proj[2];
+            cout<<"projected Plane "<<n_proj[0]<<" "<<n_proj[1]<<" "<<n_proj[2];
             ///d' = d - t *dot* [nx',ny',nz']^T;
             auto d_proj = -translation_vector[0] * n_proj[0]
                           - translation_vector[1] * n_proj[1]
@@ -1448,7 +1341,7 @@ void Tracking::CheckReplacedInLastFrame()
      * @brief Search Map Plane PI and Local Plane PI pairs
      * @param map
      * @param curFrame
-     * @param matchPlanes
+     * @param matchPlanes pairs <local index - map plane ID>
      * @param disThres
      * @return pair number
      */
@@ -1488,42 +1381,49 @@ void Tracking::CheckReplacedInLastFrame()
     int Tracking::SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres) {
         ///Step1 Got current pose guessing
         cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
-        Eigen::Matrix4d Tcw_matrix;
+        Eigen::Matrix4f Tcw_matrix;
         Tcw_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2), Tcw.at<float>(0, 3),
                 Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
                 Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
                 Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
-        Eigen::Matrix3d rotation_matrix;
+//        cout<<Tcw_matrix<<endl;
+        Eigen::Matrix3f rotation_matrix;
         rotation_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2),
                 Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2),
                 Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2);
-        Eigen::Vector3d translation_vector;
+        Eigen::Vector3f translation_vector;
         translation_vector << Tcw.at<float>(0, 3), Tcw.at<float>(1, 3), Tcw.at<float>(2, 3);
 //        cout << "mVelocity" << endl << mVelocity << endl;
 //        cout << "mLastFrame" << endl << mLastFrame.mTcw << endl;
 //        cout << "Tcw" << endl << Tcw << endl;
         ///Step2 Transfer from Map to Cur Frame
         vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
-        vector<Eigen::Vector3d> pjtPlanes;
+        vector<Eigen::Vector4d> pjtPlanes;
         pjtPlanes.resize(mapPlanes.size());
         for (size_t plni = 0; plni < mapPlanes.size(); plni++) {
 //            cout<<"map plane ID "<<mapPlanes[plni]->mnId<<" ";
-            Eigen::Vector3d PI_world(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2);
-            Eigen::Vector3d n_world = PI_world / PI_world.norm();
-            double d_world = PI_world.norm();
-//            cout << "PI world " << PI_world.transpose() << " | n world " << n_world.transpose() << " | d world " << d_world
-//                 << endl;
-            ///[xl,yl,zl]^T = R^L_A * nA
-            Eigen::Vector3d n_proj = rotation_matrix * n_world;
-//            cout << "n_proj " << n_proj.transpose();
-            ///dl = - (nA * P^A_L) + dA
-            Eigen::Vector3d t_A_L = Tcw_matrix.inverse().block<3, 1>(0, 3);
-            auto d_proj = d_world - (t_A_L).dot(n_world);
-//            cout << " | d_proj " << d_proj << endl;
-            ///PI' = nL * dL;
-            Eigen::Vector3d PI_proj = (n_proj) * (d_proj);
-//            cout << "PI_proj " << PI_proj.transpose() << endl;
-            pjtPlanes[plni] = PI_proj;
+            Eigen::Vector4f PI_world(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2, 1);
+            ///Option 1 PI way
+            Eigen::Vector4f PI_proj = Tcw_matrix * PI_world;
+            cout<<"PI_proj "<<PI_proj.transpose()<<endl;
+//            cout<<"double "<<PI_proj.cast<double>().transpose()<<endl;
+            pjtPlanes[plni] = PI_proj.cast<double>();
+            ///Option 2 PI-norm-D way
+//            Eigen::Vector3d n_world = PI_world / PI_world.norm();
+//            double d_world = PI_world.norm();
+////            cout << "PI world " << PI_world.transpose() << " | n world " << n_world.transpose() << " | d world " << d_world
+////                 << endl;
+//            ///[xl,yl,zl]^T = R^L_A * nA
+//            Eigen::Vector3d n_proj = rotation_matrix * n_world;
+////            cout << "n_proj " << n_proj.transpose();
+//            ///dl = - (nA * P^A_L) + dA
+//            Eigen::Vector3d t_A_L = Tcw_matrix.inverse().block<3, 1>(0, 3);
+//            auto d_proj = d_world - (t_A_L).dot(n_world);
+////            cout << " | d_proj " << d_proj << endl;
+//            ///PI' = nL * dL;
+//            Eigen::Vector3d PI_proj = (n_proj) * (d_proj);
+////            cout << "PI_proj " << PI_proj.transpose() << endl;
+//            pjtPlanes[plni] = PI_proj;
         }
         ///Step3 Pair projected map planes and current frame planes
         int foundNum = 0;
@@ -1533,7 +1433,8 @@ void Tracking::CheckReplacedInLastFrame()
             int minPlaneIndex = -1;
             bool found = false;
             for (size_t mapPlnIndex = 0; mapPlnIndex < pjtPlanes.size(); mapPlnIndex++) {
-                Eigen::Vector3d diff_vector = curFrame.mvPlanes[localIndex].PI - pjtPlanes[mapPlnIndex];
+                Eigen::Vector3d pjtPlane(pjtPlanes[mapPlnIndex][0], pjtPlanes[mapPlnIndex][1],pjtPlanes[mapPlnIndex][2]);
+                Eigen::Vector3d diff_vector = curFrame.mvPlanes[localIndex].PI - pjtPlane;
                 if (diff_vector.norm() < minDis && diff_vector.norm() < disThres) {
                     minDis = diff_vector.norm();
                     minPlaneID = mapPlanes[mapPlnIndex]->mnId;
@@ -1599,13 +1500,12 @@ void Tracking::CheckReplacedInLastFrame()
             }
         }
 
-//        ///Added Module
-//        vector<int> matchPlanes;
-//        //cout<<"search plane ---------------------"<<endl;
-////        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes,15,0.3);
-//        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes, 10);
-//        if (nplnmatches > 0)
-//            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+        ///Added Module---
+        vector<int> matchPlanes;
+        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes, 10);
+        if (nplnmatches >= 2)
+            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+        ///---end
 
         return nmatchesMap >= 10;
     }
@@ -1761,11 +1661,12 @@ bool Tracking::TrackWithMotionModel()
         }
     }
 
-//    ///Added Module
-//    vector<int> matchPlanes;
-//    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, matchPlanes, 3);
-//    if (nplnmatches >= 2)
-//        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+    ///Added Module
+    vector<int> matchPlanes;
+    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, matchPlanes, 1);
+    cout<<"plane match num "<<nplnmatches<<endl;
+    if (nplnmatches >= 2)
+        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
 
     //纯跟踪模式以匹配数目来判断是否跟踪成功
     if(mbOnlyTracking)

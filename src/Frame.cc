@@ -173,14 +173,10 @@ namespace ORB_SLAM2
 
         UndistortKeyPoints();
 
-        ///Added Module
-        // Set no stereo information
-        //MonoCular does not need right camera infor
-        mvuRight = vector<float>(N, -1);
-        mvDepth = vector<float>(N, -1);
-        //restore depth for keypoint
-        //ComputeStereoFromRGBD(imDepth);
-        ComputeStereoFromRGBD_ICLNUIM(imDepth);
+        ComputeStereoFromRGBD(imDepth);
+
+        ///Added Module ---
+        //set fx fy cx fy for unstore 3d points
         fx = K.at<float>(0, 0);
         fy = K.at<float>(1, 1);
         cx = K.at<float>(0, 2);
@@ -191,8 +187,7 @@ namespace ORB_SLAM2
         ComputeRGBDPoints(imGray, imDepth);
         ///Find Plane
         RegionGrowing();
-        //cout<<"found "<<mvPlanes.size()<<" plane "<<endl;
-        ///Fix depth of Plane Point
+        ///--- end
 
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         mvbOutlier = vector<bool>(N, false);
@@ -1000,7 +995,7 @@ namespace ORB_SLAM2
     }
 
     /**
-     * Added Module, transfer the input depth image and RGB image to 3D points
+     * Added Module, transfer the whole input depth image and RGB image to 3D point points
      * @param imGray
      * @param imDepth
      */
@@ -1018,23 +1013,6 @@ namespace ORB_SLAM2
                 mvPtRGBD.push_back(P3d);
             }
         }
-//        if(mvKeysUn.size()>0){
-//            for(int i=0;i<mvKeysUn.size();i++)
-//            {
-//                const float &v = mvKeysUn[i].pt.y;
-//                const float &u = mvKeysUn[i].pt.x;
-//                float u_u0_by_fx = (u-cx) / fx;
-//                float v_v0_by_fy = (v-cy) / fy;
-//                int u_dis = int(mvKeys[i].pt.x);
-//                int v_dis = int(mvKeys[i].pt.y);
-//                float d = imDepth.ptr<float>(v_dis)[u_dis];
-//                cv::Point3d P3d;
-//                P3d.x = (u_u0_by_fx) * (d);
-//                P3d.y = (v_v0_by_fy) * (d);
-//                P3d.z = d;
-//                mvKeyPt3D.push_back(P3d);
-//            }
-//        }
     }
 
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
@@ -1058,26 +1036,26 @@ namespace ORB_SLAM2
             }
         }
     }
-    void Frame::ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth)
-    {
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
-
-        for(int i=0; i<N; i++)
-        {
-            const cv::KeyPoint &kp = mvKeys[i];
-            const cv::KeyPoint &kpU = mvKeysUn[i];
-
-            const float &v = kp.pt.y;
-            const float &u = kp.pt.x;
-
-            const float d = imDepth.at<float>(v,u);
-            if (d > 0) {
-                mvDepth[i] = d;
-                mvuRight[i] = kpU.pt.x - mbf / d;
-            }
-        }
-    }
+//    void Frame::ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth)
+//    {
+//        mvuRight = vector<float>(N,-1);
+//        mvDepth = vector<float>(N,-1);
+//
+//        for(int i=0; i<N; i++)
+//        {
+//            const cv::KeyPoint &kp = mvKeys[i];
+//            const cv::KeyPoint &kpU = mvKeysUn[i];
+//
+//            const float &v = kp.pt.y;
+//            const float &u = kp.pt.x;
+//
+//            const float d = imDepth.at<float>(v,u);
+//            if (d > 0) {
+//                mvDepth[i] = d;
+//                mvuRight[i] = kpU.pt.x - mbf / d;
+//            }
+//        }
+//    }
 
     /**
      * given index of keypoint, return 3d point under World Coordinate System
@@ -1130,7 +1108,7 @@ namespace ORB_SLAM2
         pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(RGBDCloud);
-        sor.setLeafSize(0.05f,0.05f,0.05f);
+        sor.setLeafSize(0.03f,0.03f,0.03f);
         sor.filter(*RGBDCloudDownSample);
         //cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
         //estimating normals for each point
@@ -1139,7 +1117,7 @@ namespace ORB_SLAM2
         pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
         normal_estimator.setSearchMethod(tree);
         normal_estimator.setInputCloud(RGBDCloudDownSample);
-        normal_estimator.setKSearch(50);
+        normal_estimator.setKSearch(100);
         normal_estimator.compute(*normals);
         //region growing
         pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
@@ -1216,14 +1194,14 @@ namespace ORB_SLAM2
         foundPlane.D = coefficients->values[3];
         /** AX+BY+CZ+D=0
          *  change to form AX+BY+CZ = -D
-         *  And make sure (-D)>0 to adjust the Norm direction
+         *  And make sure (-D)>0 to adjust the Norm direction?
          */
-        if (foundPlane.D > 0) {
-            foundPlane.A = -foundPlane.A;
-            foundPlane.B = -foundPlane.B;
-            foundPlane.C = -foundPlane.C;
-            foundPlane.D = -foundPlane.D;
-        }
+//        if (foundPlane.D > 0) {
+//            foundPlane.A = -foundPlane.A;
+//            foundPlane.B = -foundPlane.B;
+//            foundPlane.C = -foundPlane.C;
+//            foundPlane.D = -foundPlane.D;
+//        }
         double sumX = 0, sumY = 0, sumZ = 0;
         for (int i = 0; i < inliers->indices.size(); i++) {
             double x = cloud->points[inliers->indices[i]].x;
@@ -1297,16 +1275,17 @@ namespace ORB_SLAM2
      * PI = norm * distance
      */
     void Plane::NormD2CP() {
-        if (this->D < 0) {
-            this->A = -this->A;
-            this->B = -this->B;
-            this->C = -this->C;
-            this->D = -this->D;
-        }
-        if (this->D > 0) {
-            PI[0] = this->A * this->D;
-            PI[1] = this->B * this->D;
-            PI[2] = this->C * this->D;
-        }
+//        if (this->D < 0) {
+//            this->A = -this->A;
+//            this->B = -this->B;
+//            this->C = -this->C;
+//            this->D = -this->D;
+//        }
+//        if (this->D > 0) {
+        PI[0] = this->A * -this->D;
+        PI[1] = this->B * -this->D;
+        PI[2] = this->C * -this->D;
+//        }
+        cout <<"local Plane PI : "<< PI[0] << " " << PI[1] << " " << PI[2] << endl;
     }
 } //namespace ORB_SLAM

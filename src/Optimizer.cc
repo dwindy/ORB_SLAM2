@@ -385,11 +385,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType;
         auto *solverinstance = new LinearSolverType();
         auto *blockersolverinstance = new BlockSolverType(solverinstance);
-        auto solver = new g2o::OptimizationAlgorithmLevenberg(blockersolverinstance);
-        //auto solver = new g2o::OptimizationAlgorithmGaussNewton(blockersolverinstance);
+        //auto solver = new g2o::OptimizationAlgorithmLevenberg(blockersolverinstance);
+        auto solver = new g2o::OptimizationAlgorithmGaussNewton(blockersolverinstance);
         g2o::SparseOptimizer optimizer;//sparse?
         optimizer.setAlgorithm(solver);
-        optimizer.setVerbose(true);
+        //optimizer.setVerbose(true);
 
         //Set Frame Pose Vertex
         g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
@@ -400,15 +400,37 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 //        vSE3->setEstimate(Converter::toSE3Quat(play));
 //        cout<<"vSE3 estimeta "<<vSE3->estimate()<<endl;
         vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
-//        if(pFrame->mnId==50)
-//        {
+        if(pFrame->mnId==120)
+        {
+            ofstream writer;
+            writer.open("frame150localplanes.txt");
             cout << "pose before plane optimization " << endl;
             cout << pFrame->mTcw << endl;
             vector<float> q1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
             cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
                  << " " << pFrame->mTcw.at<float>(0, 3) << " " << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3)
                  << " " << q1[0] << " " << q1[1] << " " << q1[2] << " "<< q1[3] << endl;
-//        }
+            for (size_t i = 0; i < pFrame->mvPlanes.size(); i++) {
+                if (matchPlanes[i] >= 0) {
+                    writer << pFrame->mvPlanes[i].PI[0] << " " << pFrame->mvPlanes[i].PI[1] << " "<< pFrame->mvPlanes[i].PI[2] << endl;
+                }
+            }
+            writer.close();
+
+            writer.open("frame150mapplanes.txt");
+            vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
+            for (size_t i = 0; i < pFrame->mvPlanes.size(); i++) {
+                if (matchPlanes[i] >= 0) {
+                    int mapIndex = matchPlanes[i];
+                    for (int j = 0; j < mapPlanes.size(); j++) {
+                        if (mapPlanes[j]->mnId == mapIndex) {
+                            writer << mapPlanes[j]->PI0 << " " << mapPlanes[j]->PI1 << " " << mapPlanes[j]->PI2 << endl;
+                        }
+                    }
+                }
+            }
+            writer.close();
+        }
 
 
         vSE3->setId(0);
@@ -494,37 +516,43 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 planeVertexID.push_back(-1);
         }
 
-        cout<<"Edge error : "<<endl;
-        for (size_t i = 0; i < all3d3dEdges.size(); i++) {
-            all3d3dEdges[i]->computeError();
-            cout<<all3d3dEdges[i]->chi2()<<" ";
-        }
-        cout<<endl;
+//        cout<<"Edge error : "<<endl;
+//        for (size_t i = 0; i < all3d3dEdges.size(); i++) {
+//            all3d3dEdges[i]->computeError();
+//            cout<<all3d3dEdges[i]->chi2()<<" ";
+//        }
+//        cout<<endl;
 
         //run optimizer
         optimizer.initializeOptimization();
         optimizer.optimize(10);
 
-        cout<<"Edge error : "<<endl;
-        for (size_t i = 0; i < all3d3dEdges.size(); i++) {
-            all3d3dEdges[i]->computeError();
-            cout<<all3d3dEdges[i]->chi2()<<" ";
-        }
-        cout<<endl;
+//        cout<<"Edge error : "<<endl;
+//        for (size_t i = 0; i < all3d3dEdges.size(); i++) {
+//            all3d3dEdges[i]->computeError();
+//            cout<<all3d3dEdges[i]->chi2()<<" ";
+//        }
+//        cout<<endl;
 
         // Recover optimized pose and return number of inliers
         g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
         g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
         cv::Mat pose = Converter::toCvMat(SE3quat_recov);
-//        if (pFrame->mnId == 50) {
+        if (pFrame->mnId == 120) {
             cout << "after plane optimize" << endl;
             cout << pose << endl;
-            vector<float> q = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
+            vector<float> qcw2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
             cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
                  << " " << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3)
-                 << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
-//            //
-//        }
+                 << " " << qcw2[0] << " " << qcw2[1] << " " << qcw2[2] << " " << qcw2[3] << endl;
+            ofstream writer;
+            writer.open("150frameRGBD.txt");
+            for (int i = 0; i < pFrame->mvPtRGBD.size(); i++) {
+                writer << pFrame->mvPtRGBD[i].x << " " << pFrame->mvPtRGBD[i].y << " " << pFrame->mvPtRGBD[i].z << endl;
+            }
+            writer.close();
+            int pause = 0;
+        }
         //pFrame->SetPose(pose);
     }
 
@@ -566,16 +594,23 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
     vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
 
-//    if (pFrame->mnId == 50) {
-//        cout << "pose before pose optimization " << endl;
-//        cout << pFrame->mTcw << endl;
-//        vector<float> q1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
-//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | " << pFrame->mTcw.at<float>(0, 3) << " "
-//             << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3) << " | " << q1[0] << " " << q1[1]
-//             << " "
-//             << q1[2] << " "
-//             << q1[3] << endl;
-//    }
+    if (pFrame->mnId == 120) {
+        ofstream writer("frame150points.txt");
+        cout << "pose before pose optimization " << endl;
+        cout << pFrame->mTcw << endl;
+        vector<float> qcw1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
+        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
+             << " | " << pFrame->mTcw.at<float>(0, 3) << " " << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3)
+             << " | " << qcw1[0] << " " << qcw1[1] << " " << qcw1[2] << " " << qcw1[3] << endl;
+        for (int i = 0; i < pFrame->N; i++) {
+            MapPoint *pMP = pFrame->mvpMapPoints[i];
+            if (pMP) {
+                writer << pMP->GetWorldPos().at<float>(0) << " " << pMP->GetWorldPos().at<float>(1) << " "
+                       << pMP->GetWorldPos().at<float>(2) << endl;
+            }
+        }
+        writer.close();
+    }
 
     //设置ID
     vSE3->setId(0);
@@ -787,24 +822,14 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
     cv::Mat pose = Converter::toCvMat(SE3quat_recov);
     pFrame->SetPose(pose);
-//    if (pFrame->mnId == 50) {
-//        cout << "points" << endl;
-//        int printCount = 0;
-//        for (int i = 0; i < pFrame->mvpMapPoints.size(); i++) {
-//            if (pFrame->mvpMapPoints[i]) {
-//                cout << pFrame->mvpMapPoints[i]->GetWorldPos() << endl;
-//                printCount++;
-//            }
-//            if (printCount >= 3)
-//                break;
-//        }
-//        cout << "pose after pose optimization " << endl;
-//        cout << pose << endl;
-//        vector<float> q2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
-//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | "
-//             << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
-//             << q2[0] << " " << q2[1] << " " << q2[2] << " " << q2[3] << endl;
-//    }
+    if (pFrame->mnId ==120) {
+        cout << "pose after pose optimization " << endl;
+        cout << pose << endl;
+        vector<float> qcw2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
+        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | "
+             << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
+             << qcw2[0] << " " << qcw2[1] << " " << qcw2[2] << " " << qcw2[3] << endl;
+    }
     return nInitialCorrespondences-nBad;
 }
 
