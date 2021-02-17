@@ -157,6 +157,7 @@ public:
     ///Added Module
     void ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth);
     void ComputeRGBDPoints(const cv::Mat &imGray, const cv::Mat &imDepth);
+    void ComputeKeyPoint3D(const cv::Mat &imDepth);
     int RegionGrowing();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput);
     void PointOnPlane();

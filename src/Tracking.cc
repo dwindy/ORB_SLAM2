@@ -1387,10 +1387,8 @@ void Tracking::CheckReplacedInLastFrame()
                 Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
                 Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
 //        cout<<Tcw_matrix<<endl;
-        Eigen::Matrix3f rotation_matrix;
-        rotation_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2),
-                Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2),
-                Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2);
+        Eigen::Matrix4f Twc_matrix = Tcw_matrix.inverse();
+        Eigen::Matrix3f rotation_matrix = Tcw_matrix.block<3,3>(0,0);
         Eigen::Vector3f translation_vector;
         translation_vector << Tcw.at<float>(0, 3), Tcw.at<float>(1, 3), Tcw.at<float>(2, 3);
 //        cout << "mVelocity" << endl << mVelocity << endl;
@@ -1401,29 +1399,28 @@ void Tracking::CheckReplacedInLastFrame()
         vector<Eigen::Vector4d> pjtPlanes;
         pjtPlanes.resize(mapPlanes.size());
         for (size_t plni = 0; plni < mapPlanes.size(); plni++) {
-//            cout<<"map plane ID "<<mapPlanes[plni]->mnId<<" ";
-            Eigen::Vector4f PI_world(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2, 1);
+//            cout<<"map plane ID "<<mapPlanes[plni]->mnId<<" : "<<mapPlanes[plni]->PI0<<" "<<mapPlanes[plni]->PI1<<" "<<mapPlanes[plni]->PI2<<endl;
+            Eigen::Vector4f PI_world4(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2, 1);
             ///Option 1 PI way
-            Eigen::Vector4f PI_proj = Tcw_matrix * PI_world;
-            cout<<"PI_proj "<<PI_proj.transpose()<<endl;
-//            cout<<"double "<<PI_proj.cast<double>().transpose()<<endl;
-            pjtPlanes[plni] = PI_proj.cast<double>();
+//            Eigen::Vector4f PI_proj = Tcw_matrix * PI_world;
+//            cout<<"PI_proj "<<PI_proj.transpose()<<endl;
+////            cout<<"double "<<PI_proj.cast<double>().transpose()<<endl;
+//            pjtPlanes[plni] = PI_proj.cast<double>();
+
             ///Option 2 PI-norm-D way
-//            Eigen::Vector3d n_world = PI_world / PI_world.norm();
-//            double d_world = PI_world.norm();
-////            cout << "PI world " << PI_world.transpose() << " | n world " << n_world.transpose() << " | d world " << d_world
-////                 << endl;
-//            ///[xl,yl,zl]^T = R^L_A * nA
-//            Eigen::Vector3d n_proj = rotation_matrix * n_world;
-////            cout << "n_proj " << n_proj.transpose();
-//            ///dl = - (nA * P^A_L) + dA
-//            Eigen::Vector3d t_A_L = Tcw_matrix.inverse().block<3, 1>(0, 3);
-//            auto d_proj = d_world - (t_A_L).dot(n_world);
-////            cout << " | d_proj " << d_proj << endl;
-//            ///PI' = nL * dL;
-//            Eigen::Vector3d PI_proj = (n_proj) * (d_proj);
-////            cout << "PI_proj " << PI_proj.transpose() << endl;
-//            pjtPlanes[plni] = PI_proj;
+            Eigen::Vector3f PI_world = PI_world4.block<3,1>(0,0);
+            Eigen::Vector3f n_world = PI_world / PI_world.norm(); // norm = PI/|PI|
+            double d_world = PI_world.norm();// d = |PI|
+//            cout<<" T^A_L "<<endl<<TAL<<endl;
+            Eigen::Matrix<float,3,1> tranlate_AL = Twc_matrix.block<3,1>(0,3);
+            ///PI' = (R^L_A * n^A) * (d^A - P^A_L.translate * n^A)
+            Eigen::Vector3f PI_proj = (rotation_matrix * n_world)*(d_world - tranlate_AL.transpose()*n_world );
+//            cout <<" PI world "<<PI_world[0]<<" "<<PI_world[1]<<" "<<PI_world[2]<<" | ";
+//            cout << "PI proj " << PI_proj.transpose() <<" | ";
+//            cout <<" PI ober "<<_measurement[0]<<" "<<_measurement[1]<<" "<<_measurement[2]<<" | ";
+            //_error = PI_proj - _measurement; //paper is project - measurement
+            pjtPlanes[plni] = Eigen::Vector4d(PI_proj[0],PI_proj[1],PI_proj[2],1);
+//            cout<<"pjt Plane "<<PI_proj[0]<<" "<< PI_proj[1]<<" "<<PI_proj[2]<<endl;
         }
         ///Step3 Pair projected map planes and current frame planes
         int foundNum = 0;
@@ -1446,7 +1443,8 @@ void Tracking::CheckReplacedInLastFrame()
                 foundNum++;
             matchPlanes.push_back(minPlaneID);
 //            cout << "cur plane " << localIndex << " PI : " << curFrame.mvPlanes[localIndex].PI.transpose()
-//                 << " push back map plane id : " << minPlaneID << " " << pjtPlanes[minPlaneIndex].transpose() << endl;
+//                 << " push back map plane id : " << minPlaneID << " " << pjtPlanes[minPlaneIndex].transpose()
+//                 <<" error "<<minDis<< endl;
         }
         return foundNum;
     }
@@ -1502,9 +1500,9 @@ void Tracking::CheckReplacedInLastFrame()
 
         ///Added Module---
         vector<int> matchPlanes;
-        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes, 10);
-        if (nplnmatches >= 2)
-            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes, 0.5);
+//        if (nplnmatches >= 2)
+//            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
         ///---end
 
         return nmatchesMap >= 10;
@@ -1663,10 +1661,14 @@ bool Tracking::TrackWithMotionModel()
 
     ///Added Module
     vector<int> matchPlanes;
-    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, matchPlanes, 1);
+    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, matchPlanes, 0.3);
     cout<<"plane match num "<<nplnmatches<<endl;
     if (nplnmatches >= 2)
         Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+//    if (nplnmatches >= 2)
+//        Optimizer::Point3dOptimization(mpMap, &mCurrentFrame, matchPlanes);
+    ///end---
+
 
     //纯跟踪模式以匹配数目来判断是否跟踪成功
     if(mbOnlyTracking)
