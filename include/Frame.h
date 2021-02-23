@@ -90,7 +90,7 @@ class KeyFrame;
         vector<PtRGBD> planePts;
         vector<int> keyPointList; //todo store keypoint in this plane
         vector<int> mindices;     //todo indexs of keypoint in image
-        std::vector<MapPoint *> vpMapPointMatches; //todo pointer to Map point that contained in this plane
+        std::vector<MapPoint *> mvMappoints; //todo pointer to Map point that contained in this plane
     };
 
 class Frame
@@ -158,6 +158,7 @@ public:
     void ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth);
     void ComputeRGBDPoints(const cv::Mat &imGray, const cv::Mat &imDepth);
     void ComputeKeyPoint3D(const cv::Mat &imDepth);
+    void RegisterFeature2Plane(double thres);
     int RegionGrowing();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput);
     void PointOnPlane();
@@ -188,6 +189,8 @@ public:
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
     //vector<vector<cv::Point>> planNorms;
     std::vector<Plane> mvPlanes;
+    std::vector<Plane> mvCandidateMapPlanes;
+    std::vector<int> matchPlanes;//local index to Map Plane ID
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;
@@ -219,7 +222,8 @@ public:
     std::vector<cv::KeyPoint> mvKeysUn;
     ///Added Module
     std::vector<cv::Point3d> mvPtRGBD; //All 3d Points
-    std::vector<cv::Point3d> mvKeyPt3D;
+    std::vector<cv::Point3d> mvKeyPt3D; //keypoint 3D coordinate
+    std::vector<pair<MapPoint*,int>> mvMapPoint2Plane;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.

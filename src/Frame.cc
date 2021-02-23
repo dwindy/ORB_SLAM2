@@ -176,7 +176,7 @@ namespace ORB_SLAM2
         ComputeStereoFromRGBD(imDepth);
 
         ///Added Module ---
-        //set fx fy cx fy for unstore 3d points
+        //set fx fy cx fy for unstore 3d points, because in original code, this will only done at first frame
         fx = K.at<float>(0, 0);
         fy = K.at<float>(1, 1);
         cx = K.at<float>(0, 2);
@@ -1034,6 +1034,39 @@ namespace ORB_SLAM2
             P3d.z = d;
             mvKeyPt3D.push_back(P3d);
         }
+    }
+
+    void Frame::RegisterFeature2Plane(double disThres) {
+        //resize vector<pair>
+        mvMapPoint2Plane.resize(mvpMapPoints.size());
+        for (size_t i = 0; i < mvpMapPoints.size(); i++) {
+            mvMapPoint2Plane[i] = pair<MapPoint*, int>(static_cast<MapPoint*>(NULL), -1);
+            //only when map point exist
+            if (mvpMapPoints[i]) {
+                MapPoint *thisPt = mvpMapPoints[i];
+                float x = thisPt->GetWorldPos().at<float>(0, 0);
+                float y = thisPt->GetWorldPos().at<float>(1, 0);
+                float z = thisPt->GetWorldPos().at<float>(2, 0);
+                int closePlaneIndex = -1;
+                double minDistance = 65535;
+                for (size_t j = 0; j < mvPlanes.size(); j++) {
+                    Plane *thisPln = &mvPlanes[j];
+                    double distance =
+                            abs(thisPln->A * x + thisPln->B * y + thisPln->C * z + thisPln->D) /
+                            sqrt(thisPln->A * thisPln->A + thisPln->B * thisPln->B + thisPln->C * thisPln->C);
+                    if (distance < disThres && distance < minDistance) {
+                        minDistance = distance;
+                        closePlaneIndex = j;
+                    }
+                }
+                //founded
+                if (closePlaneIndex > -1) {
+                    mvMapPoint2Plane[i] = pair<MapPoint*, int>(mvpMapPoints[i], closePlaneIndex);
+                    mvPlanes[closePlaneIndex].mvMappoints.push_back(mvpMapPoints[i]);
+                }
+            }
+        }
+//        int pause = 0;
     }
 
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)

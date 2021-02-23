@@ -206,6 +206,7 @@ protected:
         float A,B,C,D;
         float phi,theta;
         double PI0,PI1,PI2;
+        std::vector<MapPoint *> mvMapPoints;
 
         long unsigned int mnId;
         static long unsigned int nNextId;

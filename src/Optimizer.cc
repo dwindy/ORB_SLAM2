@@ -147,7 +147,7 @@ public:
             ///PI' = (R^L_A * n^A) * (d^A - P^A_L.translate * n^A)
             Eigen::Vector3d PI_proj = (rotation_matrix * n_world) * (d_world - tranlate_AL.transpose() * n_world);
             cout << " PI world " << PI_world[0] << " " << PI_world[1] << " " << PI_world[2] << " | ";
-            cout << "PI proj " << PI_proj.transpose() << " | ";
+            cout << " PI proj " << PI_proj.transpose() << " | ";
             cout << " PI ober " << _measurement[0] << " " << _measurement[1] << " " << _measurement[2] << " | ";
             //_error = PI_proj - _measurement; //paper is project - measurement
             _error = _measurement - PI_proj;
@@ -431,8 +431,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType;
         auto *solverinstance = new LinearSolverType();
         auto *blockersolverinstance = new BlockSolverType(solverinstance);
-        //auto solver = new g2o::OptimizationAlgorithmLevenberg(blockersolverinstance);
-        auto solver = new g2o::OptimizationAlgorithmGaussNewton(blockersolverinstance);
+        auto solver = new g2o::OptimizationAlgorithmLevenberg(blockersolverinstance);
+        //auto solver = new g2o::OptimizationAlgorithmGaussNewton(blockersolverinstance);
         g2o::SparseOptimizer optimizer;//sparse?
         optimizer.setAlgorithm(solver);
         optimizer.setVerbose(true);
@@ -496,7 +496,9 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 //set map plane vertex
                 int mapPlaneID = matchPlanes[i];
                 int mapIndex = -1;
-                //cout<<"looking for "<<mapPlaneID<<" : ";
+                if (pFrame->mnId == 418) {
+                    cout << "looking for " << mapPlaneID << " : ";
+                }
                 for (size_t temp = 0; temp < mapPlanes.size(); temp++) {
                     if (mapPlanes[temp]->mnId == mapPlaneID)
                     {
@@ -508,6 +510,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
                 ///Set PlaneVertex
                 MapPlane *thisMapPlane = mapPlanes[mapIndex];
+                if (pFrame->mnId == 418) {cout<<" found "<<thisMapPlane->mnId<<endl;}
                 g2o::VertexSBAPointXYZ *newVertex = new g2o::VertexSBAPointXYZ();
                 newVertex->setEstimate(Eigen::Vector3d(thisMapPlane->PI0,thisMapPlane->PI1,thisMapPlane->PI2));
                 newVertex->setId(1 + PlaneVertexNum);
@@ -537,18 +540,26 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 PlaneVertexNum++;
                 edgeNum++;
                 //newEdge->printError();
+                if (pFrame->mnId == 418) {
+                    cout <<setprecision(6)<< "add new world plane vertex " << 1 + PlaneVertexNum << " : PI : " << thisMapPlane->PI0
+                         << " " << thisMapPlane->PI1 << " " << thisMapPlane->PI2 << " " << " map plane id "
+                         << thisMapPlane->mnId << endl;
+                    cout <<setprecision(6)<< "  edge observe " << pFrame->mvPlanes[i].PI.transpose() <<endl;
+//                    newEdge->printError();
+//                    cout<<" | chi2 "<<newEdge->chi2()<<endl;
+                }
 
             } else
                 planeVertexID.push_back(-1);
         }
-//        if (pFrame->mnId == 120) {
-//            cout << "Edge error : " << endl;
-//            for (size_t i = 0; i < all3d3dEdges.size(); i++) {
-////                all3d3dEdges[i]->computeError();
-//                all3d3dEdges[i]->printError();
-//                cout << "chi2 "<<all3d3dEdges[i]->chi2() <<endl;
-//            }
-//        }
+        if (pFrame->mnId == 418) {
+            cout << "Edge error : " << endl;
+            for (size_t i = 0; i < all3d3dEdges.size(); i++) {
+//                all3d3dEdges[i]->computeError();
+                all3d3dEdges[i]->printError();
+                cout << "chi2 " << all3d3dEdges[i]->chi2() << endl;
+            }
+        }
 
         //run optimizer
         optimizer.initializeOptimization();

@@ -685,7 +685,7 @@ void Tracking::Track()
                     }
             }
 
-            //*Step 7 清楚恒速模型中 updatelastframe中临时添加的mappoints（仅双目和rgbd）
+            //*Step 7 清除恒速模型中 updatelastframe中临时添加的mappoints（仅双目和rgbd）
             // Delete temporal MapPoints
             for(list<MapPoint*>::iterator lit = mlpTemporalPoints.begin(), lend =  mlpTemporalPoints.end(); lit!=lend; lit++)
             {
@@ -790,6 +790,7 @@ void Tracking::Track()
             }
 
             ///Added Module---
+            mCurrentFrame.RegisterFeature2Plane(0.1);
             //Add Plane feature to Map
             for (size_t i = 0; i < mCurrentFrame.mvPlanes.size(); i++) {
 //                //Wall constrain - Vertical and Horizontal
@@ -826,7 +827,7 @@ void Tracking::Track()
                 MapPlane *newMapPlane = new MapPlane(mCurrentFrame.mvPlanes[i], pKFini, mpMap);
                 cout << "Map add plane " << newMapPlane->A << " " << newMapPlane->B << " " << newMapPlane->C << " "<< newMapPlane->D
                      << " PI " << newMapPlane->PI0 << " " << newMapPlane->PI1 << " "<< newMapPlane->PI2
-                     << " globalID "<< newMapPlane->mnId << endl;
+                     << " globalID "<< newMapPlane->mnId << " with "<<newMapPlane->mvMapPoints.size()<<" map points."<<endl;
                 mpMap->AddMapPlane(newMapPlane);
             }
             ///---end
@@ -1346,26 +1347,32 @@ void Tracking::CheckReplacedInLastFrame()
      * @return pair number
      */
     int Tracking::SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float disThres) {
+        matchPlanes.resize(curFrame.mvPlanes.size());
         bool foundFlag = false;
         int foundNum = 0;
         vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
         for (size_t plni = 0; plni < curFrame.mvPlanes.size(); plni++) {
+            matchPlanes[plni] = -1;
             double minDistance = 65535;
             int minPlaneID = -1;
+            int minPlaneIndex = -1;
             for (size_t mapPlnIndex = 0; mapPlnIndex < mapPlanes.size(); mapPlnIndex++) {
-                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0,mapPlanes[mapPlnIndex]->PI1,mapPlanes[mapPlnIndex]->PI2);
+                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0, mapPlanes[mapPlnIndex]->PI1,
+                                          mapPlanes[mapPlnIndex]->PI2);
                 Eigen::Vector3d diffvector = mapVector - curFrame.mvPlanes[plni].PI;
                 if (diffvector.norm() < minDistance && diffvector.norm() < disThres) {
                     minDistance = diffvector.norm();
                     minPlaneID = mapPlanes[mapPlnIndex]->mnId;
                     foundFlag = true;
+                    minPlaneIndex = mapPlnIndex;
 //                    cout<<" diff vector "<<diffvector.transpose()<<" | "<<diffvector.norm()<<" | ";
 //                    cout<<" map "<<mapVector.transpose()<<" local "<<curFrame.mvPlanes[plni].PI.transpose()<<endl;
                 }
             }
-            if (foundFlag)
+            matchPlanes[plni]=minPlaneID;
+            if (foundFlag) {
                 foundNum++;
-            matchPlanes.push_back(minPlaneID);
+            }
         }
         return foundNum;
     }
@@ -1379,6 +1386,10 @@ void Tracking::CheckReplacedInLastFrame()
      * @return match number
      */
     int Tracking::SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres) {
+        bool print = false;
+        if (curFrame.mnId == 418)
+            print = true;
+
         ///Step1 Got current pose guessing
         cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
         Eigen::Matrix4f Tcw_matrix;
@@ -1432,19 +1443,35 @@ void Tracking::CheckReplacedInLastFrame()
             for (size_t mapPlnIndex = 0; mapPlnIndex < pjtPlanes.size(); mapPlnIndex++) {
                 Eigen::Vector3d pjtPlane(pjtPlanes[mapPlnIndex][0], pjtPlanes[mapPlnIndex][1],pjtPlanes[mapPlnIndex][2]);
                 Eigen::Vector3d diff_vector = curFrame.mvPlanes[localIndex].PI - pjtPlane;
+//                if (print) {
+//                    cout<<"cur plane "<<curFrame.mvPlanes[localIndex].PI.transpose()<<endl;
+//                    cout<<"pjt plane "<<pjtPlane.transpose()<<endl;
+//                    cout<<"dif plane "<<diff_vector.transpose()<<" error "<<diff_vector.norm()<<endl;
+//                }
                 if (diff_vector.norm() < minDis && diff_vector.norm() < disThres) {
                     minDis = diff_vector.norm();
                     minPlaneID = mapPlanes[mapPlnIndex]->mnId;
                     minPlaneIndex = mapPlnIndex;
                     found = true;
                 }
+
             }
-            if (found)
-                foundNum++;
             matchPlanes.push_back(minPlaneID);
+            if (found) {
+                foundNum++;
+            }
+            if (print) {
+                cout<<"---"<<endl;
+
+                cout<<setprecision(6)<<" cur plane "<<curFrame.mvPlanes[localIndex].PI.transpose()
+                    <<" | matched pjt  "<<pjtPlanes[minPlaneIndex][0]<<" "<<pjtPlanes[minPlaneIndex][1]<<" "<<pjtPlanes[minPlaneIndex][2]
+                    <<" | from map pln "<<minPlaneID<<" : "<<mapPlanes[minPlaneIndex]->mnId<<" "<<mapPlanes[minPlaneIndex]->PI0<<" "<<mapPlanes[minPlaneIndex]->PI1<<" "<<mapPlanes[minPlaneIndex]->PI2<<" with error "<<minDis<<endl;
+                int pause = 0;
+            }
 //            cout << "cur plane " << localIndex << " PI : " << curFrame.mvPlanes[localIndex].PI.transpose()
 //                 << " push back map plane id : " << minPlaneID << " " << pjtPlanes[minPlaneIndex].transpose()
 //                 <<" error "<<minDis<< endl;
+
         }
         return foundNum;
     }
@@ -1499,10 +1526,12 @@ void Tracking::CheckReplacedInLastFrame()
         }
 
         ///Added Module---
-        vector<int> matchPlanes;
-        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, matchPlanes, 0.5);
-//        if (nplnmatches >= 2)
-//            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+        //Register feature point with planes
+        mCurrentFrame.RegisterFeature2Plane(0.15);
+        //vector<int> matchPlanes;
+        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
+        if (nplnmatches >= 2)
+            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
         ///---end
 
         return nmatchesMap >= 10;
@@ -1660,11 +1689,12 @@ bool Tracking::TrackWithMotionModel()
     }
 
     ///Added Module
-    vector<int> matchPlanes;
-    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, matchPlanes, 0.3);
+    //Register feature point with planes
+    mCurrentFrame.RegisterFeature2Plane(0.15);
+    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
     cout<<"plane match num "<<nplnmatches<<endl;
     if (nplnmatches >= 2)
-        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, matchPlanes);
+        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
 //    if (nplnmatches >= 2)
 //        Optimizer::Point3dOptimization(mpMap, &mCurrentFrame, matchPlanes);
     ///end---
@@ -1853,6 +1883,90 @@ bool Tracking::NeedNewKeyFrame()
 }
 
 /**
+ * Added Module function
+ * 1. Prject Cur Plane to map
+ * 2. Check with existing map plane, co-visible feature point
+ * Check plane match states, add new map plane
+ */
+    void Tracking::createNewMapPlane() {
+        vector<MapPoint *> planeMapPoints;
+        ///Step 1 : fill up container with mappoints from all map planes
+        vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
+        for (size_t i = 0; i < mapPlanes.size(); i++) {
+//            cout << "map Plane " << mapPlanes[i]->PI0 << " " << mapPlanes[i]->PI1 << " " << mapPlanes[i]->PI2
+//                 << " with " << mapPlanes[i]->mvMapPoints.size() << endl;
+            for (size_t j = 0; j < mapPlanes[i]->mvMapPoints.size(); j++) {
+                planeMapPoints.push_back(mapPlanes[i]->mvMapPoints[j]);
+            }
+        }
+        ///Step 2 : compare candidate plane with all plane map points
+        ///todo record the matched number. then given a threshold. in perfect case, the number should always be zero
+        for (size_t i = 0; i < mCurrentFrame.matchPlanes.size(); i++) {
+            //pick up a un-paired local plane
+            if (mCurrentFrame.matchPlanes[i] < 0) {
+                ///Step 2.1 project current plane to map frame
+                //Got current pose guessing
+                cv::Mat Tcw = mCurrentFrame.mTcw;
+                Eigen::Matrix4f Tcw_matrix;
+                Tcw_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2), Tcw.at<float>(0, 3),
+                        Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
+                        Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
+                        Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
+//                cout << "Tcw " << endl << Tcw_matrix << endl;
+                Eigen::Matrix4f Twc_matrix = Tcw_matrix.inverse();
+                Eigen::Matrix3f rotation_AL = Twc_matrix.block<3, 3>(0, 0);
+                //cout<<"Rwc"<<endl<<rotation_AL<<endl;
+                ///Step2.2 Transfer from Cur to Map Frame
+                Eigen::Vector3f PI_local3(mCurrentFrame.mvPlanes[i].PI[0], mCurrentFrame.mvPlanes[i].PI[1],
+                                          mCurrentFrame.mvPlanes[i].PI[2]);
+                Eigen::Vector3f n_local = PI_local3 / PI_local3.norm(); // norm = PI/|PI|
+                double d_local = PI_local3.norm();// d = |PI|
+//                cout << " Current Plane PI " << PI_local3.transpose() << " norm " << n_local.transpose() << " d "
+//                     << d_local << endl;
+                Eigen::Matrix<float, 3, 1> tranlate_LA = Tcw_matrix.block<3, 1>(0, 3);
+                ///PI' = (R^L_A * n^A) * (d^A - P^A_L.translate * n^A)
+                Eigen::Vector3f PI_proj = (rotation_AL * n_local) * (d_local - tranlate_LA.transpose() * n_local);
+//                cout << " PI proj " << PI_proj.transpose() << endl;
+
+                ///Step 3 Check matched feature point number
+                int matchNum = 0;
+                Plane *thisPlane = &mCurrentFrame.mvPlanes[i];
+//                cout << "cur frame plane " << i << " " << thisPlane->PI.transpose() << " has "
+//                     << thisPlane->mvMappoints.size() << " map points " << endl;
+                for (size_t j = 0; j < thisPlane->mvMappoints.size(); j++) {
+                    for (size_t k = 0; k < planeMapPoints.size(); k++) {
+                        if (thisPlane->mvMappoints[j] == planeMapPoints[k]) {
+                            matchNum++;
+                            //cout << "cur frame plane " << i << " mappoint " << j << " match a mappoint " << k << endl;
+                            break;
+                        }
+                    }
+                }
+                if (matchNum <= 10) {
+                    MapPlane *newPlane = new MapPlane(mCurrentFrame.mvPlanes[i], mpReferenceKF, mpMap);
+                    newPlane->PI0 = PI_proj[0];
+                    newPlane->PI1 = PI_proj[1];
+                    newPlane->PI2 = PI_proj[2];
+                    Eigen::Vector3f newNorm = PI_proj / PI_proj.norm();
+                    double newD = PI_proj.norm();
+                    newPlane->A = newNorm[0];
+                    newPlane->B = newNorm[1];
+                    newPlane->C = newNorm[2];
+                    newPlane->D = newD;
+                    newPlane->mnId = mpMap->GetAllMapPlanes().size();
+                    mpMap->AddMapPlane(newPlane);
+                    cout << "map add plane " << newPlane->PI0 << " " << newPlane->PI1 << " " << newPlane->PI2 << " id "
+                         << newPlane->mnId << endl;
+                    int pause = 0;
+                } else {
+                    cout << "fail to add map plane "<<PI_proj.transpose()<<" frame plane has " << matchNum << " mappoints shared with existing planes " << endl;
+                    int pause = 1;
+                }
+            }
+        }
+    }
+
+/**
  * @brief 创建新的关键帧
  * 对于非单目的情况 会同时创建新的mappoints
 */
@@ -1940,6 +2054,11 @@ void Tracking::CreateNewKeyFrame()
                     break;
             }
         }
+
+        ///Added Module
+        ///Add new Map Plane
+        createNewMapPlane();
+        ///End----------
     }
 
     //*Step 插入关键帧
@@ -2184,6 +2303,7 @@ void Tracking::UpdateLocalMap()
     UpdateLocalPoints();
 }
 
+///travese localKeyFrames, insert theirs' mappoint to localMapPoints
 void Tracking::UpdateLocalPoints()
 {
     //*Step1 清空局部mappoints

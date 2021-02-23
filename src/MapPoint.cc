@@ -462,6 +462,8 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
         PI0 = inputPlane.PI[0];
         PI1 = inputPlane.PI[1];
         PI2 = inputPlane.PI[2];
+        mvMapPoints.assign(inputPlane.mvMappoints.begin(),inputPlane.mvMappoints.end());
+
 
         // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
         unique_lock<mutex> lock(mpMap->mMutexPointCreation);
