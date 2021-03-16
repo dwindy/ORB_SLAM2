@@ -158,10 +158,13 @@ public:
     void ComputeStereoFromRGBD_ICLNUIM(const cv::Mat &imDepth);
     void ComputeRGBDPoints(const cv::Mat &imGray, const cv::Mat &imDepth);
     void ComputeKeyPoint3D(const cv::Mat &imDepth);
+    //should only be called when initial system.
     void RegisterFeature2Plane(double thres);
+
     int RegionGrowing();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput);
     void PointOnPlane();
+
     vector<float> RayPlaneIntersect(vector<float> dir, vector<float> origin, vector<float> PlaneNorm, vector<float> PlanePoint);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
@@ -189,6 +192,7 @@ public:
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
     //vector<vector<cv::Point>> planNorms;
     std::vector<Plane> mvPlanes;
+    std::vector<Eigen::Vector4d> pjtedMapPlanes;
     std::vector<Plane> mvCandidateMapPlanes;
     std::vector<int> matchPlanes;//local index to Map Plane ID
 

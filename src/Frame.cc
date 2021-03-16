@@ -1036,7 +1036,12 @@ namespace ORB_SLAM2
         }
     }
 
+/**
+ * Register Feature to Plane Can decide when to add new plane
+ * No plane transform. Just compare Map Point with local Plane
+ */
     void Frame::RegisterFeature2Plane(double disThres) {
+        ///Compare with mapPoint of this frame
         //resize vector<pair>
         mvMapPoint2Plane.resize(mvpMapPoints.size());
         for (size_t i = 0; i < mvpMapPoints.size(); i++) {
@@ -1120,6 +1125,7 @@ namespace ORB_SLAM2
         if (mvPtRGBD.size() <= 3) {
             return 0;
         }
+        ///Step 1 region growing to find point clusters
 //        ofstream writer;
 //        writer.open("data/RGB/initCloud.txt");
         pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1132,11 +1138,11 @@ namespace ORB_SLAM2
                 RGBDCloud->points[actualNum].y = mvPtRGBD[pi].y;
                 RGBDCloud->points[actualNum].z = mvPtRGBD[pi].z;
                 actualNum++;
-                //writer<<RGBDCloud->points[actualNum].x<<" "<<RGBDCloud->points[actualNum].y<<" "<<RGBDCloud->points[actualNum].z<<endl;
-                //writer<<mvPtRGBD[pi].x<<" "<<mvPtRGBD[pi].y<<" "<<mvPtRGBD[pi].z<<endl;
+//                //writer<<RGBDCloud->points[actualNum].x<<" "<<RGBDCloud->points[actualNum].y<<" "<<RGBDCloud->points[actualNum].z<<endl;
+//                writer<<mvPtRGBD[pi].x<<" "<<mvPtRGBD[pi].y<<" "<<mvPtRGBD[pi].z<<endl;
             }
         }
-        //writer.close();
+//        writer.close();
         RGBDCloud->resize(actualNum);
         //cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
         //Downsampling the point cloud
@@ -1171,7 +1177,7 @@ namespace ORB_SLAM2
         clock_t  endTime = clock();
         double timeUsed = double(endTime - startTime)/CLOCKS_PER_SEC;
         //cout<<"region growing "<<timeUsed<<" sec ";
-        //Call RANSAC plane fitting for each Cluster
+        ///Step 2 Call RANSAC plane fitting for each Cluster
         for (int ci = 0; ci < clusters.size(); ci++) {
             pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
             thisCloud->points.resize(clusters[ci].indices.size());
@@ -1194,7 +1200,38 @@ namespace ORB_SLAM2
             double timeUsed = double(endTime-startTime)/CLOCKS_PER_SEC;
             //cout<<"RANSAC plane "<<timeUsed<<" sec. Inliners: "<<intPlaneNum;
         }
-        //cout<<endl;
+        ///Step3 merge close planes
+//        for (auto it = mvPlanes.begin(); it != mvPlanes.end(); it++) {
+//            cout<<std::setw(5)<<it->PI.transpose()<<endl;
+//        }
+        cout<<"-----------"<<endl;
+        for (auto it = mvPlanes.begin(); it != mvPlanes.end(); it++) {
+            //cout<<" it1 "<<it->PI.transpose()<<endl;
+            for (auto it2 = mvPlanes.begin(); it2 != mvPlanes.end(); it2++) {
+                if (it != it2) {
+                    //cout<<" it2 "<<it2->PI.transpose()<<endl;
+                    Eigen::Vector3d PI1 = it->PI;
+                    Eigen::Vector3d PI2 = it2->PI;
+                    float distance = (PI1 - PI2).norm();
+                    if (distance < 0.01 &&
+                        abs(PI1[0] - PI2[0]) < 0.01 &&
+                        abs(PI1[1] - PI2[1]) < 0.01 &&
+                        abs(PI1[2] - PI2[2]) < 0.01) {
+                        cout << "Merge Plane " << it->PI.transpose() << " and " << it2->PI.transpose() << endl;
+                        for (size_t pi = 0; pi < it2->planePts.size(); pi++) {
+                            it->planePts.push_back(it2->planePts[pi]);
+                        }
+                        it->PI[0] = (it->PI[0] + it2->PI[0]) / 2;
+                        it->PI[1] = (it->PI[1] + it2->PI[1]) / 2;
+                        it->PI[2] = (it->PI[2] + it2->PI[2]) / 2;
+                        mvPlanes.erase(it2);
+                        it = mvPlanes.begin();
+                        break;
+                    }
+                }
+            }
+        }
+        int pause = 1;
     }
 
     /**
@@ -1310,17 +1347,14 @@ namespace ORB_SLAM2
      * PI = norm * distance
      */
     void Plane::NormD2CP() {
-//        if (this->D < 0) {
-//            this->A = -this->A;
-//            this->B = -this->B;
-//            this->C = -this->C;
-//            this->D = -this->D;
-//        }
-//        if (this->D > 0) {
+        if (this->D < 0) {
+            this->A = -this->A;
+            this->B = -this->B;
+            this->C = -this->C;
+            this->D = -this->D;
+        }
         PI[0] = this->A * -this->D;
         PI[1] = this->B * -this->D;
         PI[2] = this->C * -this->D;
-//        }
-//        cout <<"local Plane PI : "<< PI[0] << " " << PI[1] << " " << PI[2] << endl;
     }
 } //namespace ORB_SLAM

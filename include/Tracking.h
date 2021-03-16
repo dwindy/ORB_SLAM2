@@ -177,6 +177,10 @@ namespace ORB_SLAM2
         int SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, float angleThres, float disThres);
         int SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres);
         int SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float disThres);
+        void RegisterFeature2Plane(Map *map, Frame &curFrame, float disThres);
+        void RegisterFeature2Plane2(Map *map, Frame &curFrame, cv::Mat Tcw, float disThres);
+        void FixPlanePointDepth(Map *map, float threshold);
+        void FixPlaneSinglePointDepth(Map *map, MapPoint *mapPoint, float threshold);
         void createNewMapPlane();
 
         // In case of performing only localization, this flag is true when there are no matches to

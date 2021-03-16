@@ -790,46 +790,16 @@ void Tracking::Track()
             }
 
             ///Added Module---
-            mCurrentFrame.RegisterFeature2Plane(0.1);
             //Add Plane feature to Map
             for (size_t i = 0; i < mCurrentFrame.mvPlanes.size(); i++) {
-//                //Wall constrain - Vertical and Horizontal
-//                double A = mCurrentFrame.mvPlanes[i].A;
-//                double B = mCurrentFrame.mvPlanes[i].B;
-//                double C = mCurrentFrame.mvPlanes[i].C;
-//                double D = mCurrentFrame.mvPlanes[i].D;
-//                if ((abs(abs(A) - 1) + abs(abs(B) - 0) + abs(abs(C) - 0)) < 0.1) {
-//                    if (A > 0)
-//                        mCurrentFrame.mvPlanes[i].A = 1;
-//                    else
-//                        mCurrentFrame.mvPlanes[i].A = -1;
-//                    mCurrentFrame.mvPlanes[i].B = 0;
-//                    mCurrentFrame.mvPlanes[i].C = 0;
-//                }
-//                if ((abs(abs(A) - 0) + abs(abs(B) - 1) + abs(abs(C) - 0)) < 0.1) {
-//                    if (B > 0)
-//                        mCurrentFrame.mvPlanes[i].B = 1;
-//                    else
-//                        mCurrentFrame.mvPlanes[i].B = -1;
-//                    mCurrentFrame.mvPlanes[i].A = 0;
-//                    mCurrentFrame.mvPlanes[i].C = 0;
-//                }
-//                if ((abs(abs(A) - 0) + abs(abs(B) - 0) + abs(abs(C) - 1)) < 0.1) {
-//                    if (C > 0)
-//                        mCurrentFrame.mvPlanes[i].C = 1;
-//                    else
-//                        mCurrentFrame.mvPlanes[i].C = -1;
-//                    mCurrentFrame.mvPlanes[i].B = 0;
-//                    mCurrentFrame.mvPlanes[i].A = 0;
-//                }
-//                mCurrentFrame.mvPlanes[i].Norm2Angle();
-//                mCurrentFrame.mvPlanes[i].NormD2CP();
                 MapPlane *newMapPlane = new MapPlane(mCurrentFrame.mvPlanes[i], pKFini, mpMap);
-                cout << "Map add plane " << newMapPlane->A << " " << newMapPlane->B << " " << newMapPlane->C << " "<< newMapPlane->D
-                     << " PI " << newMapPlane->PI0 << " " << newMapPlane->PI1 << " "<< newMapPlane->PI2
-                     << " globalID "<< newMapPlane->mnId << " with "<<newMapPlane->mvMapPoints.size()<<" map points."<<endl;
+                cout <<std::setw(5)<< "Map add plane " << newMapPlane->A << " " << newMapPlane->B << " " << newMapPlane->C << " "<< newMapPlane->D;
+                cout <<std::setw(5)<< " PI " << newMapPlane->PI0 << " " << newMapPlane->PI1 << " "<< newMapPlane->PI2;
+                cout <<std::setw(5)<< " globalID "<< newMapPlane->mnId << " with "<<newMapPlane->mvMapPoints.size()<<" map points."<<endl;
                 mpMap->AddMapPlane(newMapPlane);
             }
+            mCurrentFrame.RegisterFeature2Plane(0.03);
+            FixPlanePointDepth(mpMap, 0.05);
             ///---end
 
             cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
@@ -1338,6 +1308,508 @@ void Tracking::CheckReplacedInLastFrame()
         return foundNum;
     }
 
+
+    double calculateStd(std::vector<double> inputs) {
+        double depthsSum = 0;
+        for (int i = 0; i < inputs.size(); i++) {
+            depthsSum += inputs[i];
+        }
+        //cout<<" depthsum "<<depthsSum;
+        double mean = depthsSum / inputs.size();
+        //cout<<" depthmean "<<mean;
+        double stdSum = 0;
+        for (int i = 0; i < inputs.size(); i++) {
+            stdSum += (inputs[i] - mean)*(inputs[i] - mean);
+        }
+        double std = sqrt(stdSum / inputs.size());
+        return std;
+    }
+
+    /**
+     *
+     * @param map
+     * @param threshold
+     */
+    void Tracking::FixPlaneSinglePointDepth(Map *map, MapPoint *mapPoint, float threshold) {
+        cv::Mat Point3D_map = mapPoint->GetWorldPos();
+        vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
+        float mindistance = 65535;
+        float minPlaneIndex = -1;
+        int minPlaneID = -1;
+        //cout << "NEW map point " << Point3D_map.at<float>(0, 0) << " " << Point3D_map.at<float>(1, 0) << " "
+        //     << Point3D_map.at<float>(2, 0) <<endl;
+        for (size_t j = 0; j < mapPlanes.size(); j++) {
+            Eigen::Vector3d PI(mapPlanes[j]->PI0, mapPlanes[j]->PI1, mapPlanes[j]->PI2);
+            Eigen::Vector3d planeNorm = PI / PI.norm();
+            float D = PI.norm();
+            float distance =
+                    //because we set D always > 0, so it is minus D here
+                    abs(planeNorm[0] * Point3D_map.at<float>(0, 0) + planeNorm[1] * Point3D_map.at<float>(1, 0) +
+                        planeNorm[2] * Point3D_map.at<float>(2, 0) - D) /
+                    sqrt(planeNorm[0] * planeNorm[0] + planeNorm[1] * planeNorm[1] + planeNorm[2] * planeNorm[2]);
+            if (distance < threshold && distance < mindistance) {
+                mindistance = distance;
+                minPlaneIndex = j;
+                minPlaneID = mapPlanes[j]->mnId;
+            }
+        }
+        //if found closed plane, fix depth with it
+        if (minPlaneIndex > -1) {
+            ///Step2 Check nearby RGBD point's depth
+            Eigen::Vector3d point3D;
+            point3D << Point3D_map.at<float>(0, 0), Point3D_map.at<float>(1, 0), Point3D_map.at<float>(2, 0);
+            //cout << " 3d point " << point3D.transpose();
+            Eigen::Matrix3d ProjectMatrix;
+            ProjectMatrix << mCurrentFrame.fx, 0, mCurrentFrame.cx,
+                    0, mCurrentFrame.fy, mCurrentFrame.cy,
+                    0, 0, 1;
+            Eigen::Vector3d pointPjt;
+            pointPjt = ProjectMatrix * point3D;
+            //cout << " 3d project point " << pointPjt.transpose();
+            Eigen::Vector2d point2d;
+            //cout << " 2d point " << point2d.transpose();
+            point2d << pointPjt(0) / pointPjt(2), pointPjt(1) / pointPjt(2);
+            int x = floor(point2d(0));
+            int y = floor(point2d(1));
+            if (x >= 0 && x < mImGray.cols && y >= 0 && y < mImGray.rows) {
+                float Sum = 0, mean = 0;
+                float std = 0;
+                int imgCols = mImGray.cols;
+                int imgRows = mImGray.rows;
+                vector<double> depths;
+                //This is stupid. any other ways?
+                if (x == 0 && y == 0) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                } else if (x == imgCols - 1 && y == 0) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                } else if (x == 0 && y == imgRows - 1) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                } else if (x == imgCols && y == imgRows) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                } else if (x == 0) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                } else if (x == imgCols - 1) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                } else if (y == 0) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                } else if (y == imgRows - 1) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                } else if (y > 0 && y < imgRows - 1 && x > 0 && x < imgCols - 1) {
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                    depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                }
+                double depthStd = calculateStd(depths);
+                if (depths.size() < 4) {
+                    cout << "???? neigb < 4?";
+                }
+                //cout << " std " << depthStd << endl;
+                if (depthStd < 0.1) {
+                    ///STEP3
+//                cout << " found plane " << minPlaneID << " : " << mapPlanes[minPlaneIndex]->PI0 << " "
+//                     << mapPlanes[minPlaneIndex]->PI1 << " " << mapPlanes[minPlaneIndex]->PI2 << " dis " << mindistance
+//                     << endl;
+                    Eigen::Vector3d planePoint(mapPlanes[minPlaneIndex]->PI0, mapPlanes[minPlaneIndex]->PI1,
+                                               mapPlanes[minPlaneIndex]->PI2);
+                    Eigen::Vector3d planeNorm = planePoint / planePoint.norm();
+                    Eigen::Vector3d origin(0, 0, 0);
+                    Eigen::Vector3d direction(Point3D_map.at<float>(0, 0), Point3D_map.at<float>(1, 0),
+                                              Point3D_map.at<float>(2, 0));
+                    double devided = (planePoint - origin).dot(planeNorm);
+                    double devidor = direction.dot(planeNorm);
+                    double ratio = devided / devidor;
+                    Eigen::Vector3d intersect;
+                    intersect[0] = origin[0] + ratio * direction[0];
+                    intersect[1] = origin[1] + ratio * direction[1];
+                    intersect[2] = origin[2] + ratio * direction[2];
+                    cv::Mat newPos(3, 1, CV_32F);
+                    newPos.at<float>(0) = intersect[0];
+                    newPos.at<float>(1) = intersect[1];
+                    newPos.at<float>(2) = intersect[2];
+                    mapPoint->SetWorldPos(newPos);
+                    ///If fix point too away?
+//                if ((abs(Point3D_map.at<float>(0, 0) - newPos.at<float>(0)) +
+//                    abs(Point3D_map.at<float>(1, 0) - newPos.at<float>(1)) +
+//                    abs(Point3D_map.at<float>(2, 0) - newPos.at<float>(2)))>0.1) {
+//                    cout << "Original Map Point "
+//                         << Point3D_map.at<float>(0, 0) << " " << Point3D_map.at<float>(1, 0) << " " << Point3D_map.at<float>(2, 0)
+//                         << " !!!!! fix point "
+//                         << newPos.at<float>(0) << " " << newPos.at<float>(1) << " " << newPos.at<float>(2) << endl;
+//                }
+                }
+            } else {
+//                cout << " point std too large " <<depthStd<<" from : ";
+//                for(size_t temp = 0; temp<depths.size();temp++){
+//                    cout<<depths[temp]<<" ";
+//                }
+//                cout<<endl;
+            }
+        } else {
+            //cout << " found no plane , min dis " << mindistance << endl;
+        }
+    }
+
+    /**
+     * Fix Point Depth with Plane
+     * Only used when initial a map
+     * @param map
+     * @param threshold
+     */
+    void Tracking::FixPlanePointDepth(Map *map, float threshold) {
+        //ofstream writer("FixDepth.txt");
+        vector<MapPoint *> mapPoints = map->GetAllMapPoints();
+        vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
+        //cout<<"read "<<mapPoints.size()<<" map points"<<endl;
+        ///Step1 Traverse each MapPoint
+        for (size_t i = 0; i < mapPoints.size(); i++) {
+            cv::Mat Point3D_map = mapPoints[i]->GetWorldPos();
+            float mindistance = 65535;
+            float minPlaneIndex = -1;
+            int minPlaneID = -1;
+            //cout<<"map point "<<Point3D_map.at<float>(0, 0)<<" "<<Point3D_map.at<float>(1, 0)<<" "<< Point3D_map.at<float>(2, 0)<<" ";
+            ///Compare with each Map Plane
+            for (size_t j = 0; j < mapPlanes.size(); j++) {
+                Eigen::Vector3d PI(mapPlanes[j]->PI0, mapPlanes[j]->PI1, mapPlanes[j]->PI2);
+                Eigen::Vector3d planeNorm = PI / PI.norm();
+                float D = PI.norm();
+                float distance =
+                        //because we set D always > 0, so it is minus D here
+                        abs(planeNorm[0] * Point3D_map.at<float>(0, 0) + planeNorm[1] * Point3D_map.at<float>(1, 0) +
+                                    planeNorm[2] * Point3D_map.at<float>(2, 0) - D) /
+                        sqrt(planeNorm[0] * planeNorm[0] + planeNorm[1] * planeNorm[1] + planeNorm[2] * planeNorm[2]);
+                if (distance < threshold && distance < mindistance) {
+                    mindistance = distance;
+                    minPlaneIndex = j;
+                    minPlaneID = mapPlanes[j]->mnId;
+                }
+            }
+            //if found close plane, fix depth with it
+            if (minPlaneIndex > -1) {
+                ///Step2 Check nearby RGBD point's depth
+                Eigen::Vector3d point3D;
+                point3D << Point3D_map.at<float>(0, 0), Point3D_map.at<float>(1, 0), Point3D_map.at<float>(2, 0);
+                //cout<<" 3d point "<<point3D.transpose();
+                Eigen::Matrix3d ProjectMatrix;
+                ProjectMatrix << mCurrentFrame.fx, 0, mCurrentFrame.cx,
+                        0, mCurrentFrame.fy, mCurrentFrame.cy,
+                        0, 0, 1;
+                Eigen::Vector3d pointPjt;
+                pointPjt = ProjectMatrix * point3D;
+                //cout<<" 3d project point "<<pointPjt.transpose();
+                Eigen::Vector2d point2d;
+                //cout<<" 2d point "<<point2d.transpose();
+                point2d << pointPjt(0) / pointPjt(2), pointPjt(1) / pointPjt(2);
+                int x = floor(point2d(0));
+                int y = floor(point2d(1));
+                if (x >= 0 && x < mImGray.cols && y >= 0 && y < mImGray.rows) {
+                    float Sum = 0, mean = 0;
+                    float std = 0;
+                    int imgCols = mImGray.cols;
+                    int imgRows = mImGray.rows;
+                    vector<double> depths;
+                    //This is stupid. any other ways?
+                    if (x == 0 && y == 0) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                    } else if (x == imgCols - 1 && y == 0) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                    } else if (x == 0 && y == imgRows - 1) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                    } else if (x == imgCols && y == imgRows) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                    } else if (x == 0) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                    } else if (x == imgCols - 1) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                    } else if (y == 0) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                    } else if (y == imgRows - 1) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                    } else if (y > 0 && y < imgRows - 1 && x > 0 && x < imgCols - 1) {
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
+                        depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
+                    }
+                    double depthStd = calculateStd(depths);
+                    if (depths.size() < 4) {
+                        cout << "???? neigb < 4?";
+                    }
+                    //cout << " std : " << depthStd << " from : ";
+                    //for (size_t temp = 0; temp < depths.size(); temp++) {
+                    //cout << depths[temp] << " ";
+                    //}
+                    //cout << endl;
+                    if (depthStd < 0.1) {
+                        ///Step3 if nearby depth checked Okay
+                        //cout << " found plane " << minPlaneID << " : " << mapPlanes[minPlaneIndex]->PI0 << " "
+                        //     << mapPlanes[minPlaneIndex]->PI1 << " " << mapPlanes[minPlaneIndex]->PI2 << " dis "
+                        //     << mindistance << endl;
+                        Eigen::Vector3d planePoint(mapPlanes[minPlaneIndex]->PI0, mapPlanes[minPlaneIndex]->PI1,
+                                                   mapPlanes[minPlaneIndex]->PI2);
+                        Eigen::Vector3d planeNorm = planePoint / planePoint.norm();
+                        Eigen::Vector3d origin(0, 0, 0);
+                        Eigen::Vector3d direction(Point3D_map.at<float>(0, 0), Point3D_map.at<float>(1, 0),
+                                                  Point3D_map.at<float>(2, 0));
+                        double devided = (planePoint - origin).dot(planeNorm);
+                        double devidor = direction.dot(planeNorm);
+                        double ratio = devided / devidor;
+                        Eigen::Vector3d intersect;
+                        intersect[0] = origin[0] + ratio * direction[0];
+                        intersect[1] = origin[1] + ratio * direction[1];
+                        intersect[2] = origin[2] + ratio * direction[2];
+                        cv::Mat newPos(3, 1, CV_32F);
+                        newPos.at<float>(0) = intersect[0];
+                        newPos.at<float>(1) = intersect[1];
+                        newPos.at<float>(2) = intersect[2];
+                        mapPoints[i]->SetWorldPos(newPos);
+                        //writer << direction[0] << " " << direction[1] << " " << direction[2] << " "
+                        //       << intersect[0] << " " << intersect[1] << " " << intersect[2] << endl;
+                        ///IF fix depth too away?
+//                    if ((abs(Point3D_map.at<float>(0, 0) - newPos.at<float>(0)) +
+//                        abs(Point3D_map.at<float>(1, 0) - newPos.at<float>(1)) +
+//                        abs(Point3D_map.at<float>(2, 0) - newPos.at<float>(2)))>0.1) {
+//                        cout << "Original Map Point "
+//                             << Point3D_map.at<float>(0, 0) << " " << Point3D_map.at<float>(1, 0) << " " << Point3D_map.at<float>(2, 0)
+//                             << " !!!!! fix point "
+//                             << newPos.at<float>(0) << " " << newPos.at<float>(1) << " " << newPos.at<float>(2) << endl;
+//                    }
+                    }
+                }
+                else{
+                    cout<<" point std too large, no action"<<endl;
+                }
+
+            }
+            else{
+                //cout<<" found no plane , min dis "<<mindistance<<endl;
+            }
+
+        }
+        //writer.close();
+    }
+
+    /**
+     * Transform mapPoint to local frame
+     * Found close plane
+     * @param map
+     * @param curFrame
+     * @param Tcw
+     * @param disThres
+     */
+    void Tracking::RegisterFeature2Plane2(Map *map, Frame &curFrame, cv::Mat Tcw, float disThres) {
+        int regiestedNum = 0;
+        ofstream writer;
+        writer.open("pjtPoints.txt");
+        ofstream writer2;
+        writer2.open("registPlane.txt");
+        bool printFlag = false;
+        ///Step1 Transform MapPoint back to local frame
+        Eigen::Matrix4f Tcw_matrix;
+        Tcw_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2), Tcw.at<float>(0, 3),
+                Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
+                Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
+                Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
+
+        curFrame.mvMapPoint2Plane.resize(curFrame.mvpMapPoints.size());
+        for (size_t i = 0; i < curFrame.mvpMapPoints.size(); i++) {
+            curFrame.mvMapPoint2Plane[i] = pair<MapPoint *, int>(static_cast<MapPoint *>(NULL), -1);
+            if (curFrame.mvpMapPoints[i]) {
+                cv::Mat mapPoint = curFrame.mvpMapPoints[i]->GetWorldPos();
+                Eigen::Vector4f mapPoint4;
+                mapPoint4 << mapPoint.at<float>(0, 0), mapPoint.at<float>(1, 0), mapPoint.at<float>(2, 0), 1;
+                Eigen::Vector4f pjtPoint4 = Tcw_matrix * mapPoint4;
+                writer<<pjtPoint4[0]<<" "<<pjtPoint4[1]<<" "<<pjtPoint4[2]<<endl;
+                //cout<<pjtPoint4[0]<<" "<<pjtPoint4[1]<<" "<<pjtPoint4[2]<<endl;
+//                if (abs(pjtPoint4[2] - 3.99) <= 0.05) { //abs(pjtPoint4[1] - 0.89) <= 0.05 ||
+//                    printFlag = true;
+//                    cout << "pjtPoint " << pjtPoint4.transpose() << endl;
+//                } else { printFlag = false; }
+                int closePlaneIndex = -1;
+                double minDistance = 65535;
+                for (size_t j = 0; j < curFrame.mvPlanes.size(); j++) {
+                    Eigen::Vector3f thisPln = curFrame.mvPlanes[j].PI.cast<float>();
+                    writer2<<thisPln[0]<<" "<<thisPln[1]<<" "<<thisPln[2]<<endl;
+                    Eigen::Vector3f plnNorm = thisPln / thisPln.norm();
+                    float D = thisPln.norm();
+                    float A = plnNorm[0];
+                    float B = plnNorm[1];
+                    float C = plnNorm[2];
+                    float distance =
+                            //because we set D always > 0
+                            abs(A * pjtPoint4[0] + B * pjtPoint4[1] + C * pjtPoint4[2] - D) /
+                            sqrt(A * A + B * B + C * C);
+                    if(printFlag)
+                        cout<<"to plane "<<thisPln.transpose()<<" dis "<< distance<<endl;
+                    if (distance < disThres && distance < minDistance) {
+                        minDistance = distance;
+                        closePlaneIndex = j;
+                    }
+                }
+                //founded
+                if (closePlaneIndex > -1) {
+                    curFrame.mvMapPoint2Plane[i] = pair<MapPoint *, int>(curFrame.mvpMapPoints[i], closePlaneIndex);
+                    curFrame.mvPlanes[closePlaneIndex].mvMappoints.push_back(curFrame.mvpMapPoints[i]);
+                    regiestedNum++;
+                }
+            }
+        }
+        writer.close();
+        writer2.close();
+        cout<<"regist "<<regiestedNum<<" mappoint to planes "<<endl;
+    }
+    void Tracking::RegisterFeature2Plane(Map *map, Frame &curFrame, float disThres){
+        int regiestedNum = 0;
+        ///Step1 project local plane to map
+        cv::Mat Tcw;
+        if (mVelocity.empty()) {
+            Tcw = mLastFrame.mTcw;
+        } else {
+            Tcw = mVelocity * mLastFrame.mTcw;
+        }
+
+        Eigen::Matrix4f Tcw_matrix;
+        Tcw_matrix << Tcw.at<float>(0, 0), Tcw.at<float>(0, 1), Tcw.at<float>(0, 2), Tcw.at<float>(0, 3),
+                Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
+                Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
+                Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
+//        cout<<Tcw_matrix<<endl;
+//        cout << "mVelocity" << endl << mVelocity << endl;
+//        cout << "mLastFrame" << endl << mLastFrame.mTcw << endl;
+        Eigen::Matrix4f Twc_matrix = Tcw_matrix.inverse();
+        //Eigen::Matrix<float,3,1> tranlate_AL = Twc_matrix.block<3,1>(0,3);
+        Eigen::Matrix<float,3,1> tranlate_LA = Tcw_matrix.block<3,1>(0,3);
+        Eigen::Matrix3f rotation_AL = Twc_matrix.block<3,3>(0,0);
+        ///Step2 Transfer from Cur to Map Frame
+        vector<Eigen::Vector3f> pjtMapPlanes;
+        pjtMapPlanes.resize(curFrame.mvPlanes.size());
+        for (size_t i = 0; i < curFrame.mvPlanes.size(); i++) {
+//            cout<<"map plane ID "<<mapPlanes[plni]->mnId<<" : "<<mapPlanes[plni]->PI0<<" "<<mapPlanes[plni]->PI1<<" "<<mapPlanes[plni]->PI2<<endl;
+            Eigen::Vector3f PI_local(curFrame.mvPlanes[i].PI[0],curFrame.mvPlanes[i].PI[1],curFrame.mvPlanes[i].PI[2]);
+
+            ///Option 2 PI-norm-D way
+            Eigen::Vector3f n_local = PI_local / PI_local.norm(); // norm = PI/|PI|
+            double d_local = PI_local.norm();// d = |PI|
+            ///PI' = (R^L_A * n^A) * (d^A - P^A_L.translate * n^A)
+            Eigen::Vector3f PI_proj = (rotation_AL * n_local)*(d_local - tranlate_LA.transpose()*n_local );
+//            cout <<" PI local "<<PI_local[0]<<" "<<PI_local[1]<<" "<<PI_local[2]<<" | ";
+//            cout << "PI proj " << PI_proj.transpose() <<" | ";
+            pjtMapPlanes[i] = PI_proj;
+        }
+
+        ///Step 2 Compare with mapPoint of this frame
+        //resize vector<pair>
+        curFrame.mvMapPoint2Plane.resize(curFrame.mvpMapPoints.size());
+        for (size_t i = 0; i < curFrame.mvpMapPoints.size(); i++) {
+            curFrame.mvMapPoint2Plane[i] = pair<MapPoint*, int>(static_cast<MapPoint*>(NULL), -1);
+            //only when map point exist
+            if (curFrame.mvpMapPoints[i]) {
+                MapPoint *thisPt = curFrame.mvpMapPoints[i];
+                float x = thisPt->GetWorldPos().at<float>(0, 0);
+                float y = thisPt->GetWorldPos().at<float>(1, 0);
+                float z = thisPt->GetWorldPos().at<float>(2, 0);
+                int closePlaneIndex = -1;
+                double minDistance = 65535;
+                for (size_t j = 0; j < pjtMapPlanes.size(); j++) {
+                    Eigen::Vector3f thisPln = pjtMapPlanes[j];
+                    Eigen::Vector3f plnNorm = thisPln/thisPln.norm();
+                    float D = thisPln.norm();
+                    float A = plnNorm[0];
+                    float B = plnNorm[1];
+                    float C = plnNorm[2];
+                    double distance =
+                            abs(A * x + B * y + C * z + D) /
+                            sqrt(A * A + B * B + C * C);
+                    if (distance < disThres && distance < minDistance) {
+                        minDistance = distance;
+                        closePlaneIndex = j;
+                    }
+                }
+                //founded
+                if (closePlaneIndex > -1) {
+                    curFrame.mvMapPoint2Plane[i] = pair<MapPoint*, int>(curFrame.mvpMapPoints[i], closePlaneIndex);
+                    curFrame.mvPlanes[closePlaneIndex].mvMappoints.push_back(curFrame.mvpMapPoints[i]);
+                    regiestedNum++;
+                }
+            }
+        }
+        cout<<"regist "<<regiestedNum<<" mappoint to planes "<<endl;
+    }
+
     /**
      * @brief Search Map Plane PI and Local Plane PI pairs
      * @param map
@@ -1387,7 +1859,7 @@ void Tracking::CheckReplacedInLastFrame()
      */
     int Tracking::SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres) {
         bool print = false;
-        if (curFrame.mnId == 418)
+        if (curFrame.mnId == 82)
             print = true;
 
         ///Step1 Got current pose guessing
@@ -1461,12 +1933,18 @@ void Tracking::CheckReplacedInLastFrame()
                 foundNum++;
             }
             if (print) {
-                cout<<"---"<<endl;
-
-                cout<<setprecision(6)<<" cur plane "<<curFrame.mvPlanes[localIndex].PI.transpose()
-                    <<" | matched pjt  "<<pjtPlanes[minPlaneIndex][0]<<" "<<pjtPlanes[minPlaneIndex][1]<<" "<<pjtPlanes[minPlaneIndex][2]
-                    <<" | from map pln "<<minPlaneID<<" : "<<mapPlanes[minPlaneIndex]->mnId<<" "<<mapPlanes[minPlaneIndex]->PI0<<" "<<mapPlanes[minPlaneIndex]->PI1<<" "<<mapPlanes[minPlaneIndex]->PI2<<" with error "<<minDis<<endl;
-                int pause = 0;
+                cout << "---" << endl;
+                if (found) {
+                    cout << setprecision(6) << " cur plane " << curFrame.mvPlanes[localIndex].PI.transpose()
+                         << " | matched pjt  " << pjtPlanes[minPlaneIndex][0] << " " << pjtPlanes[minPlaneIndex][1]
+                         << " " << pjtPlanes[minPlaneIndex][2]
+                         << " | from map pln " << minPlaneID << " : " << mapPlanes[minPlaneIndex]->mnId << " "
+                         << mapPlanes[minPlaneIndex]->PI0 << " " << mapPlanes[minPlaneIndex]->PI1 << " "
+                         << mapPlanes[minPlaneIndex]->PI2 << " with error " << minDis << endl;
+                } else {
+                    cout << setprecision(6) << " cur plane " << curFrame.mvPlanes[localIndex].PI.transpose()
+                         << " no matching " << endl;
+                }
             }
 //            cout << "cur plane " << localIndex << " PI : " << curFrame.mvPlanes[localIndex].PI.transpose()
 //                 << " push back map plane id : " << minPlaneID << " " << pjtPlanes[minPlaneIndex].transpose()
@@ -1504,8 +1982,17 @@ void Tracking::CheckReplacedInLastFrame()
         //* Step3 将上一帧的位姿作为当前帧位姿的初始值 加速poseoptimization
         mCurrentFrame.SetPose(mLastFrame.mTcw);//Tcw because in g2o: Mappoint -> local Frame -> 2d Observe
 
-        //*Step4 优化重投影误差来（3D-2D）获得位姿
-        Optimizer::PoseOptimization(&mCurrentFrame);
+        ///Added Module---
+        //Register feature point with planes
+        RegisterFeature2Plane2(mpMap, mCurrentFrame, mLastFrame.mTcw,0.03);
+        //vector<int> matchPlanes;
+        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
+        if (nplnmatches > 2)
+            Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+        else
+            ///---end
+            //*Step4 优化重投影误差来（3D-2D）获得位姿
+            Optimizer::PoseOptimization(&mCurrentFrame);
 
         //*Step 5
         // Discard outliers
@@ -1525,14 +2012,14 @@ void Tracking::CheckReplacedInLastFrame()
             }
         }
 
-        ///Added Module---
-        //Register feature point with planes
-        mCurrentFrame.RegisterFeature2Plane(0.15);
-        //vector<int> matchPlanes;
-        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
-        if (nplnmatches >= 2)
-            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
-        ///---end
+//        ///Added Module---
+//        //Register feature point with planes
+//        mCurrentFrame.RegisterFeature2Plane(0.15);
+//        //vector<int> matchPlanes;
+//        int nplnmatches = SearchPlane(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
+//        if (nplnmatches >= 2)
+//            Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+//        ///---end
 
         return nmatchesMap >= 10;
     }
@@ -1662,9 +2149,17 @@ bool Tracking::TrackWithMotionModel()
     if(nmatches<20)
         return false;
 
-    //*Step 3 优化当前位姿
-    // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    ///Added Module---
+    //Register feature point with planes
+    RegisterFeature2Plane2(mpMap, mCurrentFrame,mVelocity * mLastFrame.mTcw,0.03);
+    //vector<int> matchPlanes;
+    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
+    if (nplnmatches > 2)
+        Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+    else
+        //*Step 3 优化当前位姿
+        // Optimize frame pose with all matches
+        Optimizer::PoseOptimization(&mCurrentFrame);
 
     //*Step 4 剔除ouliter
     // Discard outliers
@@ -1689,14 +2184,14 @@ bool Tracking::TrackWithMotionModel()
     }
 
     ///Added Module
-    //Register feature point with planes
-    mCurrentFrame.RegisterFeature2Plane(0.15);
-    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
-    cout<<"plane match num "<<nplnmatches<<endl;
-    if (nplnmatches >= 2)
-        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+//    //Register feature point with planes
+//    mCurrentFrame.RegisterFeature2Plane(0.15);
+//    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
+//    cout<<"plane match num "<<nplnmatches<<endl;
 //    if (nplnmatches >= 2)
-//        Optimizer::Point3dOptimization(mpMap, &mCurrentFrame, matchPlanes);
+//        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+////    if (nplnmatches >= 2)
+////        Optimizer::Point3dOptimization(mpMap, &mCurrentFrame, matchPlanes);
     ///end---
 
 
@@ -1884,8 +2379,8 @@ bool Tracking::NeedNewKeyFrame()
 
 /**
  * Added Module function
- * 1. Prject Cur Plane to map
- * 2. Check with existing map plane, co-visible feature point
+ * 1. Project Cur Plane to map
+ * 2. Check with existing map plane by PI and, co-visible feature point
  * Check plane match states, add new map plane
  */
     void Tracking::createNewMapPlane() {
@@ -1957,10 +2452,8 @@ bool Tracking::NeedNewKeyFrame()
                     mpMap->AddMapPlane(newPlane);
                     cout << "map add plane " << newPlane->PI0 << " " << newPlane->PI1 << " " << newPlane->PI2 << " id "
                          << newPlane->mnId << endl;
-                    int pause = 0;
                 } else {
                     cout << "fail to add map plane "<<PI_proj.transpose()<<" frame plane has " << matchNum << " mappoints shared with existing planes " << endl;
-                    int pause = 1;
                 }
             }
         }
@@ -2037,6 +2530,10 @@ void Tracking::CreateNewKeyFrame()
                     pKF->AddMapPoint(pNewMP,i);
                     pNewMP->ComputeDistinctiveDescriptors();
                     pNewMP->UpdateNormalAndDepth();
+                    ///Added Module
+                    //fix depth
+                    FixPlaneSinglePointDepth(mpMap,pNewMP,0.03);
+                    ///--------end
                     mpMap->AddMapPoint(pNewMP);
 
                     mCurrentFrame.mvpMapPoints[i]=pNewMP;
