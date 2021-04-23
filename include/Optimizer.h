@@ -49,6 +49,7 @@ public:
     void static PlaneOptimization(Map *mpMap, Frame* pFrame, vector<int> matchPlanes);
     void static Point3dOptimization(Map *mpMap, Frame* pFrame, vector<int>);
     int static JointOptimization(Map *mpMap, Frame* pFrame, vector<int> matchPlanes);
+    void static JointLocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
     ///---end
     void static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
                                        const unsigned long nLoopKF=0, const bool bRobust = true);

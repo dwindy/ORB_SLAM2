@@ -40,6 +40,8 @@ class MapPoint;
 class Frame;
 class KeyFrameDatabase;
 class PtRGBD;
+//Added
+class MapPlane;
 class Plane;
 
 class KeyFrame
@@ -57,7 +59,8 @@ public:
     //vector<cv::Point> mPjcLaserPts;
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
     //vector<vector<cv::Point>> planNorms;
-    std::vector<Plane> mvPlanes;
+    std::vector<MapPlane *> mvpMapPlanes;//Map Planes
+    std::vector<Plane> mvPlanes;//Local Planes
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
@@ -101,6 +104,9 @@ public:
     void ReplaceMapPointMatch(const size_t &idx, MapPoint* pMP);
     std::set<MapPoint*> GetMapPoints();
     std::vector<MapPoint*> GetMapPointMatches();
+    ///Added Module
+    std::vector<MapPlane*> GetMapPlaneMatches();
+    ///-----
     int TrackedMapPoints(const int &minObs);
     MapPoint* GetMapPoint(const size_t &idx);
 

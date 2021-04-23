@@ -779,7 +779,7 @@ void Tracking::Track()
                 if (z > 0) {
                     cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
                     MapPoint *pNewMP = new MapPoint(x3D, pKFini, mpMap);
-                    pNewMP->AddObservation(pKFini, i);
+                    pNewMP->AddObservation(pKFini, i);//Record observor Frame and local index
                     pKFini->AddMapPoint(pNewMP, i);
                     pNewMP->ComputeDistinctiveDescriptors();
                     pNewMP->UpdateNormalAndDepth();
@@ -796,10 +796,13 @@ void Tracking::Track()
                 cout <<std::setw(5)<< "Map add plane " << newMapPlane->A << " " << newMapPlane->B << " " << newMapPlane->C << " "<< newMapPlane->D;
                 cout <<std::setw(5)<< " PI " << newMapPlane->PI0 << " " << newMapPlane->PI1 << " "<< newMapPlane->PI2;
                 cout <<std::setw(5)<< " globalID "<< newMapPlane->mnId << " with "<<newMapPlane->mvMapPoints.size()<<" map points."<<endl;
+                //Record observor frame and local index
+                newMapPlane->setBadFlag(false);
+                newMapPlane->AddObservation(pKFini,i);
                 mpMap->AddMapPlane(newMapPlane);
             }
-            mCurrentFrame.RegisterFeature2Plane(0.03);
-            FixPlanePointDepth(mpMap, 0.05);
+            mCurrentFrame.RegisterFeature2Plane(mCurrentFrame.pointPlaneRegistThres);
+            FixPlanePointDepth(mpMap, mCurrentFrame.pointPlaneFixThres);
             ///---end
 
             cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
@@ -1326,9 +1329,11 @@ void Tracking::CheckReplacedInLastFrame()
     }
 
     /**
-     *
-     * @param map
-     * @param threshold
+     * Used before Add new MapPoint.
+     * Search closest Plane
+     * @param map : exsist map
+     * @param mapPoint : new Add Map Point
+     * @param threshold : point to plane distance thres
      */
     void Tracking::FixPlaneSinglePointDepth(Map *map, MapPoint *mapPoint, float threshold) {
         cv::Mat Point3D_map = mapPoint->GetWorldPos();
@@ -1338,6 +1343,7 @@ void Tracking::CheckReplacedInLastFrame()
         int minPlaneID = -1;
         //cout << "NEW map point " << Point3D_map.at<float>(0, 0) << " " << Point3D_map.at<float>(1, 0) << " "
         //     << Point3D_map.at<float>(2, 0) <<endl;
+        ///Step 1, distance to each Plane
         for (size_t j = 0; j < mapPlanes.size(); j++) {
             Eigen::Vector3d PI(mapPlanes[j]->PI0, mapPlanes[j]->PI1, mapPlanes[j]->PI2);
             Eigen::Vector3d planeNorm = PI / PI.norm();
@@ -1355,7 +1361,7 @@ void Tracking::CheckReplacedInLastFrame()
         }
         //if found closed plane, fix depth with it
         if (minPlaneIndex > -1) {
-            ///Step2 Check nearby RGBD point's depth
+            ///Step2 Check nearby RGB-D point's depth
             Eigen::Vector3d point3D;
             point3D << Point3D_map.at<float>(0, 0), Point3D_map.at<float>(1, 0), Point3D_map.at<float>(2, 0);
             //cout << " 3d point " << point3D.transpose();
@@ -1377,56 +1383,57 @@ void Tracking::CheckReplacedInLastFrame()
                 int imgCols = mImGray.cols;
                 int imgRows = mImGray.rows;
                 vector<double> depths;
-                //This is stupid. any other ways?
+                //todo. This is stupid. any other ways?
+                //left up cornor
                 if (x == 0 && y == 0) {
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
-                } else if (x == imgCols - 1 && y == 0) {
+                } else if (x == imgCols - 1 && y == 0) { //right up cornor
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
-                } else if (x == 0 && y == imgRows - 1) {
+                } else if (x == 0 && y == imgRows - 1) { //left down
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
-                } else if (x == imgCols && y == imgRows) {
+                } else if (x == imgCols - 1 && y == imgRows - 1) { //right down
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
-                } else if (x == 0) {
+                } else if (x == 0) { //left border
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
-                } else if (x == imgCols - 1) {
+                } else if (x == imgCols - 1) { //right border
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
-                } else if (y == 0) {
+                } else if (y == 0) { //up border
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y + 1) * imgRows + x + 1].z);
-                } else if (y == imgRows - 1) {
+                } else if (y == imgRows - 1) { //down border
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
-                } else if (y > 0 && y < imgRows - 1 && x > 0 && x < imgCols - 1) {
+                } else if (y > 0 && y < imgRows - 1 && x > 0 && x < imgCols - 1) { //inner case
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                     depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
@@ -1439,11 +1446,12 @@ void Tracking::CheckReplacedInLastFrame()
                 }
                 double depthStd = calculateStd(depths);
                 if (depths.size() < 4) {
-                    cout << "???? neigb < 4?";
+                    cout << "Could be a BUG, That a RGBD point only found "<<depths.size()<<" neighbour depths"<<endl;
                 }
                 //cout << " std " << depthStd << endl;
+                //only when depth std is small. (avoid change corner and edge point
                 if (depthStd < 0.1) {
-                    ///STEP3
+                    ///STEP3 fix depth with intersect point of ray to plane
 //                cout << " found plane " << minPlaneID << " : " << mapPlanes[minPlaneIndex]->PI0 << " "
 //                     << mapPlanes[minPlaneIndex]->PI1 << " " << mapPlanes[minPlaneIndex]->PI2 << " dis " << mindistance
 //                     << endl;
@@ -1489,12 +1497,13 @@ void Tracking::CheckReplacedInLastFrame()
 
     /**
      * Fix Point Depth with Plane
-     * Only used when initial a map
+     * Only used when INITIAL a map
+     * Each candicate fix point will calc the std of surrounding depth
      * @param map
      * @param threshold
      */
     void Tracking::FixPlanePointDepth(Map *map, float threshold) {
-        //ofstream writer("FixDepth.txt");
+        ofstream writer("beforeFix.txt");
         vector<MapPoint *> mapPoints = map->GetAllMapPoints();
         vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
         //cout<<"read "<<mapPoints.size()<<" map points"<<endl;
@@ -1505,6 +1514,7 @@ void Tracking::CheckReplacedInLastFrame()
             float minPlaneIndex = -1;
             int minPlaneID = -1;
             //cout<<"map point "<<Point3D_map.at<float>(0, 0)<<" "<<Point3D_map.at<float>(1, 0)<<" "<< Point3D_map.at<float>(2, 0)<<" ";
+            writer<<Point3D_map.at<float>(0, 0)<<" "<<Point3D_map.at<float>(1, 0)<<" "<<Point3D_map.at<float>(2, 0)<<endl;
             ///Compare with each Map Plane
             for (size_t j = 0; j < mapPlanes.size(); j++) {
                 Eigen::Vector3d PI(mapPlanes[j]->PI0, mapPlanes[j]->PI1, mapPlanes[j]->PI2);
@@ -1561,7 +1571,7 @@ void Tracking::CheckReplacedInLastFrame()
                         depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x + 1].z);
                         depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
                         depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x + 1].z);
-                    } else if (x == imgCols && y == imgRows) {
+                    } else if (x == imgCols -1 && y == imgRows -1 ) {
                         depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x].z);
                         depths.push_back(mCurrentFrame.mvPtRGBD[y * imgRows + x - 1].z);
                         depths.push_back(mCurrentFrame.mvPtRGBD[(y - 1) * imgRows + x].z);
@@ -1660,12 +1670,20 @@ void Tracking::CheckReplacedInLastFrame()
             }
 
         }
-        //writer.close();
+        writer.close();
+        ofstream writer2("afterFix.txt");
+        ///Store fixed Map
+        for (size_t i = 0; i < mapPoints.size(); i++) {
+            cv::Mat Point3D_map = mapPoints[i]->GetWorldPos();
+            writer2<<Point3D_map.at<float>(0, 0)<<" "<<Point3D_map.at<float>(1, 0)<<" "<<Point3D_map.at<float>(2, 0)<<endl;
+        }
+        writer2.close();
     }
 
     /**
-     * Transform mapPoint to local frame
+     * Transform cur mapPoint to local frame
      * Found close plane
+     * Store: Pair (mappoint, localPlane index) | curPlane.mvpPoints[]
      * @param map
      * @param curFrame
      * @param Tcw
@@ -1829,8 +1847,7 @@ void Tracking::CheckReplacedInLastFrame()
             int minPlaneID = -1;
             int minPlaneIndex = -1;
             for (size_t mapPlnIndex = 0; mapPlnIndex < mapPlanes.size(); mapPlnIndex++) {
-                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0, mapPlanes[mapPlnIndex]->PI1,
-                                          mapPlanes[mapPlnIndex]->PI2);
+                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0, mapPlanes[mapPlnIndex]->PI1, mapPlanes[mapPlnIndex]->PI2);
                 Eigen::Vector3d diffvector = mapVector - curFrame.mvPlanes[plni].PI;
                 if (diffvector.norm() < minDistance && diffvector.norm() < disThres) {
                     minDistance = diffvector.norm();
@@ -1851,6 +1868,7 @@ void Tracking::CheckReplacedInLastFrame()
 
     /**
      * search Map plane and local plane pair
+     * Store match MapPlaneID[];
      * @param map
      * @param curFrame
      * @param matchPlanes
@@ -1858,10 +1876,6 @@ void Tracking::CheckReplacedInLastFrame()
      * @return match number
      */
     int Tracking::SearchPlaneWithMotion(Map *map, Frame &curFrame, vector<int> &matchPlanes, double disThres) {
-        bool print = false;
-        if (curFrame.mnId == 82)
-            print = true;
-
         ///Step1 Got current pose guessing
         cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
         Eigen::Matrix4f Tcw_matrix;
@@ -1869,14 +1883,11 @@ void Tracking::CheckReplacedInLastFrame()
                 Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
                 Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
                 Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
-//        cout<<Tcw_matrix<<endl;
         Eigen::Matrix4f Twc_matrix = Tcw_matrix.inverse();
         Eigen::Matrix3f rotation_matrix = Tcw_matrix.block<3,3>(0,0);
         Eigen::Vector3f translation_vector;
         translation_vector << Tcw.at<float>(0, 3), Tcw.at<float>(1, 3), Tcw.at<float>(2, 3);
-//        cout << "mVelocity" << endl << mVelocity << endl;
-//        cout << "mLastFrame" << endl << mLastFrame.mTcw << endl;
-//        cout << "Tcw" << endl << Tcw << endl;
+
         ///Step2 Transfer from Map to Cur Frame
         vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
         vector<Eigen::Vector4d> pjtPlanes;
@@ -1884,12 +1895,6 @@ void Tracking::CheckReplacedInLastFrame()
         for (size_t plni = 0; plni < mapPlanes.size(); plni++) {
 //            cout<<"map plane ID "<<mapPlanes[plni]->mnId<<" : "<<mapPlanes[plni]->PI0<<" "<<mapPlanes[plni]->PI1<<" "<<mapPlanes[plni]->PI2<<endl;
             Eigen::Vector4f PI_world4(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2, 1);
-            ///Option 1 PI way
-//            Eigen::Vector4f PI_proj = Tcw_matrix * PI_world;
-//            cout<<"PI_proj "<<PI_proj.transpose()<<endl;
-////            cout<<"double "<<PI_proj.cast<double>().transpose()<<endl;
-//            pjtPlanes[plni] = PI_proj.cast<double>();
-
             ///Option 2 PI-norm-D way
             Eigen::Vector3f PI_world = PI_world4.block<3,1>(0,0);
             Eigen::Vector3f n_world = PI_world / PI_world.norm(); // norm = PI/|PI|
@@ -1932,24 +1937,16 @@ void Tracking::CheckReplacedInLastFrame()
             if (found) {
                 foundNum++;
             }
-            if (print) {
-                cout << "---" << endl;
-                if (found) {
-                    cout << setprecision(6) << " cur plane " << curFrame.mvPlanes[localIndex].PI.transpose()
-                         << " | matched pjt  " << pjtPlanes[minPlaneIndex][0] << " " << pjtPlanes[minPlaneIndex][1]
-                         << " " << pjtPlanes[minPlaneIndex][2]
-                         << " | from map pln " << minPlaneID << " : " << mapPlanes[minPlaneIndex]->mnId << " "
-                         << mapPlanes[minPlaneIndex]->PI0 << " " << mapPlanes[minPlaneIndex]->PI1 << " "
-                         << mapPlanes[minPlaneIndex]->PI2 << " with error " << minDis << endl;
-                } else {
-                    cout << setprecision(6) << " cur plane " << curFrame.mvPlanes[localIndex].PI.transpose()
-                         << " no matching " << endl;
-                }
-            }
-//            cout << "cur plane " << localIndex << " PI : " << curFrame.mvPlanes[localIndex].PI.transpose()
-//                 << " push back map plane id : " << minPlaneID << " " << pjtPlanes[minPlaneIndex].transpose()
-//                 <<" error "<<minDis<< endl;
+        }
 
+        //Fill mvpMapPlanes
+        for (size_t localIndex = 0; localIndex < matchPlanes.size(); localIndex++) {
+            if (matchPlanes[localIndex] >= 0) {
+                int mapPlaneIndex = matchPlanes[localIndex];
+                curFrame.mvpMapPlanes.push_back(mapPlanes[mapPlaneIndex]);
+            } else {
+                matchPlanes.push_back(NULL);
+            }
         }
         return foundNum;
     }
@@ -1984,7 +1981,7 @@ void Tracking::CheckReplacedInLastFrame()
 
         ///Added Module---
         //Register feature point with planes
-        RegisterFeature2Plane2(mpMap, mCurrentFrame, mLastFrame.mTcw,0.03);
+        RegisterFeature2Plane2(mpMap, mCurrentFrame, mLastFrame.mTcw,mCurrentFrame.pointPlaneRegistThres);
         //vector<int> matchPlanes;
         int nplnmatches = SearchPlane(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
         if (nplnmatches > 2)
@@ -2114,6 +2111,9 @@ void Tracking::UpdateLastFrame()
 */
 bool Tracking::TrackWithMotionModel()
 {
+    if (mCurrentFrame.mnId >= 910 && mCurrentFrame.mnId <= 940)
+        cout << "mCurrentFrame.mnId " << mCurrentFrame.mnId << "track with motion " << endl;
+
     //初始化matcher 0.9 是 最小距离小于次小距离0.9 | 检查旋转
     //? keyframe tracking 没这个matcher？
     ORBmatcher matcher(0.9,true);
@@ -2150,8 +2150,8 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     ///Added Module---
-    //Register feature point with planes
-    RegisterFeature2Plane2(mpMap, mCurrentFrame,mVelocity * mLastFrame.mTcw,0.03);
+    //Register feature point (mappoint) with local planes
+    RegisterFeature2Plane2(mpMap, mCurrentFrame,mVelocity * mLastFrame.mTcw,mCurrentFrame.pointPlaneRegistThres);
     //vector<int> matchPlanes;
     int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
     if (nplnmatches > 2)
@@ -2213,59 +2213,66 @@ bool Tracking::TrackWithMotionModel()
  * 3. 根据匹配估计当前帧姿态
  * 4. 根据姿态剔除outlier
 */
-bool Tracking::TrackLocalMap()
-{
-    // We have an estimation of the camera pose and some map points tracked in the frame.
-    // We retrieve the local map and try to find matches to points in the local map.
+    bool Tracking::TrackLocalMap() {
+        // We have an estimation of the camera pose and some map points tracked in the frame.
+        // We retrieve the local map and try to find matches to points in the local map.
 
-    //*Step 1 更新局部关键帧 mvpLocalKeyFrames 和 局部地图点 mvpLocalMapPoints
-    UpdateLocalMap();
+        //*Step 1 更新局部关键帧 mvpLocalKeyFrames 和 局部地图点 mvpLocalMapPoints
+        UpdateLocalMap();
 
-    //*Step 2 匹配局部地图中 与 当前帧 匹配的Mappoints
-    SearchLocalPoints();
+        //*Step 2 匹配局部地图中 与 当前帧 匹配的Mappoints
+        SearchLocalPoints();
 
-    //*Step 3 更新局部地图点后 更新位姿
-    // Optimize Pose
-    Optimizer::PoseOptimization(&mCurrentFrame);
-    mnMatchesInliers = 0;
+//    //*Step 3 更新局部地图点后 更新位姿
+//    // Optimize Pose
+//    Optimizer::PoseOptimization(&mCurrentFrame);
+        ///Step 3Added Module
+        vector<int> matchPlanes;
+        int nplnmatches = 0;
+        for (size_t i = 0; i < mCurrentFrame.matchPlanes.size(); i++) {
+            if(mCurrentFrame.matchPlanes[i]>=0)
+                nplnmatches++;
+        }
+        if (nplnmatches > 2)
+            Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+        else
+            Optimizer::PoseOptimization(&mCurrentFrame);
+        ///-----ended
 
-    //*Step 4 更新当前帧的mappoints被观测程度
-    // Update MapPoints Statistics
-    for(int i=0; i<mCurrentFrame.N; i++)
-    {
-        if(mCurrentFrame.mvpMapPoints[i])
-        {
-            //当前帧的mappoints可以被当前帧观测到 被观测次数+1
-            //*刚updatelocalmap做过一次+1了吧？ 这里加的是found，前面加的是visible
-            if(!mCurrentFrame.mvbOutlier[i])
-            {
-                mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
-                if(!mbOnlyTracking)
-                {
-                    if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
+        mnMatchesInliers = 0;
+
+        //*Step 4 更新当前帧的mappoints被观测程度
+        // Update MapPoints Statistics
+        for (int i = 0; i < mCurrentFrame.N; i++) {
+            if (mCurrentFrame.mvpMapPoints[i]) {
+                //当前帧的mappoints可以被当前帧观测到 被观测次数+1
+                //*刚updatelocalmap做过一次+1了吧？ 这里加的是found，前面加的是visible
+                if (!mCurrentFrame.mvbOutlier[i]) {
+                    mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
+                    if (!mbOnlyTracking) {
+                        if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
+                            mnMatchesInliers++;
+                    } else
                         mnMatchesInliers++;
                 }
-                else
-                    mnMatchesInliers++;
+                    //? 是outlier并且是双目，就删除这个点
+                else if (mSensor == System::STEREO)
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
+
             }
-            //? 是outlier并且是双目，就删除这个点
-            else if(mSensor==System::STEREO)
-                mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
-
         }
+
+        //*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
+        // Decide if the tracking was succesful
+        // More restrictive if there was a relocalization recently
+        if (mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers < 50)
+            return false;
+
+        if (mnMatchesInliers < 30)
+            return false;
+        else
+            return true;
     }
-
-    //*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
-    // Decide if the tracking was succesful
-    // More restrictive if there was a relocalization recently
-    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
-        return false;
-
-    if(mnMatchesInliers<30)
-        return false;
-    else
-        return true;
-}
 
 /**
  * @brief 判断当前帧是否需要插入关键帧
@@ -2381,25 +2388,22 @@ bool Tracking::NeedNewKeyFrame()
  * Added Module function
  * 1. Project Cur Plane to map
  * 2. Check with existing map plane by PI and, co-visible feature point
- * Check plane match states, add new map plane
+ * Check plane match status, add new map plane
  */
     void Tracking::createNewMapPlane() {
         vector<MapPoint *> planeMapPoints;
         ///Step 1 : fill up container with mappoints from all map planes
         vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
         for (size_t i = 0; i < mapPlanes.size(); i++) {
-//            cout << "map Plane " << mapPlanes[i]->PI0 << " " << mapPlanes[i]->PI1 << " " << mapPlanes[i]->PI2
-//                 << " with " << mapPlanes[i]->mvMapPoints.size() << endl;
             for (size_t j = 0; j < mapPlanes[i]->mvMapPoints.size(); j++) {
                 planeMapPoints.push_back(mapPlanes[i]->mvMapPoints[j]);
             }
         }
         ///Step 2 : compare candidate plane with all plane map points
-        ///todo record the matched number. then given a threshold. in perfect case, the number should always be zero
         for (size_t i = 0; i < mCurrentFrame.matchPlanes.size(); i++) {
             //pick up a un-paired local plane
             if (mCurrentFrame.matchPlanes[i] < 0) {
-                ///Step 2.1 project current plane to map frame
+                ///Step 2.1 construct Matrix for project cur frame plane to map frame
                 //Got current pose guessing
                 cv::Mat Tcw = mCurrentFrame.mTcw;
                 Eigen::Matrix4f Tcw_matrix;
@@ -2411,17 +2415,15 @@ bool Tracking::NeedNewKeyFrame()
                 Eigen::Matrix4f Twc_matrix = Tcw_matrix.inverse();
                 Eigen::Matrix3f rotation_AL = Twc_matrix.block<3, 3>(0, 0);
                 //cout<<"Rwc"<<endl<<rotation_AL<<endl;
-                ///Step2.2 Transfer from Cur to Map Frame
-                Eigen::Vector3f PI_local3(mCurrentFrame.mvPlanes[i].PI[0], mCurrentFrame.mvPlanes[i].PI[1],
-                                          mCurrentFrame.mvPlanes[i].PI[2]);
+                ///Step 2.2 Transfer from Cur to Map Frame
+                Eigen::Vector3f PI_local3(mCurrentFrame.mvPlanes[i].PI[0], mCurrentFrame.mvPlanes[i].PI[1], mCurrentFrame.mvPlanes[i].PI[2]);
                 Eigen::Vector3f n_local = PI_local3 / PI_local3.norm(); // norm = PI/|PI|
                 double d_local = PI_local3.norm();// d = |PI|
-//                cout << " Current Plane PI " << PI_local3.transpose() << " norm " << n_local.transpose() << " d "
-//                     << d_local << endl;
+                cout << " Current unmatch Plane PI " << PI_local3.transpose() << " norm " << n_local.transpose() << " d "<< d_local <<endl;
                 Eigen::Matrix<float, 3, 1> tranlate_LA = Tcw_matrix.block<3, 1>(0, 3);
                 ///PI' = (R^L_A * n^A) * (d^A - P^A_L.translate * n^A)
                 Eigen::Vector3f PI_proj = (rotation_AL * n_local) * (d_local - tranlate_LA.transpose() * n_local);
-//                cout << " PI proj " << PI_proj.transpose() << endl;
+                cout << " PI proj " << PI_proj.transpose() << endl;
 
                 ///Step 3 Check matched feature point number
                 int matchNum = 0;
@@ -2437,8 +2439,9 @@ bool Tracking::NeedNewKeyFrame()
                         }
                     }
                 }
+                cout<<"cur frame plane contains "<<thisPlane->mvMappoints.size()<<" matched "<<matchNum<<endl;
                 if (matchNum <= 10) {
-                    MapPlane *newPlane = new MapPlane(mCurrentFrame.mvPlanes[i], mpReferenceKF, mpMap);
+                    MapPlane *newPlane = new MapPlane(mCurrentFrame.mvPlanes[i], mpReferenceKF, mpMap);//mpReferenceKf was updated outside this function.
                     newPlane->PI0 = PI_proj[0];
                     newPlane->PI1 = PI_proj[1];
                     newPlane->PI2 = PI_proj[2];
@@ -2449,6 +2452,8 @@ bool Tracking::NeedNewKeyFrame()
                     newPlane->C = newNorm[2];
                     newPlane->D = newD;
                     newPlane->mnId = mpMap->GetAllMapPlanes().size();
+                    newPlane->setBadFlag(false);
+                    newPlane->AddObservation(mpReferenceKF,i);
                     mpMap->AddMapPlane(newPlane);
                     cout << "map add plane " << newPlane->PI0 << " " << newPlane->PI1 << " " << newPlane->PI2 << " id "
                          << newPlane->mnId << endl;
@@ -2497,6 +2502,11 @@ void Tracking::CreateNewKeyFrame()
             }
         }
 
+        ///Added Module
+        ///Add new Map Plane
+        createNewMapPlane();
+        ///End----------
+
         if(!vDepthIdx.empty())
         {
             //*Step 3.2 按照深度排序
@@ -2531,8 +2541,8 @@ void Tracking::CreateNewKeyFrame()
                     pNewMP->ComputeDistinctiveDescriptors();
                     pNewMP->UpdateNormalAndDepth();
                     ///Added Module
-                    //fix depth
-                    FixPlaneSinglePointDepth(mpMap,pNewMP,0.03);
+                    //fix depth for this new Point
+                    FixPlaneSinglePointDepth(mpMap,pNewMP,mCurrentFrame.pointPlaneFixThres);
                     ///--------end
                     mpMap->AddMapPoint(pNewMP);
 
@@ -2551,11 +2561,6 @@ void Tracking::CreateNewKeyFrame()
                     break;
             }
         }
-
-        ///Added Module
-        ///Add new Map Plane
-        createNewMapPlane();
-        ///End----------
     }
 
     //*Step 插入关键帧
@@ -2725,6 +2730,7 @@ void Tracking::SearchLocalPoints()
 {
     //*Step1 遍历当前帧的mappoints，标记这些点不参与之后的搜索
     // Do not search map points already matched
+    int mpNumBefore = 0;
     for(vector<MapPoint*>::iterator vit=mCurrentFrame.mvpMapPoints.begin(), vend=mCurrentFrame.mvpMapPoints.end(); vit!=vend; vit++)
     {
         MapPoint* pMP = *vit;
@@ -2743,9 +2749,11 @@ void Tracking::SearchLocalPoints()
                 //该点将来不用于投影，因为已经匹配过
                 //指的是之前的关键帧tracking，速度模型tracking和重定位tracking
                 pMP->mbTrackInView = false;
+                mpNumBefore++;
             }
         }
     }
+    //cout<<"before search project "<<mpNumBefore<<" ";
 
     int nToMatch=0;
 
@@ -2768,6 +2776,7 @@ void Tracking::SearchLocalPoints()
             nToMatch++;
         }
     }
+    //cout<<"nToMatch "<<nToMatch<<" ";
 
     //*Step 3 投影匹配
     if(nToMatch>0)
@@ -2780,7 +2789,8 @@ void Tracking::SearchLocalPoints()
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
             //对局部地图点中新增的地图点进行投影匹配
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        int matchNum = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        //cout<<"matchNum "<<matchNum<<endl;
     }
 }
 

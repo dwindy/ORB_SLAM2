@@ -71,8 +71,8 @@ long unsigned int KeyFrame::nNextId=0;
             mnMaxY(F.mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
             mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
             mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
-            ///added modules
-            ,mvPlanes(F.mvPlanes)
+            ///added module
+            ,mvPlanes(F.mvPlanes),mvpMapPlanes(F.mvpMapPlanes)
 //            mvPtRGBD(F.mvPtRGBD)//mLaserPoints(F.mLaserPoints),mLaserPt_cam(F.mLaserPt_cam)//,mLaserPtsUndis(F.mLaserPtsUndis),
 //            //mLaserTimes(F.mLaserTimes), mPjcLaserPts(F.mPjcLaserPts), mPjcLaserPtsUndis(F.mPjcLaserPtsUndis),
 //            //planNorms(F.planNorms)//, mvPlanes(mvPlanes)
@@ -328,6 +328,12 @@ vector<MapPoint*> KeyFrame::GetMapPointMatches()
 {
     unique_lock<mutex> lock(mMutexFeatures);
     return mvpMapPoints;
+}
+
+vector<MapPlane*> KeyFrame::GetMapPlaneMatches()
+{
+    unique_lock<mutex> lock(mMutexFeatures);
+    return mvpMapPlanes;
 }
 
 MapPoint* KeyFrame::GetMapPoint(const size_t &idx)

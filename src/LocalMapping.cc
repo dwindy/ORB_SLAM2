@@ -53,6 +53,9 @@ void LocalMapping::SetTracker(Tracking *pTracker)
 //主函数
 void LocalMapping::Run()
 {
+        ///Record
+        int localBundleCounter = 0;
+
     //localmapping是否完成
     mbFinished = false;
 
@@ -94,9 +97,15 @@ void LocalMapping::Run()
             {
                 //*Step 6 当局部地图点中的关键帧大于2个的时候进行局部地图BA
                 // Local BA
-                if(mpMap->KeyFramesInMap()>2)
+                if (mpMap->KeyFramesInMap() > 2)
                     //第二个参数mbAbortBA传的指针，所以可以即时停止
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap);
+                {
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
+                    //Optimizer::JointLocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA,mpMap);
+                    localBundleCounter++;
+                    cout<<"Carried LocalBundleAdjustment "<<localBundleCounter<<"  times "<<endl;
+                }
+
 
                 //*Step 7 检测并剔除当前帧相邻的关键帧中冗余的关键帧
                 //该关键帧90%的地图点可以被其他关键帧观测到

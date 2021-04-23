@@ -176,6 +176,8 @@ namespace ORB_SLAM2
         ComputeStereoFromRGBD(imDepth);
 
         ///Added Module ---
+        pointPlaneFixThres = 0.10;
+        pointPlaneRegistThres = 0.2;
         //set fx fy cx fy for unstore 3d points, because in original code, this will only done at first frame
         fx = K.at<float>(0, 0);
         fy = K.at<float>(1, 1);
@@ -1037,8 +1039,9 @@ namespace ORB_SLAM2
     }
 
 /**
- * Register Feature to Plane Can decide when to add new plane
- * No plane transform. Just compare Map Point with local Plane
+ * First Run.
+ * No plane transform.
+ * Just compare Map Point with local Plane
  */
     void Frame::RegisterFeature2Plane(double disThres) {
         ///Compare with mapPoint of this frame
@@ -1149,7 +1152,8 @@ namespace ORB_SLAM2
         pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(RGBDCloud);
-        sor.setLeafSize(0.03f,0.03f,0.03f);
+        //sor.setLeafSize(0.03f,0.03f,0.03f);//for non-noise data
+        sor.setLeafSize(0.05f,0.05f,0.05f);//for noise data
         sor.filter(*RGBDCloudDownSample);
         //cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
         //estimating normals for each point
@@ -1165,11 +1169,15 @@ namespace ORB_SLAM2
         reg.setMinClusterSize(200);
         reg.setMaxClusterSize(50000);
         reg.setSearchMethod(tree);
-        reg.setNumberOfNeighbours(100);//too little will cause runtime error
+        //too little will cause runtime error
+        //reg.setNumberOfNeighbours(100);//for non-noise data
+        reg.setNumberOfNeighbours(200);//for noise data
         reg.setInputCloud(RGBDCloudDownSample);
         reg.setInputNormals(normals);
-        reg.setSmoothnessThreshold(2.0/180.0/M_PI);
-        reg.setCurvatureThreshold(2.0);
+//        reg.setSmoothnessThreshold(2.0/180.0/M_PI);//for non-noise data
+//        reg.setCurvatureThreshold(2.0);
+        reg.setSmoothnessThreshold(5.0/180.0/M_PI);//for noise data
+        reg.setCurvatureThreshold(5.0);
         //extract each cluster
         clock_t  startTime = clock();
         std::vector<pcl::PointIndices> clusters;

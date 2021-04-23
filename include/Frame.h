@@ -54,6 +54,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+///added module
+class MapPlane;
 
 ///added module
     class PtRGBD {
@@ -109,10 +111,7 @@ public:
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
-    ///added module
-//    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-//          const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
-//          cv::Mat &distCoef, const float &bf, const float &thDepth);
+    ///added module - add lasers
     Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
           const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
           cv::Mat &distCoef, const float &bf, const float &thDepth);
@@ -195,6 +194,8 @@ public:
     std::vector<Eigen::Vector4d> pjtedMapPlanes;
     std::vector<Plane> mvCandidateMapPlanes;
     std::vector<int> matchPlanes;//local index to Map Plane ID
+    float pointPlaneRegistThres;
+    float pointPlaneFixThres;
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;
@@ -243,6 +244,8 @@ public:
 
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;
+    ///Added Module
+    std::vector<MapPlane*> mvpMapPlanes;
 
     // Flag to identify outlier associations.
     std::vector<bool> mvbOutlier;

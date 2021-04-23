@@ -177,7 +177,7 @@ protected:
         int GetIndexInKeyFrame(KeyFrame* pKF);
         bool IsInKeyFrame(KeyFrame* pKF);
 
-        void SetBadFlag();
+        void setBadFlag(bool flag);
         bool isBad();
 
         void Replace(MapPoint* pMP);
@@ -243,7 +243,7 @@ protected:
         // Position in absolute coordinates
         cv::Mat mWorldPos;
 
-        // Keyframes observing the point and associated index in keyframe
+        // Keyframes observing the Plane and associated index in keyframe
         std::map<KeyFrame*,size_t> mObservations;
 
         // Mean viewing direction
