@@ -773,23 +773,8 @@ void Tracking::Track()
             // Insert KeyFrame in the map
             mpMap->AddKeyFrame(pKFini);
 
-            // Create MapPoints and asscoiate to KeyFrame
-            for (int i = 0; i < mCurrentFrame.N; i++) {
-                float z = mCurrentFrame.mvDepth[i];
-                if (z > 0) {
-                    cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
-                    MapPoint *pNewMP = new MapPoint(x3D, pKFini, mpMap);
-                    pNewMP->AddObservation(pKFini, i);//Record observor Frame and local index
-                    pKFini->AddMapPoint(pNewMP, i);
-                    pNewMP->ComputeDistinctiveDescriptors();
-                    pNewMP->UpdateNormalAndDepth();
-                    mpMap->AddMapPoint(pNewMP);
-
-                    mCurrentFrame.mvpMapPoints[i] = pNewMP;
-                }
-            }
-
             ///Added Module---
+            ///Because we need check if a point close to a map plane, so need add plane to map first.
             //Add Plane feature to Map
             for (size_t i = 0; i < mCurrentFrame.mvPlanes.size(); i++) {
                 MapPlane *newMapPlane = new MapPlane(mCurrentFrame.mvPlanes[i], pKFini, mpMap);
@@ -801,9 +786,30 @@ void Tracking::Track()
                 newMapPlane->AddObservation(pKFini,i);
                 mpMap->AddMapPlane(newMapPlane);
             }
+            ///---end
+
+            // Create MapPoints and asscoiate to KeyFrame
+            for (int i = 0; i < mCurrentFrame.N; i++) {
+                float z = mCurrentFrame.mvDepth[i];
+                if (z > 0) {
+                    cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
+                    MapPoint *pNewMP = new MapPoint(x3D, pKFini, mpMap);
+                    int num = rand()%10;
+                    if(num>5){
+                    //if (CheckWithMapPlane(mpMap, pNewMP, 0.1)) {
+                        pNewMP->AddObservation(pKFini, i);//Record observor Frame and local index
+                        pKFini->AddMapPoint(pNewMP, i);
+                        pNewMP->ComputeDistinctiveDescriptors();
+                        pNewMP->UpdateNormalAndDepth();
+                        mpMap->AddMapPoint(pNewMP);
+
+                        mCurrentFrame.mvpMapPoints[i] = pNewMP;
+                    }
+                }
+            }
+
             mCurrentFrame.RegisterFeature2Plane(mCurrentFrame.pointPlaneRegistThres);
             FixPlanePointDepth(mpMap, mCurrentFrame.pointPlaneFixThres);
-            ///---end
 
             cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
             cout << "New map created with " << mpMap->GetMapPlaneNum() << " planes" << endl;
@@ -2384,6 +2390,27 @@ bool Tracking::NeedNewKeyFrame()
         return false;
 }
 
+/*
+ * If the candidate map point is close to a map plane
+ */
+    bool Tracking::CheckWithMapPlane(Map *mpMap, MapPoint *mp, double disThreshold) {
+        cv::Mat P3D = mp->GetWorldPos();
+        vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
+        for (size_t j = 0; j < mapPlanes.size(); j++) {
+            //cout << P3D.at<float>(0, 0) << " " << P3D.at<float>(1, 0) << " " << P3D.at<float>(2, 0) << endl;
+            //cout << mapPlanes[j]->A << " " << mapPlanes[j]->B << " " << mapPlanes[j]->C << " " << mapPlanes[j]->D << endl;
+            double up = abs(P3D.at<float>(0, 0) * mapPlanes[j]->A + P3D.at<float>(1, 0) * mapPlanes[j]->B +
+                            P3D.at<float>(2, 0) * mapPlanes[j]->C + mapPlanes[j]->D);
+            double down = sqrt(mapPlanes[j]->A * mapPlanes[j]->A + mapPlanes[j]->B * mapPlanes[j]->B +
+                               mapPlanes[j]->C * mapPlanes[j]->C);
+            double distance = up / down;
+            if (distance < disThreshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 /**
  * Added Module function
  * 1. Project Cur Plane to map
@@ -2535,19 +2562,25 @@ void Tracking::CreateNewKeyFrame()
                 {
                     cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
                     MapPoint* pNewMP = new MapPoint(x3D,pKF,mpMap);
-                    //每次添加全局mappoint时候都要插入属性
-                    pNewMP->AddObservation(pKF,i);
-                    pKF->AddMapPoint(pNewMP,i);
-                    pNewMP->ComputeDistinctiveDescriptors();
-                    pNewMP->UpdateNormalAndDepth();
-                    ///Added Module
-                    //fix depth for this new Point
-                    FixPlaneSinglePointDepth(mpMap,pNewMP,mCurrentFrame.pointPlaneFixThres);
-                    ///--------end
-                    mpMap->AddMapPoint(pNewMP);
+                    ///Added module- check if close to map plane
+                    int num = rand()%10;
+                    if(num>5){
+                    //if (CheckWithMapPlane(mpMap, pNewMP, 0.1)) {
+                        //每次添加全局mappoint时候都要插入属性
+                        pNewMP->AddObservation(pKF,i);
+                        pKF->AddMapPoint(pNewMP,i);
+                        pNewMP->ComputeDistinctiveDescriptors();
+                        pNewMP->UpdateNormalAndDepth();
+                        ///Added Module
+                        //fix depth for this new Point
+                        FixPlaneSinglePointDepth(mpMap,pNewMP,mCurrentFrame.pointPlaneFixThres);
+                        ///--------end
+                        mpMap->AddMapPoint(pNewMP);
 
-                    mCurrentFrame.mvpMapPoints[i]=pNewMP;
-                    nPoints++;
+                        mCurrentFrame.mvpMapPoints[i]=pNewMP;
+                        nPoints++;
+                    }
+
                 }
                 else
                 {

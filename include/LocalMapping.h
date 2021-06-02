@@ -48,6 +48,8 @@ public:
 
     // Main function
     void Run();
+    ///Added module
+    bool CheckWithMapPlane(Map *mpMap, MapPoint *mp, double disThreshold);
 
     void InsertKeyFrame(KeyFrame* pKF);
 

@@ -50,6 +50,27 @@ void LocalMapping::SetTracker(Tracking *pTracker)
     mpTracker=pTracker;
 }
 
+/*
+ * If the candidate map point is close to a map plane
+ */
+    bool LocalMapping::CheckWithMapPlane(Map *mpMap, MapPoint *mp, double disThreshold) {
+        cv::Mat P3D = mp->GetWorldPos();
+        vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
+        for (size_t j = 0; j < mapPlanes.size(); j++) {
+            //cout << P3D.at<float>(0, 0) << " " << P3D.at<float>(1, 0) << " " << P3D.at<float>(2, 0) << endl;
+            //cout << mapPlanes[j]->A << " " << mapPlanes[j]->B << " " << mapPlanes[j]->C << " " << mapPlanes[j]->D << endl;
+            double up = abs(P3D.at<float>(0, 0) * mapPlanes[j]->A + P3D.at<float>(1, 0) * mapPlanes[j]->B +
+                            P3D.at<float>(2, 0) * mapPlanes[j]->C + mapPlanes[j]->D);
+            double down = sqrt(mapPlanes[j]->A * mapPlanes[j]->A + mapPlanes[j]->B * mapPlanes[j]->B +
+                               mapPlanes[j]->C * mapPlanes[j]->C);
+            double distance = up / down;
+            if (distance < disThreshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 //主函数
 void LocalMapping::Run()
 {
@@ -539,24 +560,27 @@ void LocalMapping::CreateNewMapPoints()
             //*Step 6.8 构造MapPoint
             // Triangulation is succesfull
             MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
+            ///Added module, check if new map point close to a map plane
+            //if (CheckWithMapPlane(mpMap, pMP, 0.1)) {
+                //*Step 6.9 添加地图点属性
+                pMP->AddObservation(mpCurrentKeyFrame,idx1);
+                pMP->AddObservation(pKF2,idx2);
 
-            //*Step 6.9 添加地图点属性
-            pMP->AddObservation(mpCurrentKeyFrame,idx1);            
-            pMP->AddObservation(pKF2,idx2);
+                mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
+                pKF2->AddMapPoint(pMP,idx2);
 
-            mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
-            pKF2->AddMapPoint(pMP,idx2);
+                pMP->ComputeDistinctiveDescriptors();
 
-            pMP->ComputeDistinctiveDescriptors();
+                pMP->UpdateNormalAndDepth();
 
-            pMP->UpdateNormalAndDepth();
+                mpMap->AddMapPoint(pMP);
+                //*Step 6.10 待检测队列
+                //将来用mappointculling检验
+                mlpRecentAddedMapPoints.push_back(pMP);
 
-            mpMap->AddMapPoint(pMP);
-            //*Step 6.10 待检测队列
-            //将来用mappointculling检验
-            mlpRecentAddedMapPoints.push_back(pMP);
+                nnew++;
+            //}
 
-            nnew++;
         }
     }
 }

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+echo 'Hello World!'
+echo 'Goint Run ORBSLAM2'
+
+echo 'In the ORBSLAM Program Folder'
+
+for i in {1..10}
+do
+
+echo "Processing $i"
+
+./rgbd_tum ../../Vocabulary/ORBvoc.txt ICL-NUIM.yaml  /home/xin/Downloads/DATASET/ICL-NUIM/traj0_frei_png /home/xin/Downloads/DATASET/ICL-NUIM/traj0_frei_png/associations.txt
+
+echo 'Going to Move Results'
+
+address1="/home/xin/Downloads/DATASET/ICL-NUIM/compare/Mine/traj0/scripts2/traj0_KeyFrameTrajectory_"
+address3=".txt"
+address="$address1$i$address3"
+echo "$address"
+cp KeyFrameTrajectory.txt "$address"
+
+address1="/home/xin/Downloads/DATASET/ICL-NUIM/compare/Mine/traj0/scripts2/traj0_CameraTrajectory_"
+address="$address1$i$address3"
+echo "$address"
+cp CameraTrajectory.txt "$address"
+
+done
+
+
+
+
