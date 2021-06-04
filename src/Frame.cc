@@ -185,9 +185,10 @@ namespace ORB_SLAM2
         cy = K.at<float>(1, 2);
         invfx = 1.0f / fx;
         invfy = 1.0f / fy;
-        ///restore 3d points
+        ///restore 3d point cloud
         ComputeRGBDPoints(imGray, imDepth);
         ///Find Plane
+        //testDownSampleFunc();
         RegionGrowing();
         ///Restore keypoints to 3d keypoints
         ComputeKeyPoint3D(imDepth);
@@ -999,7 +1000,7 @@ namespace ORB_SLAM2
     }
 
     /**
-     * Added Module, transfer the whole input depth image and RGB image to 3D point points
+     * Added Module, restore the 3D points from the whole input depth image and RGB image
      * @param imGray
      * @param imDepth
      */
@@ -1082,6 +1083,7 @@ namespace ORB_SLAM2
         mvuRight = vector<float>(N,-1);
         mvDepth = vector<float>(N,-1);
 
+        cout<<"ComputeStereoFromRGBD "<<imDepth.rows<<" "<<imDepth.cols<<endl;
         for(int i=0; i<N; i++)
         {
             const cv::KeyPoint &kp = mvKeys[i];
@@ -1121,6 +1123,36 @@ namespace ORB_SLAM2
             return cv::Mat();
     }
 
+    //why my downsample function return error
+    int Frame::testDownSampleFunc(){
+        if (mvPtRGBD.size() <= 3) {
+            return 0;
+        }
+        ///Read from txt file
+        ifstream reader;
+        reader.open("data/RGB/initCloud.txt", ios::in);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloud(new pcl::PointCloud<pcl::PointXYZ>);
+        RGBDCloud->resize(500000);
+        int actualNum = 0;
+        while (!reader.eof()) {
+            reader >> RGBDCloud->points[actualNum].x >> RGBDCloud->points[actualNum].y >> RGBDCloud->points[actualNum].z;
+            actualNum++;
+        }
+        RGBDCloud->resize(actualNum);
+        cout << "read " << RGBDCloud->points.size() << " points" << endl;
+        ///Downsampling pointCloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
+        RGBDCloudDownSample->resize(10000);
+        cout << " RGBDCloudDownSample size " << RGBDCloudDownSample->points.size() << endl;
+        pcl::VoxelGrid<pcl::PointXYZ> sor;
+        sor.setInputCloud(RGBDCloud);
+        sor.setLeafSize(0.1f, 0.1f, 0.1f);
+        sor.filter(*RGBDCloudDownSample);
+        cout << " downsampling remains " << RGBDCloudDownSample->points.size() << endl;
+        RGBDCloudDownSample->resize(RGBDCloudDownSample->points.size());
+        return 1;
+    }
+
     /**
      * find plane feature from RGBD pointlist
      */
@@ -1147,15 +1179,20 @@ namespace ORB_SLAM2
         }
 //        writer.close();
         RGBDCloud->resize(actualNum);
-        //cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
+        cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
         //Downsampling the point cloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
+        RGBDCloudDownSample->resize(10000);//no resize will lead corruption when function ending, release pointer. but resize small size will lead error during filtering
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(RGBDCloud);
+        //RGBD source
         //sor.setLeafSize(0.03f,0.03f,0.03f);//for non-noise data
-        sor.setLeafSize(0.05f,0.05f,0.05f);//for noise data
+        //sor.setLeafSize(0.05f,0.05f,0.05f);//for noise data
+        //PlanarReconstruct source
+        sor.setLeafSize(0.05f,0.05f,0.05f);
         sor.filter(*RGBDCloudDownSample);
-        //cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
+        cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
+        RGBDCloudDownSample->resize(RGBDCloudDownSample->points.size());
         //estimating normals for each point
         pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
         pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -1166,16 +1203,20 @@ namespace ORB_SLAM2
         normal_estimator.compute(*normals);
         //region growing
         pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-        reg.setMinClusterSize(200);
-        reg.setMaxClusterSize(50000);
+        //RGBD source
+        //reg.setMinClusterSize(200);
+        //reg.setMaxClusterSize(50000);
+        //PlanarReconstruct source
+        reg.setMinClusterSize(50);
+        reg.setMaxClusterSize(10000);
         reg.setSearchMethod(tree);
         //too little will cause runtime error
         //reg.setNumberOfNeighbours(100);//for non-noise data
         reg.setNumberOfNeighbours(200);//for noise data
         reg.setInputCloud(RGBDCloudDownSample);
         reg.setInputNormals(normals);
-//        reg.setSmoothnessThreshold(2.0/180.0/M_PI);//for non-noise data
-//        reg.setCurvatureThreshold(2.0);
+        //reg.setSmoothnessThreshold(2.0/180.0/M_PI);//for non-noise data
+        //reg.setCurvatureThreshold(2.0);
         reg.setSmoothnessThreshold(5.0/180.0/M_PI);//for noise data
         reg.setCurvatureThreshold(5.0);
         //extract each cluster

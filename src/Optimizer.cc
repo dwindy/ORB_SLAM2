@@ -1094,6 +1094,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         }
         cout<<"add "<<planeVertexNum<<" plane Vertex with AVG Weight "<<planeWeightSum/planeVertexNum<<endl;
 
+
+
+        ///run optimizer
+//        optimizer.initializeOptimization();
+//        optimizer.optimize(10);
         ///Step 5 start optimization, 4 times, filter outlier
         const float chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
         const int its[4] = {10, 10, 10, 10};
@@ -1143,11 +1148,6 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             if(optimizer.edges().size()<10)
                 break;
         }
-
-
-        ///run optimizer
-//        optimizer.initializeOptimization();
-//        optimizer.optimize(10);
 
         /// Recover optimized pose and return number of inliers
         g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));

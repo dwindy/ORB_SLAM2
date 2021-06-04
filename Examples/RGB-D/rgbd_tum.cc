@@ -187,11 +187,11 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
             string sRGB, sD;
             ss >> t;
             vTimestamps.push_back(t);
-            ss >> sD;
-            vstrImageFilenamesD.push_back(sD);
-            ss >> t;
             ss >> sRGB;
             vstrImageFilenamesRGB.push_back(sRGB);
+            ss >> t;
+            ss >> sD;
+            vstrImageFilenamesD.push_back(sD);
         }
     }
 }

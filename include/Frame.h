@@ -160,6 +160,7 @@ public:
     //should only be called when initial system.
     void RegisterFeature2Plane(double thres);
 
+    int testDownSampleFunc();
     int RegionGrowing();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput);
     void PointOnPlane();

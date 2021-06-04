@@ -416,7 +416,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     * project plane's 3D point to 2D frame for showing
     */
     void Tracking::ProjectPlanetoImage() {
-        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+        cv::Mat P_rect_00 = cv::Mat::zeros(4,4, CV_64F);
         P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
         P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
         P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
@@ -454,7 +454,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
-        cout<<"Track Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
+    cout<<"Track Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
     ///Added Module --- project current frame plane points to image
     ProjectPlanetoImage();
 
@@ -1687,7 +1687,7 @@ void Tracking::CheckReplacedInLastFrame()
     }
 
     /**
-     * Transform cur mapPoint to local frame
+     * Transform mapPoint to local frame
      * Found close plane
      * Store: Pair (mappoint, localPlane index) | curPlane.mvpPoints[]
      * @param map
@@ -1708,21 +1708,18 @@ void Tracking::CheckReplacedInLastFrame()
                 Tcw.at<float>(1, 0), Tcw.at<float>(1, 1), Tcw.at<float>(1, 2), Tcw.at<float>(1, 3),
                 Tcw.at<float>(2, 0), Tcw.at<float>(2, 1), Tcw.at<float>(2, 2), Tcw.at<float>(2, 3),
                 Tcw.at<float>(3, 0), Tcw.at<float>(3, 1), Tcw.at<float>(3, 2), Tcw.at<float>(3, 3);
-
+        //pair vector stores the mappoint -> local plane relationship
         curFrame.mvMapPoint2Plane.resize(curFrame.mvpMapPoints.size());
         for (size_t i = 0; i < curFrame.mvpMapPoints.size(); i++) {
             curFrame.mvMapPoint2Plane[i] = pair<MapPoint *, int>(static_cast<MapPoint *>(NULL), -1);
             if (curFrame.mvpMapPoints[i]) {
+                //1 project to local frame
                 cv::Mat mapPoint = curFrame.mvpMapPoints[i]->GetWorldPos();
                 Eigen::Vector4f mapPoint4;
                 mapPoint4 << mapPoint.at<float>(0, 0), mapPoint.at<float>(1, 0), mapPoint.at<float>(2, 0), 1;
                 Eigen::Vector4f pjtPoint4 = Tcw_matrix * mapPoint4;
                 writer<<pjtPoint4[0]<<" "<<pjtPoint4[1]<<" "<<pjtPoint4[2]<<endl;
                 //cout<<pjtPoint4[0]<<" "<<pjtPoint4[1]<<" "<<pjtPoint4[2]<<endl;
-//                if (abs(pjtPoint4[2] - 3.99) <= 0.05) { //abs(pjtPoint4[1] - 0.89) <= 0.05 ||
-//                    printFlag = true;
-//                    cout << "pjtPoint " << pjtPoint4.transpose() << endl;
-//                } else { printFlag = false; }
                 int closePlaneIndex = -1;
                 double minDistance = 65535;
                 for (size_t j = 0; j < curFrame.mvPlanes.size(); j++) {
@@ -1990,9 +1987,9 @@ void Tracking::CheckReplacedInLastFrame()
         RegisterFeature2Plane2(mpMap, mCurrentFrame, mLastFrame.mTcw,mCurrentFrame.pointPlaneRegistThres);
         //vector<int> matchPlanes;
         int nplnmatches = SearchPlane(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
-        if (nplnmatches > 2)
-            Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
-        else
+//        if (nplnmatches > 2)
+//            Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+//        else
             ///---end
             //*Step4 优化重投影误差来（3D-2D）获得位姿
             Optimizer::PoseOptimization(&mCurrentFrame);
@@ -2117,8 +2114,6 @@ void Tracking::UpdateLastFrame()
 */
 bool Tracking::TrackWithMotionModel()
 {
-    if (mCurrentFrame.mnId >= 910 && mCurrentFrame.mnId <= 940)
-        cout << "mCurrentFrame.mnId " << mCurrentFrame.mnId << "track with motion " << endl;
 
     //初始化matcher 0.9 是 最小距离小于次小距离0.9 | 检查旋转
     //? keyframe tracking 没这个matcher？
@@ -2160,9 +2155,9 @@ bool Tracking::TrackWithMotionModel()
     RegisterFeature2Plane2(mpMap, mCurrentFrame,mVelocity * mLastFrame.mTcw,mCurrentFrame.pointPlaneRegistThres);
     //vector<int> matchPlanes;
     int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
-    if (nplnmatches > 2)
-        Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
-    else
+//    if (nplnmatches > 2)
+//        Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+//    else
         //*Step 3 优化当前位姿
         // Optimize frame pose with all matches
         Optimizer::PoseOptimization(&mCurrentFrame);
@@ -2229,20 +2224,20 @@ bool Tracking::TrackWithMotionModel()
         //*Step 2 匹配局部地图中 与 当前帧 匹配的Mappoints
         SearchLocalPoints();
 
-//    //*Step 3 更新局部地图点后 更新位姿
-//    // Optimize Pose
-//    Optimizer::PoseOptimization(&mCurrentFrame);
+    //*Step 3 更新局部地图点后 更新位姿
+    // Optimize Pose
+    Optimizer::PoseOptimization(&mCurrentFrame);
         ///Step 3Added Module
-        vector<int> matchPlanes;
-        int nplnmatches = 0;
-        for (size_t i = 0; i < mCurrentFrame.matchPlanes.size(); i++) {
-            if(mCurrentFrame.matchPlanes[i]>=0)
-                nplnmatches++;
-        }
-        if (nplnmatches > 2)
-            Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
-        else
-            Optimizer::PoseOptimization(&mCurrentFrame);
+//        vector<int> matchPlanes;
+//        int nplnmatches = 0;
+//        for (size_t i = 0; i < mCurrentFrame.matchPlanes.size(); i++) {
+//            if(mCurrentFrame.matchPlanes[i]>=0)
+//                nplnmatches++;
+//        }
+//        if (nplnmatches > 2)
+//            Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+//        else
+//            Optimizer::PoseOptimization(&mCurrentFrame);
         ///-----ended
 
         mnMatchesInliers = 0;
