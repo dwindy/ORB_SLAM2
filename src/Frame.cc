@@ -1072,6 +1072,9 @@ namespace ORB_SLAM2
             }
         }
 //        int pause = 0;
+        for (size_t j = 0; j < mvPlanes.size(); j++) {
+            cout<<"map plane "<<mvPlanes[j].PlaneId<<" contains "<<mvPlanes[j].mvMappoints.size()<<endl;
+        }
     }
 
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
@@ -1144,12 +1147,14 @@ namespace ORB_SLAM2
         }
 //        writer.close();
         RGBDCloud->resize(actualNum);
-        //cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
+        cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
         //Downsampling the point cloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
+        RGBDCloudDownSample->resize(100000);
+        //cout<<" downsampling starts with "<<RGBDCloudDownSample->points.size()<<" "<<endl;
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(RGBDCloud);
-        sor.setLeafSize(0.03f,0.03f,0.03f);
+        sor.setLeafSize(0.05f,0.05f,0.05f);
         sor.filter(*RGBDCloudDownSample);
         //cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
         //estimating normals for each point
@@ -1163,13 +1168,13 @@ namespace ORB_SLAM2
         //region growing
         pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
         reg.setMinClusterSize(200);
-        reg.setMaxClusterSize(50000);
+        reg.setMaxClusterSize(10000);
         reg.setSearchMethod(tree);
-        reg.setNumberOfNeighbours(100);//too little will cause runtime error
+        reg.setNumberOfNeighbours(200);//too little will cause runtime error
         reg.setInputCloud(RGBDCloudDownSample);
         reg.setInputNormals(normals);
-        reg.setSmoothnessThreshold(2.0/180.0/M_PI);
-        reg.setCurvatureThreshold(2.0);
+        reg.setSmoothnessThreshold(5.0/180.0/M_PI);
+        reg.setCurvatureThreshold(5.0);
         //extract each cluster
         clock_t  startTime = clock();
         std::vector<pcl::PointIndices> clusters;

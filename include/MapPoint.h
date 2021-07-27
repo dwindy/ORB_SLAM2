@@ -177,7 +177,7 @@ protected:
         int GetIndexInKeyFrame(KeyFrame* pKF);
         bool IsInKeyFrame(KeyFrame* pKF);
 
-        void SetBadFlag();
+        void setBadFlag(bool flag);
         bool isBad();
 
         void Replace(MapPoint* pMP);

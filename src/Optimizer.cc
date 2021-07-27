@@ -927,6 +927,10 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     }
 
+    /**
+ * If matched plane number reach threshold, run this function instead of the original Poseoptimization
+ * the plane feature is represented as unaryEdge
+ */
     int Optimizer::JointOptimization(Map *mpMap, Frame *pFrame, vector<int> matchPlanes){
         ///Step 1 declar g2o optimizer, blocksolver_6_3, Pose 6 dimension, LandMark 3 dimension
         g2o::SparseOptimizer optimizer;
@@ -964,6 +968,10 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         const float deltaMono = sqrt(5.991);
         const float deltaStereo = sqrt(7.815);
 
+        ///Added module. weighted error
+        double pointErrorSum=0;
+        double pointWeightSum = 0;
+        int pointVertexNum = 0;
         ///Step 3 Add 3D2D unary edge
         {
             //while adding edge, we dont want the mappoint be modified
@@ -986,6 +994,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                     e->setMeasurement(obs);
                     const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                     Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+                    pointWeightSum += invSigma2; //record weight
+                    pointVertexNum++; //record point vertex number
                     e->setInformation(Info);
                     g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                     e->setRobustKernel(rk);
@@ -1002,16 +1012,23 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                     optimizer.addEdge(e);
                     vpEdgesStereo.push_back(e);
                     vpIndexEdgeStereo.push_back(i);
+
+                    e->computeError();
+                    pointErrorSum += abs(e->chi2());//record sum error
                 }
             }
         }
+        cout<<"add "<<pointVertexNum<<" point Vertex with AVG weight "<<pointWeightSum/pointVertexNum;
 
         if(nInitialCorrespondences<3)
             return 0;
 
-        //Stereo
+        //Plane
         vector<UnaryEdgePlane *> vpEdgesPlane;
         vector<bool> planeFlags;
+        double planeErrorSum = 0;
+        double planeWeightSum = 0;
+        int planeVertexNum = 0;
         ///Step 4 Add Plane Edge
         {
             //while adding edge, we dont want the mappoint be modified
@@ -1033,9 +1050,10 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                     UnaryEdgePlane *newEdge = new UnaryEdgePlane;
                     newEdge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                     newEdge->setMeasurement(pFrame->mvPlanes[i].PI);
-                    newEdge->PI_map = Eigen::Vector3d(mapPlanes[mapPlaneIndex]->PI0, mapPlanes[mapPlaneIndex]->PI1,
-                                                      mapPlanes[mapPlaneIndex]->PI2);
+                    newEdge->PI_map = Eigen::Vector3d(mapPlanes[mapPlaneIndex]->PI0, mapPlanes[mapPlaneIndex]->PI1, mapPlanes[mapPlaneIndex]->PI2);
                     newEdge->setInformation(Eigen::Matrix<double, 3, 3>::Identity());//
+                    planeWeightSum+=1;// record weight
+                    planeVertexNum++;// record plane vertex number
                     g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                     newEdge->setRobustKernel(rk);
                     rk->setDelta(deltaStereo);
@@ -1043,10 +1061,18 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                     vpEdgesPlane.push_back(newEdge);
                     planeFlags.push_back(false);
                     //newEdge->printError();
+
+                    newEdge->computeError();// record plane vertex error
+                    planeErrorSum += newEdge->chi2();
                 }
             }
         }
+        cout<<"add "<<planeVertexNum<<" plane Vertex with AVG Weight "<<planeWeightSum/planeVertexNum<<endl;
 
+
+        ///run optimizer
+//        optimizer.initializeOptimization();
+//        optimizer.optimize(10);
         ///Step 5 start optimization, 4 times, filter outlier
         const float chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
         const int its[4] = {10, 10, 10, 10};
@@ -1096,11 +1122,6 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             if(optimizer.edges().size()<10)
                 break;
         }
-
-
-        ///run optimizer
-//        optimizer.initializeOptimization();
-//        optimizer.optimize(10);
 
         /// Recover optimized pose and return number of inliers
         g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
@@ -1155,23 +1176,23 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
     vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
 
-    if (pFrame->mnId == 120) {
-        ofstream writer("frame150points.txt");
-        cout << "pose before pose optimization " << endl;
-        cout << pFrame->mTcw << endl;
-        vector<float> qcw1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
-        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
-             << " | " << pFrame->mTcw.at<float>(0, 3) << " " << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3)
-             << " | " << qcw1[0] << " " << qcw1[1] << " " << qcw1[2] << " " << qcw1[3] << endl;
-        for (int i = 0; i < pFrame->N; i++) {
-            MapPoint *pMP = pFrame->mvpMapPoints[i];
-            if (pMP) {
-                writer << pMP->GetWorldPos().at<float>(0) << " " << pMP->GetWorldPos().at<float>(1) << " "
-                       << pMP->GetWorldPos().at<float>(2) << endl;
-            }
-        }
-        writer.close();
-    }
+//    if (pFrame->mnId == 120) {
+//        ofstream writer("frame150points.txt");
+//        cout << "pose before pose optimization " << endl;
+//        cout << pFrame->mTcw << endl;
+//        vector<float> qcw1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
+//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
+//             << " | " << pFrame->mTcw.at<float>(0, 3) << " " << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3)
+//             << " | " << qcw1[0] << " " << qcw1[1] << " " << qcw1[2] << " " << qcw1[3] << endl;
+//        for (int i = 0; i < pFrame->N; i++) {
+//            MapPoint *pMP = pFrame->mvpMapPoints[i];
+//            if (pMP) {
+//                writer << pMP->GetWorldPos().at<float>(0) << " " << pMP->GetWorldPos().at<float>(1) << " "
+//                       << pMP->GetWorldPos().at<float>(2) << endl;
+//            }
+//        }
+//        writer.close();
+//    }
 
     //设置ID
     vSE3->setId(0);
@@ -1383,14 +1404,14 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
     cv::Mat pose = Converter::toCvMat(SE3quat_recov);
     pFrame->SetPose(pose);
-    if (pFrame->mnId ==120) {
-        cout << "pose after pose optimization " << endl;
-        cout << pose << endl;
-        vector<float> qcw2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
-        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | "
-             << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
-             << qcw2[0] << " " << qcw2[1] << " " << qcw2[2] << " " << qcw2[3] << endl;
-    }
+//    if (pFrame->mnId ==120) {
+//        cout << "pose after pose optimization " << endl;
+//        cout << pose << endl;
+//        vector<float> qcw2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
+//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | "
+//             << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
+//             << qcw2[0] << " " << qcw2[1] << " " << qcw2[2] << " " << qcw2[3] << endl;
+//    }
     return nInitialCorrespondences-nBad;
 }
 
@@ -1416,7 +1437,13 @@ int Optimizer::PoseOptimization(Frame *pFrame)
  * @note 由局部建图线程调用，对局部地图进行优化的函数
 */
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
-{    
+{
+    ///Added Module --- to record points and planes
+    ofstream writer1,writer2,writer3;
+    writer1.open("localBundlePoints.txt");
+    writer2.open("localBundlePlanes.txt");
+    writer3.open("localBundlePose.txt");
+
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
 
@@ -1507,6 +1534,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
         vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
         vSE3->setId(pKFi->mnId);
+        ///Added Module --- store data
+        writer3>>Converter::toSE3Quat(pKFi->GetPose())<<endl;
+        writer3>>pKFi->mnId<<endl;
+        ///-----
         //第0帧不优化
         vSE3->setFixed(pKFi->mnId==0);
         optimizer.addVertex(vSE3);

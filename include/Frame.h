@@ -54,6 +54,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+///added module
+class MapPlane;
 
 ///added module
     class PtRGBD {
@@ -243,6 +245,8 @@ public:
 
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;
+    ///Added Module
+    std::vector<MapPlane*> mvpMapPlanes;
 
     // Flag to identify outlier associations.
     std::vector<bool> mvbOutlier;

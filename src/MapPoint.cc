@@ -482,5 +482,40 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
         this->C = C;
         this->D = D;
     }
+    void MapPlane::AddObservation(KeyFrame *pKF, size_t idx) {
+        unique_lock<mutex> lock(mMutexFeatures);
+        if (mObservations.count(pKF))
+            return;
+        mObservations[pKF] = idx;
+        nObs++;
+    }
 
+    bool MapPlane::isBad() {
+        unique_lock<mutex> lock(mMutexFeatures);
+        unique_lock<mutex> lock2(mMutexPos);
+        return mbBad;
+    }
+
+    void MapPlane::setBadFlag(bool flag) {
+        unique_lock<mutex> lock(mMutexFeatures);
+        unique_lock<mutex> lock2(mMutexPos);
+        mbBad = flag;
+    }
+
+    cv::Mat MapPlane::GetWorldPos()
+    {
+        unique_lock<mutex> lock(mMutexPos);
+        cv::Mat planePose = cv::Mat(3,1,CV_32F);
+        planePose.at<float>(0,0)=PI0;
+        planePose.at<float>(1,0)=PI1;
+        planePose.at<float>(2,0)=PI2;
+        mWorldPos=planePose.clone();
+        return mWorldPos.clone();
+    }
+
+    map<KeyFrame*, size_t> MapPlane::GetObservations()
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return mObservations;
+    }
 } //namespace ORB_SLAM

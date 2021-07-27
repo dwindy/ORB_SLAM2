@@ -182,6 +182,7 @@ namespace ORB_SLAM2
         void FixPlanePointDepth(Map *map, float threshold);
         void FixPlaneSinglePointDepth(Map *map, MapPoint *mapPoint, float threshold);
         void createNewMapPlane();
+        bool CheckWithMapPlane(Map *mpMap, MapPoint *mp, double disThreshold);
 
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.
