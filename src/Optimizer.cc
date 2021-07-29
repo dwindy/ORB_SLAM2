@@ -1439,10 +1439,10 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
 {
     ///Added Module --- to record points and planes
-    ofstream writer1,writer2,writer3;
-    writer1.open("localBundlePoints.txt");
-    writer2.open("localBundlePlanes.txt");
-    writer3.open("localBundlePose.txt");
+    ofstream pointWriter, planeWriter, poseWriter;
+    pointWriter.open("localBundlePoints.txt");
+    planeWriter.open("localBundlePlanes.txt");
+    poseWriter.open("localBundlePoses.txt");
 
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -1534,15 +1534,13 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
         vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
         vSE3->setId(pKFi->mnId);
-        ///Added Module --- store data
-        writer3>>Converter::toSE3Quat(pKFi->GetPose())<<endl;
-        writer3>>pKFi->mnId<<endl;
-        ///-----
         //第0帧不优化
         vSE3->setFixed(pKFi->mnId==0);
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
+        ///added module---store
+        poseWriter<<Converter::toSE3Quat(pKFi->GetPose())<<" "<<pKFi->mnId<<" 1 "<<endl;
     }
 
     //*Step 6 添加不优化的位姿顶点 pose of fixed keyframe
@@ -1558,6 +1556,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
+
+        ///added module---store
+        poseWriter<<Converter::toSE3Quat(pKFi->GetPose())<<" "<<pKFi->mnId<<" 0 "<<endl;
     }
     //*Step 7 添加待优化的3D地图点顶点
     //边的数目=pose数目*地图点数目
@@ -1647,6 +1648,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
                     g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
 
+                    ///Added module ---store
+                    pointWriter<<obs<<" "<<id<<" "<<pKFi->mnId<<endl;
+
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                     e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
                     e->setMeasurement(obs);
@@ -1672,6 +1676,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             }
         }
     }
+
+    ///Added
+    poseWriter.close();
+    planeWriter.close();
+    pointWriter.close();
 
     if(pbStopFlag)
         if(*pbStopFlag)
