@@ -493,6 +493,11 @@ void Tracking::Track()
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
         if(!mbOnlyTracking)
         {
+//            ///cabin failed
+//            if(mCurrentFrame.mnId==130){
+//                int pause = 1;
+//            }
+//
             // Local Mapping is activated. This is the normal behaviour, unless
             // you explicitly activate the "only tracking" mode.
             //*Step 2 进入正常SLAM模式，包含地图更新
@@ -1455,6 +1460,7 @@ void Tracking::CheckReplacedInLastFrame()
                 if (depths.size() < 4) {
                     cout << "map point "<<point3D.transpose()<<" project to "<<x<<","<<y<<" has less then 4 neigbour points"<<endl;
                 }
+                //cout << "feature point " << x << " " << y << " depthStd " << depthStd << endl;
                 //cout << " std " << depthStd << endl;
                 if (depthStd < 0.1) {
                     ///STEP3 replace the map point with intersection point of ray and plane
@@ -2418,7 +2424,6 @@ bool Tracking::NeedNewKeyFrame()
             }
         }
         ///Step 2 : compare with curframe plane, using Closest Point and all plane map points
-        ///todo record the matched number. then given a threshold. in perfect case, the number should always be zero
         for (size_t i = 0; i < mCurrentFrame.matchPlanes.size(); i++) {
             //pick up a un-paired local plane
             if (mCurrentFrame.matchPlanes[i] < 0) {

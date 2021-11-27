@@ -175,8 +175,8 @@ cv::Mat FrameDrawer::DrawFrame()
                     case 0:
                         cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
                         break;
-                    case 1:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
+                    case 1:///Because point feature is also green. change green plane to yellow
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
                         break;
                     case 2:
                         cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
@@ -185,7 +185,7 @@ cv::Mat FrameDrawer::DrawFrame()
                         cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
                         break;
                     case 4:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 0, 127), -1);
                         break;
                     case 5:
                         cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
@@ -197,7 +197,7 @@ cv::Mat FrameDrawer::DrawFrame()
                         cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 127, 127), -1);
                         break;
                     case 8:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 0, 127), -1);
+                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
                         break;
                     default:
                         cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);

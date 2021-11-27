@@ -1439,10 +1439,11 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
 {
     ///Added Module --- to record points and planes
-    ofstream pointWriter, planeWriter, poseWriter;
-    pointWriter.open("localBundlePoints.txt");
-    planeWriter.open("localBundlePlanes.txt");
-    poseWriter.open("localBundlePoses.txt");
+//    ofstream pointWriter, planeWriter, poseWriter, mapPointWriter;
+//    pointWriter.open("localBundlePoints.txt");
+//    planeWriter.open("localBundlePlanes.txt");
+//    poseWriter.open("localBundlePoses.txt");
+//    mapPointWriter.open("localBundleMapPoints.txt");
 
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -1539,8 +1540,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
-        ///added module---store
-        poseWriter<<Converter::toSE3Quat(pKFi->GetPose())<<" "<<pKFi->mnId<<" 1 "<<endl;
+
+        ///added module---store 4x4 pose and vertex ID
+        //poseWriter<<Converter::toSE3Quat(pKFi->GetPose())<<" "<<pKFi->mnId<<" 1 "<<endl;
     }
 
     //*Step 6 添加不优化的位姿顶点 pose of fixed keyframe
@@ -1558,7 +1560,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             maxKFid=pKFi->mnId;
 
         ///added module---store
-        poseWriter<<Converter::toSE3Quat(pKFi->GetPose())<<" "<<pKFi->mnId<<" 0 "<<endl;
+        //poseWriter<<Converter::toSE3Quat(pKFi->GetPose())<<" "<<pKFi->mnId<<" 0 "<<endl;
     }
     //*Step 7 添加待优化的3D地图点顶点
     //边的数目=pose数目*地图点数目
@@ -1598,6 +1600,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         //因为使用了linearsolvertype，所有的三维点可以边缘化
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
+
+        ///Added --- store map point
+        //mapPointWriter<<Converter::toVector3d(pMP->GetWorldPos())[0]<<endl<<Converter::toVector3d(pMP->GetWorldPos())[1]<<endl<<Converter::toVector3d(pMP->GetWorldPos())[2]<<endl<<id<<endl;
 
         //观测到该地图点的kf和该地图点在kf中的索引
         const map<KeyFrame*,size_t> observations = pMP->GetObservations();
@@ -1649,7 +1654,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                     g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
 
                     ///Added module ---store
-                    pointWriter<<obs<<" "<<id<<" "<<pKFi->mnId<<endl;
+                    //pointWriter<<kpUn.pt.x<<endl<<kpUn.pt.y<<endl<<kp_ur<<endl<<id<<endl<<pKFi->mnId<<endl;
 
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                     e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
@@ -1678,9 +1683,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     }
 
     ///Added
-    poseWriter.close();
-    planeWriter.close();
-    pointWriter.close();
+    //poseWriter.close();
+    //planeWriter.close();
+    //pointWriter.close();
 
     if(pbStopFlag)
         if(*pbStopFlag)

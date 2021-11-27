@@ -176,7 +176,7 @@ namespace ORB_SLAM2
         ComputeStereoFromRGBD(imDepth);
 
         ///Added Module ---
-        //set fx fy cx fy for unstore 3d points, because in original code, this will only done at first frame
+        //set fx fy cx fy for unstore 3d points, because in original code, this will only do once at first frame
         fx = K.at<float>(0, 0);
         fy = K.at<float>(1, 1);
         cx = K.at<float>(0, 2);
@@ -1147,7 +1147,7 @@ namespace ORB_SLAM2
         }
 //        writer.close();
         RGBDCloud->resize(actualNum);
-        cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
+        //cout<<"mvPtRGBD size "<<RGBDNum<<" actualNum "<<RGBDCloud->points.size()<<" ";
         //Downsampling the point cloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr RGBDCloudDownSample(new pcl::PointCloud<pcl::PointXYZ>);
         RGBDCloudDownSample->resize(100000);
@@ -1155,6 +1155,7 @@ namespace ORB_SLAM2
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(RGBDCloud);
         sor.setLeafSize(0.05f,0.05f,0.05f);
+        //sor.setLeafSize(0.03f,0.03f,0.03f);
         sor.filter(*RGBDCloudDownSample);
         //cout<<" downsampling remains "<<RGBDCloudDownSample->points.size()<<" "<<endl;
         //estimating normals for each point
