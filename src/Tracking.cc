@@ -50,6 +50,9 @@
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/registration/icp.h>
+///Added module
+#include "tic_toc.h"
+#include "lidarFactor.hpp"
 
 using namespace std;
 
@@ -76,7 +79,9 @@ Tracking::Tracking(System *pSys, //系统实例?
     mpFrameDrawer(pFrameDrawer),
     mpMapDrawer(pMapDrawer),
     mpMap(pMap),
-    mnLastRelocFrameId(0)
+    mnLastRelocFrameId(0),
+    mbLiDARInit(false), //Added module, for lidar init
+    mLiDARState(NOT_INITIALIZED)
 {
     // Load camera parameters from settings file
 
@@ -112,8 +117,8 @@ Tracking::Tracking(System *pSys, //系统实例?
     if(fps==0)
         fps=30;
 
-    ///added module
-    //load Tcam_Lidar parameters
+    ///-----added module
+    ///load Tcam_Lidar parameters
     cv::Mat Tcl = cv::Mat::eye(4,4,CV_64F);
     Tcl.at<double>(0,0) = fSettings["Rcl.11"];
     Tcl.at<double>(0,1) = fSettings["Rcl.12"];
@@ -128,6 +133,19 @@ Tracking::Tracking(System *pSys, //系统实例?
     Tcl.at<double>(1,3) = fSettings["Tcl.2"];
     Tcl.at<double>(2,3) = fSettings["Tcl.3"];
     Tcl.copyTo(mTcamlid);
+    //init T^world_cur
+//    q_w_curr = Eigen::Quaterniond (1, 0, 0, 0);
+//    t_w_curr = Eigen::Vector3d (0, 0, 0);
+//    para_q[0] = 0; para_q[1] = 0; para_q[2] = 0; para_q[3] = 1; //{0, 0, 0, 1};
+//    para_t[0] = 0; para_t[1] = 0; para_t[2] = 0; //{0, 0, 0};
+//    q_last_curr = Eigen::Quaterniond (1, 0, 0, 0);
+//    t_last_curr = Eigen::Vector3d (0, 0, 0);
+////    q_last_curr = Eigen::Map<Eigen::Quaterniond> (para_q);
+////    t_last_curr = Eigen::Map<Eigen::Vector3d> (para_t);
+////    laserCloudCornerLast = new pcl::PointCloud<PointType>();
+////    laserCloudSurfLast = new pcl::PointCloud<PointType>();
+////    laserCloudFullRes = new pcl::PointCloud<PointType>();
+    ///-----
 
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
@@ -382,13 +400,15 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 //        int lsrPtNum = mCurrentFrame.mLaserPoints.size();
 //
 //        if (lsrPtNum > 0) {
-//            cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+//            //cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+//            cv::Mat P_rect_00 = cv::Mat::zeros(3, 4, CV_64F);
 //            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
 //            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
 //            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
 //            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
 //            P_rect_00.at<double>(2, 2) = 1;
-//            cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+//            //cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+//            cv::Mat R_rect_00 = cv::Mat::eye(4, 4, CV_64F);
 //
 //            cv::Mat X(4, 1, CV_64F);//3D LiDAR point
 //            cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
@@ -397,8 +417,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 //                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
 //                if (mCurrentFrame.mLaserPoints[li][0] > maxX || mCurrentFrame.mLaserPoints[li][0] < 0.0
 //                    || mCurrentFrame.mLaserPoints[li][1] > maxY || mCurrentFrame.mLaserPoints[li][1] < -maxY
-//                    || mCurrentFrame.mLaserPoints[li][2] < minZ
-//                    || mCurrentFrame.mLaserPoints[li][3] >
+//                    || mCurrentFrame.mLaserPoints[li][2] < minZ || mCurrentFrame.mLaserPoints[li][3] >
 //                       -minZ) //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
 //                {
 //                    continue;
@@ -513,7 +532,6 @@ void Tracking::Track()
     ///added module
     ///project raw 3D LiDAR point to 2D image frame
     //ProjectLiDARtoImage();
-    ///todo Should think about the low frequency of LiDAR plane extraction
 
     //Track包含估计运动和跟踪局部地图两个部分
     if(mState==NO_IMAGES_YET)
@@ -530,6 +548,14 @@ void Tracking::Track()
     //* Step 1 初始化
     if(mState==NOT_INITIALIZED)
     {
+//        ///Added module
+//        //-----add a lidar init()
+//        if(mLiDARState==NOT_INITIALIZED)
+//        {
+//            LiDARInit();
+//        }
+//        if(mLiDARState!=OK)
+//            return;
         if(mSensor==System::STEREO || mSensor==System::RGBD)
             StereoInitialization();
         else
@@ -850,6 +876,417 @@ void Tracking::Track()
 
 }//Tracking
 
+// undistort lidar point
+    void Tracking::TransformToStart(PointType const *const pi, PointType *const po)
+    {
+        //interpolation ratio
+        double s;
+        // 由于kitti数据集上的lidar已经做过了运动补偿，因此这里就不做具体补偿了
+        if (DISTORTION)
+            s = (pi->intensity - int(pi->intensity)) / SCAN_PERIOD;
+        else
+            s = 1.0;    // s = 1s说明全部补偿到点云结束的时刻
+        //s = 1;
+        // 所有点的操作方式都是一致的，相当于从结束时刻补偿到起始时刻
+        // 这里相当于是一个匀速模型的假设
+        Eigen::Quaterniond q_point_last = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
+        Eigen::Vector3d t_point_last = s * t_last_curr;
+        Eigen::Vector3d point(pi->x, pi->y, pi->z);
+        Eigen::Vector3d un_point = q_point_last * point + t_point_last;
+
+        po->x = un_point.x();
+        po->y = un_point.y();
+        po->z = un_point.z();
+        po->intensity = pi->intensity;
+    }
+
+// transform all lidar points to the start of the next frame
+
+    void Tracking::TransformToEnd(PointType const *const pi, PointType *const po)
+    {
+        // undistort point first
+        pcl::PointXYZI un_point_tmp;
+        TransformToStart(pi, &un_point_tmp);
+
+        Eigen::Vector3d un_point(un_point_tmp.x, un_point_tmp.y, un_point_tmp.z);
+        Eigen::Vector3d point_end = q_last_curr.inverse() * (un_point - t_last_curr);
+
+        po->x = point_end.x();
+        po->y = point_end.y();
+        po->z = point_end.z();
+
+        //Remove distortion time info
+        po->intensity = int(pi->intensity);
+    }
+
+/**
+ * LiDAR Mode Init first, then Camera Mode Init
+ */
+void Tracking::LiDARInit()
+{
+    //Step 1 mpInitializer不存在时，创建一个实例
+    if (!mpInitializer) {
+        // Set Reference Frame
+        if (mCurrentFrame.mvKeys.size() > 100) {
+            //把当前帧赋给初始化帧
+            mInitialFrame = Frame(mCurrentFrame);
+            //把当前帧赋给上一帧
+            mLastFrame = Frame(mCurrentFrame);
+            //记录上一帧的特征点 //not in use in LiDAR mode
+            mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
+            for (size_t i = 0; i < mCurrentFrame.mvKeysUn.size(); i++)
+                mvbPrevMatched[i] = mCurrentFrame.mvKeysUn[i].pt;
+
+            //This will never work
+            if (mpInitializer)
+                delete mpInitializer;
+
+            mpInitializer = new Initializer(mCurrentFrame, 1.0, 200);
+
+            //初始化匹配结果 -1
+            fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
+
+            //函数返回，下次进来执行else部分
+            return;
+        }
+    } else {
+        //Try to initital
+        ///Step 2.1 get LiDAR feature from last frame, set up KdTree for it
+
+        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
+        cornerPointsLessSharp->clear();
+        surfPointsLessFlat->clear();
+        int lastCornerNum = mInitialFrame.mLaserLessCorner_cam.size();
+        int lastSurfNum = mInitialFrame.mLaserLessFlat_cam.size();
+        cornerPointsLessSharp->resize(lastCornerNum);
+        surfPointsLessFlat->resize(lastSurfNum);
+        for (size_t i = 0; i < lastCornerNum; i++) {
+            cornerPointsLessSharp->points[i].x = mInitialFrame.mLaserLessCorner_cam[i].pt3d.x;
+            cornerPointsLessSharp->points[i].y = mInitialFrame.mLaserLessCorner_cam[i].pt3d.y;
+            cornerPointsLessSharp->points[i].z = mInitialFrame.mLaserLessCorner_cam[i].pt3d.z;
+            cornerPointsLessSharp->points[i].intensity = mInitialFrame.mLaserLessCorner_cam[i].intensity;
+        }
+        cout<<"cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
+        for (size_t i = 0; i < lastSurfNum; i++) {
+            surfPointsLessFlat->points[i].x = mInitialFrame.mLaserLessFlat_cam[i].pt3d.x;
+            surfPointsLessFlat->points[i].y = mInitialFrame.mLaserLessFlat_cam[i].pt3d.y;
+            surfPointsLessFlat->points[i].z = mInitialFrame.mLaserLessFlat_cam[i].pt3d.z;
+            surfPointsLessFlat->points[i].intensity = mInitialFrame.mLaserLessFlat_cam[i].intensity;
+        }
+        cout<<"surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
+//        pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeCornerLast(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+//        pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeSurfLast(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
+        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
+        ///Step 2.2 get LiDAR feature from current frame
+        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
+        cornerPointsSharp->clear();
+        surfPointsFlat->clear();
+        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
+        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
+        cornerPointsSharp->resize(curCornerNum);
+        surfPointsFlat->resize(curSurfNum);
+        for (size_t i = 0; i < lastCornerNum; i++) {
+            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
+            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
+            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
+            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
+        }
+        cout<<"cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
+        for (size_t i = 0; i < lastSurfNum; i++) {
+            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
+            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
+            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
+            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
+        }
+        cout<<"surfPointsFlat "<<surfPointsFlat->size()<<endl;
+
+        pcl::PointXYZI pointSel;
+        std::vector<int> pointSearchInd;
+        std::vector<float> pointSearchSqDis;
+        pointSel.x = 5;pointSel.y = 1;pointSel.z = -1.5;
+        kdtreeCornerLast.nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
+
+        ///Step 3 time to init!
+//        cereInit(cornerPointsLessSharp, surfPointsLessFlat,
+//                 &kdtreeCornerLast, &kdtreeSurfLast,
+//                 cornerPointsSharp, surfPointsFlat);
+    }
+}
+
+///**
+// * Should be switch to G2O in the future
+// */
+    void Tracking::cereInit(pcl::PointCloud<PointType>::Ptr laserCloudCornerLast,
+                            pcl::PointCloud<PointType>::Ptr laserCloudSurfLast,
+                            pcl::PointCloud<PointType>::Ptr cornerPointsSharp,
+                            pcl::PointCloud<PointType>::Ptr surfPointsFlat, int KDtreeThres) {
+
+        //Step1 fill up the kdtree
+        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        kdtreeCornerLast.setInputCloud(laserCloudCornerLast);
+        kdtreeSurfLast.setInputCloud(laserCloudSurfLast);
+
+        int cornerPointsSharpNum = cornerPointsSharp->points.size();
+        int surfPointsFlatNum = surfPointsFlat->points.size();
+        TicToc t_opt;
+        for (size_t opti_counter = 0; opti_counter < 2; ++opti_counter) {
+            int corner_correspondence = 0;
+            int plane_correspondence = 0;
+            // q_curr_last(x, y, z, w), t_curr_last
+            double para_q[4] = {0, 0, 0, 1};
+            double para_t[3] = {0, 0, 0};
+            //ceres::LossFunction *loss_function = NULL;
+            // 定义一下ceres的核函数
+            ceres::LossFunction *loss_function = new ceres::HuberLoss(0.1);
+            // 由于旋转不满足一般意义的加法，因此这里使用ceres自带的local param
+            ceres::LocalParameterization *q_parameterization =
+                    new ceres::EigenQuaternionParameterization();
+            ceres::Problem::Options problem_options;
+
+            ceres::Problem problem(problem_options);
+            // 待优化的变量是帧间位姿，平移和旋转，这里旋转使用四元数来表示
+            problem.AddParameterBlock(para_q, 4, q_parameterization);
+            problem.AddParameterBlock(para_t, 3);
+
+            pcl::PointXYZI pointSel;
+            std::vector<int> pointSearchInd;
+            std::vector<float> pointSearchSqDis;
+
+            TicToc t_data;
+            // find correspondence for corner features
+            // 寻找角点的约束
+            for (int i = 0; i < cornerPointsSharpNum; ++i) //select one sharp point from current frame
+            {
+                // 运动补偿
+                TransformToStart(&(cornerPointsSharp->points[i]),
+                                 &pointSel); //project the sharp point to frame start time
+                // cout<<pointSel<<endl;
+                // 在上一帧所有角点构成的kdtree中寻找距离当前帧最近的一个点
+                kdtreeCornerLast.nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
+//                cout<<"pointSel "<<pointSel.x<<" "<<pointSel.y<<" "<<pointSel.z<<" to "
+//                        <<laserCloudCornerLast->points[pointSearchInd[0]].x<<" "<<laserCloudCornerLast->points[pointSearchInd[0]].y<<" "<<laserCloudCornerLast->points[pointSearchInd[0]].z
+//                        <<" dis "<<pointSearchSqDis[0]<<endl;
+                int closestPointInd = -1, minPointInd2 = -1;
+                // 只有小于给定门限才认为是有效约束
+                if (pointSearchSqDis[0] < DISTANCE_SQ_THRESHOLD) {
+                    closestPointInd = pointSearchInd[0];    // 对应的最近距离的索引取出来
+                    // 找到其所在线束id，线束信息藏在intensity的整数部分
+                    int closestPointScanID = int(laserCloudCornerLast->points[closestPointInd].intensity);
+
+                    double minPointSqDis2 = DISTANCE_SQ_THRESHOLD;
+                    // search in the direction of increasing scan line
+                    // 寻找角点，在刚刚角点id上下分别继续寻找，目的是找到最近的角点，由于其按照线束进行排序，所以就是向上找
+                    for (int j = closestPointInd + 1; j < (int) laserCloudCornerLast->points.size(); ++j) {
+                        // if in the same scan line, continue
+                        // 不找同一根线束的
+                        if (int(laserCloudCornerLast->points[j].intensity) <= closestPointScanID)
+                            continue;
+
+                        // if not in nearby scans, end the loop
+                        // 要求找到的线束距离当前线束不能太远
+                        if (int(laserCloudCornerLast->points[j].intensity) > (closestPointScanID + NEARBY_SCAN))
+                            break;
+                        // 计算和当前找到的角点之间的距离
+                        double pointSqDis = (laserCloudCornerLast->points[j].x - pointSel.x) *
+                                            (laserCloudCornerLast->points[j].x - pointSel.x) +
+                                            (laserCloudCornerLast->points[j].y - pointSel.y) *
+                                            (laserCloudCornerLast->points[j].y - pointSel.y) +
+                                            (laserCloudCornerLast->points[j].z - pointSel.z) *
+                                            (laserCloudCornerLast->points[j].z - pointSel.z);
+                        // 寻找距离最小的角点及其索引
+                        if (pointSqDis < minPointSqDis2) {
+                            // find nearer point
+                            // 记录其索引
+                            minPointSqDis2 = pointSqDis;
+                            minPointInd2 = j;
+                        }
+                    }
+
+                    // search in the direction of decreasing scan line
+                    // 同样另一个方向寻找对应角点
+                    for (int j = closestPointInd - 1; j >= 0; --j) {
+                        // if in the same scan line, continue
+                        if (int(laserCloudCornerLast->points[j].intensity) >= closestPointScanID)
+                            continue;
+
+                        // if not in nearby scans, end the loop
+                        if (int(laserCloudCornerLast->points[j].intensity) < (closestPointScanID - NEARBY_SCAN))
+                            break;
+
+                        double pointSqDis = (laserCloudCornerLast->points[j].x - pointSel.x) *
+                                            (laserCloudCornerLast->points[j].x - pointSel.x) +
+                                            (laserCloudCornerLast->points[j].y - pointSel.y) *
+                                            (laserCloudCornerLast->points[j].y - pointSel.y) +
+                                            (laserCloudCornerLast->points[j].z - pointSel.z) *
+                                            (laserCloudCornerLast->points[j].z - pointSel.z);
+
+                        if (pointSqDis < minPointSqDis2) {
+                            // find nearer point
+                            minPointSqDis2 = pointSqDis;
+                            minPointInd2 = j;
+                        }
+                    }
+                }
+                // 如果这个角点是有效的角点
+                if (minPointInd2 >= 0) // both closestPointInd and minPointInd2 is valid
+                {
+                    // 取出当前点和上一帧的两个角点
+                    Eigen::Vector3d curr_point(cornerPointsSharp->points[i].x,
+                                               cornerPointsSharp->points[i].y,
+                                               cornerPointsSharp->points[i].z);
+                    Eigen::Vector3d last_point_a(laserCloudCornerLast->points[closestPointInd].x,
+                                                 laserCloudCornerLast->points[closestPointInd].y,
+                                                 laserCloudCornerLast->points[closestPointInd].z);
+                    Eigen::Vector3d last_point_b(laserCloudCornerLast->points[minPointInd2].x,
+                                                 laserCloudCornerLast->points[minPointInd2].y,
+                                                 laserCloudCornerLast->points[minPointInd2].z);
+
+                    double s;
+                    if (DISTORTION)
+                        s = (cornerPointsSharp->points[i].intensity - int(cornerPointsSharp->points[i].intensity)) /
+                            SCAN_PERIOD;
+                    else
+                        s = 1.0;
+                    ceres::CostFunction *cost_function = LidarEdgeFactor::Create(curr_point, last_point_a, last_point_b,
+                                                                                 s);
+                    problem.AddResidualBlock(cost_function, loss_function, para_q, para_t);
+                    corner_correspondence++;
+                }
+            }
+            // find correspondence for plane features
+            for (int i = 0; i < surfPointsFlatNum; ++i) {
+                TransformToStart(&(surfPointsFlat->points[i]), &pointSel);
+                // 先寻找上一帧距离这个面点最近的面点
+                kdtreeSurfLast.nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
+
+                int closestPointInd = -1, minPointInd2 = -1, minPointInd3 = -1;
+                // 距离必须小于给定阈值
+                if (pointSearchSqDis[0] < DISTANCE_SQ_THRESHOLD) {
+                    // 取出找到的上一帧面点的索引
+                    closestPointInd = pointSearchInd[0];
+
+                    // get closest point's scan ID
+                    // 取出最近的面点在上一帧的第几根scan上面
+                    int closestPointScanID = int(laserCloudSurfLast->points[closestPointInd].intensity);
+                    double minPointSqDis2 = DISTANCE_SQ_THRESHOLD, minPointSqDis3 = DISTANCE_SQ_THRESHOLD;
+                    // 额外在寻找两个点，要求，一个点和最近点同一个scan，另一个是不同scan
+                    // search in the direction of increasing scan line
+                    // 按照增量方向寻找其他面点
+                    for (int j = closestPointInd + 1; j < (int) laserCloudSurfLast->points.size(); ++j) {
+                        // if not in nearby scans, end the loop
+                        // 不能和当前找到的上一帧面点线束距离太远
+                        if (int(laserCloudSurfLast->points[j].intensity) > (closestPointScanID + NEARBY_SCAN))
+                            break;
+                        // 计算和当前帧该点距离
+                        double pointSqDis = (laserCloudSurfLast->points[j].x - pointSel.x) *
+                                            (laserCloudSurfLast->points[j].x - pointSel.x) +
+                                            (laserCloudSurfLast->points[j].y - pointSel.y) *
+                                            (laserCloudSurfLast->points[j].y - pointSel.y) +
+                                            (laserCloudSurfLast->points[j].z - pointSel.z) *
+                                            (laserCloudSurfLast->points[j].z - pointSel.z);
+
+                        // if in the same or lower scan line
+                        // 如果是同一根scan且距离最近
+                        if (int(laserCloudSurfLast->points[j].intensity) <= closestPointScanID &&
+                            pointSqDis < minPointSqDis2) {
+                            minPointSqDis2 = pointSqDis;
+                            minPointInd2 = j;
+                        }
+                            // if in the higher scan line
+                            // 如果是其他线束点
+                        else if (int(laserCloudSurfLast->points[j].intensity) > closestPointScanID &&
+                                 pointSqDis < minPointSqDis3) {
+                            minPointSqDis3 = pointSqDis;
+                            minPointInd3 = j;
+                        }
+                    }
+
+                    // search in the direction of decreasing scan line
+                    // 同样的方式，去按照降序方向寻找这两个点
+                    for (int j = closestPointInd - 1; j >= 0; --j) {
+                        // if not in nearby scans, end the loop
+                        if (int(laserCloudSurfLast->points[j].intensity) < (closestPointScanID - NEARBY_SCAN))
+                            break;
+
+                        double pointSqDis = (laserCloudSurfLast->points[j].x - pointSel.x) *
+                                            (laserCloudSurfLast->points[j].x - pointSel.x) +
+                                            (laserCloudSurfLast->points[j].y - pointSel.y) *
+                                            (laserCloudSurfLast->points[j].y - pointSel.y) +
+                                            (laserCloudSurfLast->points[j].z - pointSel.z) *
+                                            (laserCloudSurfLast->points[j].z - pointSel.z);
+
+                        // if in the same or higher scan line
+                        if (int(laserCloudSurfLast->points[j].intensity) >= closestPointScanID &&
+                            pointSqDis < minPointSqDis2) {
+                            minPointSqDis2 = pointSqDis;
+                            minPointInd2 = j;
+                        } else if (int(laserCloudSurfLast->points[j].intensity) < closestPointScanID &&
+                                   pointSqDis < minPointSqDis3) {
+                            // find nearer point
+                            minPointSqDis3 = pointSqDis;
+                            minPointInd3 = j;
+                        }
+                    }
+                    // 如果另外找到的两个点是有效点，就取出他们的3d坐标
+                    if (minPointInd2 >= 0 && minPointInd3 >= 0) {
+
+                        Eigen::Vector3d curr_point(surfPointsFlat->points[i].x,
+                                                   surfPointsFlat->points[i].y,
+                                                   surfPointsFlat->points[i].z);
+                        Eigen::Vector3d last_point_a(laserCloudSurfLast->points[closestPointInd].x,
+                                                     laserCloudSurfLast->points[closestPointInd].y,
+                                                     laserCloudSurfLast->points[closestPointInd].z);
+                        Eigen::Vector3d last_point_b(laserCloudSurfLast->points[minPointInd2].x,
+                                                     laserCloudSurfLast->points[minPointInd2].y,
+                                                     laserCloudSurfLast->points[minPointInd2].z);
+                        Eigen::Vector3d last_point_c(laserCloudSurfLast->points[minPointInd3].x,
+                                                     laserCloudSurfLast->points[minPointInd3].y,
+                                                     laserCloudSurfLast->points[minPointInd3].z);
+
+                        double s;
+                        if (DISTORTION)
+                            s = (surfPointsFlat->points[i].intensity - int(surfPointsFlat->points[i].intensity)) /
+                                SCAN_PERIOD;
+                        else
+                            s = 1.0;
+                        // 构建点到面的约束
+                        ceres::CostFunction *cost_function = LidarPlaneFactor::Create(curr_point, last_point_a,
+                                                                                      last_point_b, last_point_c, s);
+                        problem.AddResidualBlock(cost_function, loss_function, para_q, para_t);
+                        plane_correspondence++;
+                    }
+                }
+            }
+            //printf("coner_correspondance %d, plane_correspondence %d \n", corner_correspondence, plane_correspondence);
+            printf("data association time %f ms \n", t_data.toc());
+            cout<<"corner_corres "<<corner_correspondence<<" plane_corre "<<plane_correspondence<<endl;
+            // 如果总的约束太少，就打印一下
+            if ((corner_correspondence + plane_correspondence) < 10)
+            {
+                printf("less correspondence! *************************************************\n");
+                mbLiDARInit = false;
+            }
+            // 调用ceres求解器求解
+            TicToc t_solver;
+            ceres::Solver::Options options;
+            options.linear_solver_type = ceres::DENSE_QR;
+            options.max_num_iterations = 4;
+            options.minimizer_progress_to_stdout = false;
+            ceres::Solver::Summary summary;
+            ceres::Solve(options, &problem, &summary);
+            printf("solver time %f ms \n", t_solver.toc());
+        }
+        printf("optimization twice time %f \n", t_opt.toc());
+        // 这里的w_curr 实际上是 w_last
+        t_w_curr = t_w_curr + q_w_curr * t_last_curr;
+        q_w_curr = q_w_curr * q_last_curr;
+    }
 
 void Tracking::StereoInitialization()
 {
@@ -940,9 +1377,75 @@ void Tracking::MonocularInitialization()
     }
     else
     {
+        //Try to initital LiDAR first
+        ///Step 2.1 get LiDAR feature from last frame, set up KdTree for it
+        int KDtreeThreshold = 1000;
+        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
+        cornerPointsLessSharp->clear();
+        surfPointsLessFlat->clear();
+        int lastCornerNum = mInitialFrame.mLaserLessCorner_cam.size();
+        int lastSurfNum = mInitialFrame.mLaserLessFlat_cam.size();
+        cornerPointsLessSharp->resize(lastCornerNum);
+        surfPointsLessFlat->resize(lastSurfNum);
+        for (size_t i = 0; i < lastCornerNum; i++) {
+            cornerPointsLessSharp->points[i].x = mInitialFrame.mLaserLessCorner_cam[i].pt3d.x;
+            cornerPointsLessSharp->points[i].y = mInitialFrame.mLaserLessCorner_cam[i].pt3d.y;
+            cornerPointsLessSharp->points[i].z = mInitialFrame.mLaserLessCorner_cam[i].pt3d.z;
+            cornerPointsLessSharp->points[i].intensity = mInitialFrame.mLaserLessCorner_cam[i].intensity;
+        }
+        cout<<"init cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
+        for (size_t i = 0; i < lastSurfNum; i++) {
+            surfPointsLessFlat->points[i].x = mInitialFrame.mLaserLessFlat_cam[i].pt3d.x;
+            surfPointsLessFlat->points[i].y = mInitialFrame.mLaserLessFlat_cam[i].pt3d.y;
+            surfPointsLessFlat->points[i].z = mInitialFrame.mLaserLessFlat_cam[i].pt3d.z;
+            surfPointsLessFlat->points[i].intensity = mInitialFrame.mLaserLessFlat_cam[i].intensity;
+        }
+        cout<<"init surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
+
+        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
+        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
+        ///Step 2.2 get LiDAR feature from current frame
+        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
+        cornerPointsSharp->clear();
+        surfPointsFlat->clear();
+        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
+        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
+        cornerPointsSharp->resize(curCornerNum);
+        surfPointsFlat->resize(curSurfNum);
+        for (size_t i = 0; i < curCornerNum; i++) {
+            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
+            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
+            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
+            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
+        }
+        cout<<"cur cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
+        for (size_t i = 0; i < curSurfNum; i++) {
+            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
+            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
+            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
+            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
+        }
+        cout<<"cur surfPointsFlat "<<surfPointsFlat->size()<<endl;
+
+        cout<<" in Track before cere "<<endl;
+        cout<<"cornerPointsLessSharp : "<<cornerPointsLessSharp->points[0]<<" "<<cornerPointsLessSharp->points[1]<<" "<<cornerPointsLessSharp->points[2]<<endl;
+        cout<<"surfPointsLessFlat : "<<surfPointsLessFlat->points[0]<<" "<<surfPointsLessFlat->points[1]<<" "<<surfPointsLessFlat->points[2]<<endl;
+        cout<<"cornerPointsSharp : "<<cornerPointsSharp->points[0]<<" "<<cornerPointsSharp->points[1]<<" "<<cornerPointsSharp->points[2]<<endl;
+        cout<<"surfPointsFlat : "<<surfPointsFlat->points[0]<<" "<<surfPointsFlat->points[1]<<" "<<surfPointsFlat->points[2]<<endl;
+
+        ///Step 3 time to init!
+        //KDtree put outside
+        cereInit(cornerPointsLessSharp, surfPointsLessFlat,
+                 cornerPointsSharp, surfPointsFlat, KDtreeThreshold);
+
         // Try to initialize
         //Step 2 如果当前帧的特征点太少 删除初始化器 
-        if((int)mCurrentFrame.mvKeys.size()<=100)
+        //if((int)mCurrentFrame.mvKeys.size()<=100)
+        if((int)mCurrentFrame.mvKeys.size()<=100 || mbLiDARInit == false)
         {
             delete mpInitializer;
             mpInitializer = static_cast<Initializer*>(NULL);
@@ -1295,7 +1798,7 @@ void Tracking::CreateInitialMapMonocular()
     // Set median depth to 1
     //* Step 5 取场景的中值深度，用于尺度归一化
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
-    cout<<"median depth "<<medianDepth<<endl;
+    //cout<<"median depth "<<medianDepth<<endl;
     float invMedianDepth = 1.0f/medianDepth;
     //invMedianDepth = ratio;
     if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)

@@ -31,6 +31,18 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+///Added module
+//#include <pcl-1.8/pcl/point_cloud.h>
+////#include <pcl-1.8/pcl/segmentation/region_growing.h>
+//#include <pcl-1.8/pcl/search/search.h>
+//#include <pcl-1.8/pcl/search/kdtree.h>
+//#include <pcl-1.8/pcl/features/normal_3d.h>
+//#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
+typedef pcl::PointXYZI PointType;
 
 namespace ORB_SLAM2
 {
@@ -47,7 +59,7 @@ class KeyFrame;
         cv::Point3d pt3d;
         int index2d;
         int index3d;
-        int response;
+        float intensity;
     };
 
     class Plane {
@@ -146,15 +158,28 @@ public:
     cv::Mat mTcamlid;
     void ProjectLiDARtoCam();
     void ProjectLiDARtoImg(cv::Mat, int cols, int rows);
-    vector<std::vector<double>> mLaserPoints;
+    void ExtractLiDARFeature();
+    void ProjectLiDARFeaturetoImg(cv::Mat, int cols, int rows);
+    vector<std::vector<double>> mLaserPoints; //Raw LiDAR point under LiDAR coordination System
+    pcl::PointCloud<PointType> mCornerPointsSharp;
+    pcl::PointCloud<PointType> mCornerPointsLessSharp;
+    pcl::PointCloud<PointType> mSurfPointsFlat;
+    pcl::PointCloud<PointType> mSurfPointsLessFlat;
     //vector<std::vector<double>> mLaserPt_cam;
-    vector<PtLsr> mLaserPt_cam;
+    vector<PtLsr> mLaserPt_cam;//Projected LiDAR under Camera Coordination System
+    vector<PtLsr> mLaserCorner_cam;//Projected LiDAR Corner point under Camera Coordination System
+    vector<PtLsr> mLaserLessCorner_cam;
+    vector<PtLsr> mLaserFlat_cam;
+    vector<PtLsr> mLaserLessFlat_cam;
     //vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
     vector<double> mLaserTimes; //{middle time, start, end}
     //vector<cv::Point> mPjcLaserPts;
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
-    //vector<vector<cv::Point>> planNorms;
-    //std::vector<Plane> mvPlanes;
+//    vector<PtLsr> mLsrKeyCorner;
+//    vector<PtLsr> mLsrKeyLessCorner;
+//    vector<PtLsr> mLsrKeyFlat;
+//    vector<PtLsr> mLsrKeyLessFlat;
+
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;

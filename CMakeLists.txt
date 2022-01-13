@@ -19,7 +19,9 @@ include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 if(COMPILER_SUPPORTS_CXX11)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") #cere error: ‘integer_sequence’ is not a member of ‘std‘
+   #set(CMAKE_CXX_STANDARD 11)
+   set(CMAKE_CXX_FLAGS " -std=c++14")
    add_definitions(-DCOMPILEDWITHC11)
    message(STATUS "Using flag -std=c++11.")
 elseif(COMPILER_SUPPORTS_CXX0X)
@@ -47,6 +49,8 @@ find_package(PCL REQUIRED )
 include_directories( ${PCL_INCLUDE_DIRS} )
 add_definitions( ${PCL_DEFINITIONS} )
 link_directories( ${PCL_LIBRARY_DIRS} )
+find_package(Ceres REQUIRED)
+include_directories(${CERES_INCLUDE_DIRS})
 
 include_directories(
         ${PROJECT_SOURCE_DIR}
@@ -115,7 +119,7 @@ target_link_libraries(mono_tum ${PROJECT_NAME})
 
 add_executable(mono_kitti
 Examples/Monocular/mono_kitti.cc)
-target_link_libraries(mono_kitti ${PROJECT_NAME})
+target_link_libraries(mono_kitti ${PROJECT_NAME} ${CERES_LIBRARIES})#Notice: here import Ceres
 
 add_executable(mono_euroc
 Examples/Monocular/mono_euroc.cc)

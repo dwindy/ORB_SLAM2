@@ -36,38 +36,38 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
 }
 
 ///added module
-cv::Mat FrameDrawer::DrawLiDAR()
-{
-    cv::Mat im = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
-    mIm.copyTo(im);
-    ///added module
-    //draw projected laser points
-    int PjcLsrNum = mvPjcLsrPts.size();
-    if(PjcLsrNum>0)
-    {
-        for(int i=0;i<PjcLsrNum;i++)
-        {
-            //color
-            float maxVal = 20.0;
-            int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
-            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
-            cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,0,0),-1);
-        }
-    }
-    PjcLsrNum = mvPjcLsrPtsUndis.size();
-    if(PjcLsrNum>0)
-    {
-        for(int i=0;i<PjcLsrNum;i++)
-        {
-            //color
-            float maxVal = 20.0;
-            int red = min(255, (int) (255 * abs((mvPjcLsrPtsUndis[i].response - maxVal) / maxVal)));
-            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPtsUndis[i].response - maxVal) / maxVal))));
-            cv::circle(im,mvPjcLsrPtsUndis[i].pt,2,cv::Scalar(255,255,255),-1);
-        }
-    }
-    return im;
-}
+//cv::Mat FrameDrawer::DrawLiDAR()
+//{
+//    cv::Mat im = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+//    mIm.copyTo(im);
+//    ///added module
+//    //draw projected laser points
+//    int PjcLsrNum = mvPjcLsrPts.size();
+//    if(PjcLsrNum>0)
+//    {
+//        for(int i=0;i<PjcLsrNum;i++)
+//        {
+//            //color
+//            float maxVal = 20.0;
+//            int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+//            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+//            cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,0,0),-1);
+//        }
+//    }
+//    PjcLsrNum = mvPjcLsrPtsUndis.size();
+//    if(PjcLsrNum>0)
+//    {
+//        for(int i=0;i<PjcLsrNum;i++)
+//        {
+//            //color
+//            float maxVal = 20.0;
+//            int red = min(255, (int) (255 * abs((mvPjcLsrPtsUndis[i].response - maxVal) / maxVal)));
+//            int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPtsUndis[i].response - maxVal) / maxVal))));
+//            cv::circle(im,mvPjcLsrPtsUndis[i].pt,2,cv::Scalar(255,255,255),-1);
+//        }
+//    }
+//    return im;
+//}
 
 cv::Mat FrameDrawer::DrawFrame()
 {
@@ -77,6 +77,12 @@ cv::Mat FrameDrawer::DrawFrame()
     vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
     vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
     int state; // Tracking state
+    ///Added module
+    vector<cv::Point2d> vCurrentLsrPt; //Laser point in current frame
+    vector<cv::Point2d> vCurrentLsrCorner; //Laser point in current frame
+    vector<cv::Point2d> vCurrentLsrLessCorner; //Laser point in current frame
+    vector<cv::Point2d> vCurrentLsrFlat; //Laser point in current frame
+    vector<cv::Point2d> vCurrentLsrLessFlat; //Laser point in current frame
 
     //Copy variables within scoped mutex
     {
@@ -103,6 +109,12 @@ cv::Mat FrameDrawer::DrawFrame()
         {
             vCurrentKeys = mvCurrentKeys;
         }
+        ///added module
+        vCurrentLsrPt = mvPjcLsrPts;
+        vCurrentLsrCorner = mvPjcLsrCorner;
+        vCurrentLsrLessCorner = mvPjcLsrLessCorner;
+        vCurrentLsrFlat = mvPjcLsrFlat;
+        vCurrentLsrLessFlat = mvPjcLsrLessFlat;
     } // destroy scoped mutex -> release mutex
 
     if(im.channels()<3) //this should be always true
@@ -151,49 +163,49 @@ cv::Mat FrameDrawer::DrawFrame()
                 }
             }
         }
-        ///added module
-        //draw projected raw laser points
-        int PjcLsrNum = mvPjcLsrPts.size();
+        ///added module : draw projected raw laser points
+        int PjcLsrNum = vCurrentLsrPt.size();
         if(PjcLsrNum>0)
         {
             for(int i=0;i<PjcLsrNum;i++)
             {
                 //color
-                float maxVal = 20.0;
-                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
-                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
-                cv::circle(im,mvPjcLsrPts[i].pt,2,cv::Scalar(0,green,red),-1);
+//                float maxVal = 20.0;
+//                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+//                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+                //cv::circle(im,vCurrentLsrPt[i],2,cv::Scalar(0,255,255),-1);
             }
         }
-        //draw plan points
-        int planeNum = mvPlanePoints.size();
-        if (planeNum > 0) {
-            for (int i = 0; i < planeNum; i++) {
-                for (int pi = 0; pi < mvPlanePoints[i].size(); pi++) {
-                    switch (i) {
-                        case 0:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
-                            break;
-                        case 1:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
-                            break;
-                        case 2:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
-                            break;
-                        case 3:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
-                            break;
-                        case 4:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
-                            break;
-                        case 5:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
-                            break;
-                        default:
-                            cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);
-                            break;
-                    }
-                }
+        int PjcLsrCorNum = vCurrentLsrCorner.size();
+        if(PjcLsrCorNum>0)
+        {
+            for(int i=0;i<PjcLsrCorNum;i++)
+            {
+                cv::circle(im,vCurrentLsrCorner[i],2,cv::Scalar(60,20,220),-1);
+            }
+        }
+        int PjcLsrLessCorNum = vCurrentLsrLessCorner.size();
+        if(PjcLsrLessCorNum>0)
+        {
+            for(int i=0;i<PjcLsrLessCorNum;i++)
+            {
+                cv::circle(im,vCurrentLsrLessCorner[i],2,cv::Scalar(180,105,255),-1);
+            }
+        }
+        int PjcLsrFltNum = vCurrentLsrFlat.size();
+        if(PjcLsrFltNum>0)
+        {
+            for(int i=0;i<PjcLsrFltNum;i++)
+            {
+                cv::circle(im,vCurrentLsrFlat[i],2,cv::Scalar(255,0,0),-1);
+            }
+        }
+        int PjcLsrLessFltNum = vCurrentLsrLessFlat.size();
+        if(PjcLsrLessFltNum>0)
+        {
+            for(int i=0;i<PjcLsrLessFltNum;i++)
+            {
+                cv::circle(im,vCurrentLsrLessFlat[i],2,cv::Scalar(255,255,0),-1);
             }
         }
     }
@@ -245,23 +257,34 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 void FrameDrawer::Update(Tracking *pTracker) {
     unique_lock<mutex> lock(mMutex);
     pTracker->mImGray.copyTo(mIm);
-    mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
+    mvCurrentKeys = pTracker->mCurrentFrame.mvKeys; //pass tracker->fames.keypoint to framedrawer.keypoints
+    ///todo when mvCurrentKeys clear?
     N = mvCurrentKeys.size();
     mvbVO = vector<bool>(N, false);
     mvbMap = vector<bool>(N, false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
+    ///Added Module: pass tracker->frame.mLaserPt_cam[].pt2d to framedrawer.mvPjcLsrPts
+    mvPjcLsrPts.clear();
+    for (int i = 0; i < pTracker->mCurrentFrame.mLaserPt_cam.size(); i++) {
+        mvPjcLsrPts.push_back(pTracker->mCurrentFrame.mLaserPt_cam[i].pt2d);
+    }
+    mvPjcLsrCorner.clear();
+    for (int i = 0; i < pTracker->mCurrentFrame.mLaserCorner_cam.size(); i++) {
+        mvPjcLsrCorner.push_back(pTracker->mCurrentFrame.mLaserCorner_cam[i].pt2d);
+    }
+    mvPjcLsrLessCorner.clear();
+    for(int i = 0; i < pTracker->mCurrentFrame.mLaserLessCorner_cam.size(); i++){
+        mvPjcLsrLessCorner.push_back(pTracker->mCurrentFrame.mLaserLessCorner_cam[i].pt2d);
+    }
+    mvPjcLsrFlat.clear();
+    for(int i=0; i< pTracker->mCurrentFrame.mLaserFlat_cam.size();i++){
+        mvPjcLsrFlat.push_back(pTracker->mCurrentFrame.mLaserFlat_cam[i].pt2d);
+    }
+    mvPjcLsrLessFlat.clear();
+    for(int i=0; i< pTracker->mCurrentFrame.mLaserLessFlat_cam.size();i++){
+        mvPjcLsrLessFlat.push_back(pTracker->mCurrentFrame.mLaserLessFlat_cam[i].pt2d);
+    }
 
-    ///added module
-//    if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
-//    {
-//        mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
-//        //cout<<"mvPjcLsrPts "<<mvPjcLsrPts.size()<<endl;
-//    }
-//    if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
-//    {
-//        mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;
-//        //cout<<"mvPjcLsrPtsUndis "<<mvPjcLsrPts.size()<<endl;
-//    }
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {

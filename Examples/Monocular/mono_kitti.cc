@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 
         //SLAM.TrackMonocular(im,tframe);
         ///added module
-        //Pass the image and lasers to the SLAM system
+        //Pass both the image and lasers to the SLAM system
         SLAM.TrackMonucular(im, tframe, laserPoints, laserTimes);
 
 #ifdef COMPILEDWITHC11
@@ -300,6 +300,5 @@ void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoint
     //reset laserpoint vector size
     laserPoints.resize(num);
 
-    ///Step2
-
+    ///Step2 why i wrote Step2, is there supposed to have a step2?
 }

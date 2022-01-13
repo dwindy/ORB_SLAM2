@@ -68,9 +68,14 @@ protected:
     vector<int> mvIniMatches;
     int mState;
     ///added module
-    vector<cv::KeyPoint> mvPjcLsrPts;
+    //vector<cv::KeyPoint> mvPjcLsrPts;
+    vector<cv::Point2d> mvPjcLsrPts;
     vector<cv::KeyPoint> mvPjcLsrPtsUndis;
-    vector<vector<cv::Point2d>> mvPlanePoints;//TODO update to plane structure in the future?
+    vector<cv::Point2d> mvPjcLsrCorner;
+    vector<cv::Point2d> mvPjcLsrLessCorner;
+    vector<cv::Point2d> mvPjcLsrFlat;
+    vector<cv::Point2d> mvPjcLsrLessFlat;
+    //Todo seperately show the edge Laser and plane Laser points
 
     Map* mpMap;
 

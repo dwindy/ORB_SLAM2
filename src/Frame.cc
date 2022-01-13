@@ -23,6 +23,9 @@
 #include "ORBmatcher.h"
 #include <thread>
 
+///Added module
+#include "tic_toc.h"
+
 namespace ORB_SLAM2
 {
 
@@ -71,10 +74,14 @@ namespace ORB_SLAM2
              mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
              mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
              mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
-             //added LiDAR modules
+             ///added LiDAR modules --- copy new added Members
              mLaserPt_cam(frame.mLaserPt_cam),mLaserPoints(frame.mLaserPoints)//,mLaserPtsUndis(frame.mLaserPtsUndis),
              //mLaserTimes(frame.mLaserTimes),mPjcLaserPts(frame.mPjcLaserPts),mPjcLaserPtsUndis(frame.mPjcLaserPtsUndis),
              //mvPlanes(frame.mvPlanes)
+             ,mCornerPointsSharp(frame.mCornerPointsSharp),mCornerPointsLessSharp(frame.mCornerPointsLessSharp),
+             mSurfPointsFlat(frame.mSurfPointsFlat),mSurfPointsLessFlat(frame.mSurfPointsLessFlat),
+             mLaserCorner_cam(frame.mLaserCorner_cam),mLaserLessCorner_cam(frame.mLaserLessCorner_cam),
+             mLaserFlat_cam(frame.mLaserFlat_cam),mLaserLessFlat_cam(frame.mLaserLessFlat_cam)
     {
         for(int i=0;i<FRAME_GRID_COLS;i++)
             for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -289,19 +296,418 @@ namespace ORB_SLAM2
         AssignFeaturesToGrid();
 
         ///added module
+        //extract LiDAR feature
+        ExtractLiDARFeature();
         //Project LiDAR point to Cam coordination
         ProjectLiDARtoCam();
         ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
+        ProjectLiDARFeaturetoImg(mK, imGray.cols, imGray.rows);
+    }
+    ///Added module
+
+    template <typename PointT>
+    void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in,
+                                pcl::PointCloud<PointT> &cloud_out, float thres)
+    {
+        if (&cloud_in != &cloud_out)
+        {
+            cloud_out.header = cloud_in.header;
+            cloud_out.points.resize(cloud_in.points.size());
+        }
+
+        size_t j = 0;
+        // 把点云距离小于给定阈值的去除掉
+        for (size_t i = 0; i < cloud_in.points.size(); ++i)
+        {
+            if (cloud_in.points[i].x * cloud_in.points[i].x + cloud_in.points[i].y * cloud_in.points[i].y + cloud_in.points[i].z * cloud_in.points[i].z < thres * thres)
+                continue;
+            cloud_out.points[j] = cloud_in.points[i];
+            j++;
+        }
+        if (j != cloud_in.points.size())
+        {
+            cloud_out.points.resize(j);
+        }
+
+        cloud_out.height = 1; //orignal height is the scan line number
+        cloud_out.width = static_cast<uint32_t>(j);
+        cloud_out.is_dense = true;
     }
 
+    int N_SCANS = 64;
+    const double scanPeriod = 0.1;
+    float cloudCurvature[400000];
+    int cloudSortInd[400000];
+    int cloudNeighborPicked[400000];
+    int cloudLabel[400000];
+    //Todo the parameter above should define in some other places
+    bool comp (int i,int j) { return (cloudCurvature[i]<cloudCurvature[j]); }
+
+
+    /**
+     * @brief Under LiDAR coordination, this function extract edge feature and plane feature from LiDAR source
+     * @param[]
+     */
+    void Frame::ExtractLiDARFeature(){
+        ///Step1 : fetch 3d lidar points from mLaserPoints (lidar coordination)
+        TicToc t_whole;
+        TicToc t_prepare;
+        std::vector<int> scanStartInd(N_SCANS, 0);
+        std::vector<int> scanEndInd(N_SCANS, 0);
+        pcl::PointCloud<pcl::PointXYZ> laserCloudIn;
+        std::vector<int> indices;
+        int lsrPtNum = mLaserPoints.size();
+        laserCloudIn.resize(lsrPtNum);
+        for(int i =0;i<lsrPtNum;i++){
+            laserCloudIn.points[i].x = mLaserPoints[i][0];
+            laserCloudIn.points[i].y = mLaserPoints[i][1];
+            laserCloudIn.points[i].z = mLaserPoints[i][2];
+        }
+        pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices);
+        removeClosedPointCloud(laserCloudIn, laserCloudIn, 0.3);
+        ///Step2 : calc the angles
+        // 计算起始点和结束点的角度，由于激光雷达是顺时针旋转，这里取反就相当于转成了逆时针
+        int cloudSize = laserCloudIn.points.size();
+        float startOri = -atan2(laserCloudIn.points[0].y, laserCloudIn.points[0].x);
+        // atan2范围是[-Pi,PI]，这里加上2PI是为了保证起始到结束相差2PI符合实际
+        float endOri = -atan2(laserCloudIn.points[cloudSize - 1].y,
+                              laserCloudIn.points[cloudSize - 1].x) +
+                       2 * M_PI; //the end point should be 360 degree from the start point
+
+        // 总有一些例外，比如这里大于3PI，和小于PI，就需要做一些调整到合理范围
+        if (endOri - startOri > 3 * M_PI) //start -179, ends 179 degree
+        {
+            endOri -= 2 * M_PI;
+        }
+        else if (endOri - startOri < M_PI) //start 179, ends -179 degree
+        {
+            endOri += 2 * M_PI;
+        }
+        //printf("end Ori %f\n", endOri);
+        bool halfPassed = false;
+        int count = cloudSize;
+        PointType point;
+        std::vector<pcl::PointCloud<PointType>> laserCloudScans(N_SCANS);
+        // 遍历每一个点
+        for (int i = 0; i < cloudSize; i++)
+        {
+            point.x = laserCloudIn.points[i].x;
+            point.y = laserCloudIn.points[i].y;
+            point.z = laserCloudIn.points[i].z;
+            // 计算他的俯仰角
+            float angle = atan(point.z / sqrt(point.x * point.x + point.y * point.y)) * 180 / M_PI;
+            int scanID = 0;
+            // 计算是第几根scan
+            if (N_SCANS == 16)
+            {
+                scanID = int((angle + 15) / 2 + 0.5);
+                if (scanID > (N_SCANS - 1) || scanID < 0)
+                {
+                    count--;
+                    continue;
+                }
+            }
+            else if (N_SCANS == 32)
+            {
+                scanID = int((angle + 92.0/3.0) * 3.0 / 4.0);
+                if (scanID > (N_SCANS - 1) || scanID < 0)
+                {
+                    count--;
+                    continue;
+                }
+            }
+            else if (N_SCANS == 64)
+            {
+                if (angle >= -8.83)
+                    scanID = int((2 - angle) * 3.0 + 0.5);
+                else
+                    scanID = N_SCANS / 2 + int((-8.83 - angle) * 2.0 + 0.5);
+
+                // use [0 50]  > 50 remove outlies
+                if (angle > 2 || angle < -24.33 || scanID > 50 || scanID < 0)
+                {
+                    count--;
+                    continue;
+                }
+            }
+            else
+            {
+                printf("wrong scan number\n");
+                //ROS_BREAK();
+            }
+            //printf("angle %f scanID %d \n", angle, scanID);
+            // 计算水平角
+            float ori = -atan2(point.y, point.x);
+            if (!halfPassed)
+            {
+                // 确保-PI / 2 < ori - startOri < 3 / 2 * PI
+                if (ori < startOri - M_PI / 2)
+                {
+                    ori += 2 * M_PI;
+                }
+                else if (ori > startOri + M_PI * 3 / 2)
+                {
+                    ori -= 2 * M_PI;
+                }
+                // 如果超过180度，就说明过了一半了 //half passed the start point
+                if (ori - startOri > M_PI)
+                {
+                    halfPassed = true;
+                }
+            }
+            else
+            {
+                // 确保-PI * 3 / 2 < ori - endOri < PI / 2
+                ori += 2 * M_PI;    // 先补偿2PI
+                if (ori < endOri - M_PI * 3 / 2)
+                {
+                    ori += 2 * M_PI;
+                }
+                else if (ori > endOri + M_PI / 2)
+                {
+                    ori -= 2 * M_PI;
+                }
+            }
+            // 角度的计算是为了计算相对的起始时刻的时间
+            float relTime = (ori - startOri) / (endOri - startOri);
+            // 整数部分是scan的索引，小数部分是相对起始时刻的时间
+            point.intensity = scanID + scanPeriod * relTime;
+            // 根据scan的idx送入各自数组
+            laserCloudScans[scanID].push_back(point);
+        }
+        // cloudSize是有效的点云的数目
+        cloudSize = count;
+        printf("points size %d \n", cloudSize);
+
+        pcl::PointCloud<PointType>::Ptr laserCloud(new pcl::PointCloud<PointType>());
+        // 全部集合到一个点云里面去，但是使用两个数组标记其实和结果，这里分别+5和-6是为了计算曲率方便
+        for (int i = 0; i < N_SCANS; i++)
+        {
+            scanStartInd[i] = laserCloud->size() + 5; //most left 5 and right 6 didn't count curve value
+            *laserCloud += laserCloudScans[i];
+            scanEndInd[i] = laserCloud->size() - 6;
+        }
+
+        //printf("prepare time %f \n", t_prepare.toc());
+        // 开始计算曲率
+        for (int i = 5; i < cloudSize - 5; i++)
+        {
+            float diffX = laserCloud->points[i - 5].x + laserCloud->points[i - 4].x + laserCloud->points[i - 3].x + laserCloud->points[i - 2].x + laserCloud->points[i - 1].x - 10 * laserCloud->points[i].x + laserCloud->points[i + 1].x + laserCloud->points[i + 2].x + laserCloud->points[i + 3].x + laserCloud->points[i + 4].x + laserCloud->points[i + 5].x;
+            float diffY = laserCloud->points[i - 5].y + laserCloud->points[i - 4].y + laserCloud->points[i - 3].y + laserCloud->points[i - 2].y + laserCloud->points[i - 1].y - 10 * laserCloud->points[i].y + laserCloud->points[i + 1].y + laserCloud->points[i + 2].y + laserCloud->points[i + 3].y + laserCloud->points[i + 4].y + laserCloud->points[i + 5].y;
+            float diffZ = laserCloud->points[i - 5].z + laserCloud->points[i - 4].z + laserCloud->points[i - 3].z + laserCloud->points[i - 2].z + laserCloud->points[i - 1].z - 10 * laserCloud->points[i].z + laserCloud->points[i + 1].z + laserCloud->points[i + 2].z + laserCloud->points[i + 3].z + laserCloud->points[i + 4].z + laserCloud->points[i + 5].z;
+            // 存储曲率，索引
+            cloudCurvature[i] = diffX * diffX + diffY * diffY + diffZ * diffZ;
+            cloudSortInd[i] = i;
+            cloudNeighborPicked[i] = 0;
+            cloudLabel[i] = 0;
+        }
+
+        TicToc t_pts;
+
+        pcl::PointCloud<PointType> cornerPointsSharp;
+        pcl::PointCloud<PointType> cornerPointsLessSharp;
+        pcl::PointCloud<PointType> surfPointsFlat;
+        pcl::PointCloud<PointType> surfPointsLessFlat;
+
+        float t_q_sort = 0;
+        // 遍历每个scan
+        for (int i = 0; i < N_SCANS; i++)
+        {
+            // 没有有效的点了，就continue
+            if( scanEndInd[i] - scanStartInd[i] < 6) //this scan soo small
+                continue;
+            // 用来存储不太平整的点
+            pcl::PointCloud<PointType>::Ptr surfPointsLessFlatScan(new pcl::PointCloud<PointType>);
+            // 将每个scan等分成6等分
+            for (int j = 0; j < 6; j++)
+            {
+                // 每个等分的起始和结束点
+                int sp = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * j / 6;
+                int ep = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * (j + 1) / 6 - 1;
+
+                TicToc t_tmp;
+                // 对点云按照曲率进行排序，小的在前，大的在后
+                std::sort (cloudSortInd + sp, cloudSortInd + ep + 1, comp);
+                t_q_sort += t_tmp.toc();
+
+                int largestPickedNum = 0;
+                // 挑选曲率比较大的部分
+                for (int k = ep; k >= sp; k--)
+                {
+                    // 排序后顺序就乱了，这个时候索引的作用就体现出来了
+                    int ind = cloudSortInd[k];
+
+                    // 看看这个点是否是有效点，同时曲率是否大于阈值
+                    if (cloudNeighborPicked[ind] == 0 &&
+                        cloudCurvature[ind] > 0.1)
+                    {
+
+                        largestPickedNum++;
+                        // 每段选2个曲率大的点
+                        if (largestPickedNum <= 2)
+                        {
+                            // label为2是曲率大的标记
+                            cloudLabel[ind] = 2;
+                            // cornerPointsSharp存放大曲率的点
+                            cornerPointsSharp.push_back(laserCloud->points[ind]);
+                            cornerPointsLessSharp.push_back(laserCloud->points[ind]);
+                        }
+                            // 以及20个曲率稍微大一些的点
+                        else if (largestPickedNum <= 20)
+                        {
+                            // label置1表示曲率稍微大
+                            cloudLabel[ind] = 1;
+                            cornerPointsLessSharp.push_back(laserCloud->points[ind]);
+                        }
+                            // 超过20个就算了
+                        else
+                        {
+                            break;
+                        }
+                        // 这个点被选中后 pick标志位置1
+                        cloudNeighborPicked[ind] = 1;
+                        // 为了保证特征点不过度集中，将选中的点周围5个点都置1,避免后续会选到
+                        for (int l = 1; l <= 5; l++)
+                        {
+                            // 查看相邻点距离是否差异过大，如果差异过大说明点云在此不连续，是特征边缘，就会是新的特征，因此就不置位了
+                            float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l - 1].x;
+                            float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l - 1].y;
+                            float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l - 1].z;
+                            if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                            {
+                                break;
+                            }
+
+                            cloudNeighborPicked[ind + l] = 1;
+                        }
+                        // 下面同理
+                        for (int l = -1; l >= -5; l--)
+                        {
+                            float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l + 1].x;
+                            float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l + 1].y;
+                            float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l + 1].z;
+                            if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                            {
+                                break;
+                            }
+
+                            cloudNeighborPicked[ind + l] = 1;
+                        }
+                    }
+                }
+                // 下面开始挑选面点
+                int smallestPickedNum = 0;
+                for (int k = sp; k <= ep; k++)
+                {
+                    int ind = cloudSortInd[k];
+                    // 确保这个点没有被pick且曲率小于阈值
+                    if (cloudNeighborPicked[ind] == 0 &&
+                        cloudCurvature[ind] < 0.1)
+                    {
+                        // -1认为是平坦的点
+                        cloudLabel[ind] = -1;
+                        surfPointsFlat.push_back(laserCloud->points[ind]);
+
+                        smallestPickedNum++;
+                        // 这里不区分平坦和比较平坦，因为剩下的点label默认是0,就是比较平坦
+                        if (smallestPickedNum >= 4)
+                        {
+                            break;
+                        }
+                        // 下面同理
+                        cloudNeighborPicked[ind] = 1;
+                        for (int l = 1; l <= 5; l++)
+                        {
+                            float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l - 1].x;
+                            float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l - 1].y;
+                            float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l - 1].z;
+                            if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                            {
+                                break;
+                            }
+
+                            cloudNeighborPicked[ind + l] = 1;
+                        }
+                        for (int l = -1; l >= -5; l--)
+                        {
+                            float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l + 1].x;
+                            float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l + 1].y;
+                            float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l + 1].z;
+                            if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                            {
+                                break;
+                            }
+
+                            cloudNeighborPicked[ind + l] = 1;
+                        }
+                    }
+                }
+                //Less Flat is default lable 0
+                for (int k = sp; k <= ep; k++)
+                {
+                    // 这里可以看到，剩下来的点都是一般平坦，这个也符合实际
+                    if (cloudLabel[k] <= 0)
+                    {
+                        surfPointsLessFlatScan->push_back(laserCloud->points[k]);
+                    }
+                }
+                //In some special case, like corner points number is far more than 20, we just select 20, some of the corner point will be label 0 !!!
+            }
+
+            pcl::PointCloud<PointType> surfPointsLessFlatScanDS;
+            surfPointsLessFlatScanDS.resize(100000);
+            pcl::VoxelGrid<PointType> downSizeFilter;
+            // 一般平坦的点比较多，所以这里做一个体素滤波
+            downSizeFilter.setInputCloud(surfPointsLessFlatScan);
+            downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
+            downSizeFilter.filter(surfPointsLessFlatScanDS);
+
+            surfPointsLessFlat += surfPointsLessFlatScanDS;
+        }
+        //printf("sort q time %f \n", t_q_sort);
+        //printf("seperate points time %f \n", t_pts.toc());
+
+        ///Check if laserCloudIn contains mCornerPointSharpe
+        //for(int i =0; i <laserCloudIn.size();i++){
+        //    cout<<laserCloudIn[i].pt3d.x<<" "<<laserCloudIn[i].pt3d.y<<" "<<laserCloudIn[i].pt3d.z<<endl;
+        //}
+        //cout<<"---------------------------------------------------------"<<endl;
+        ///Step 3 : pass features to frame member
+        mCornerPointsSharp.resize(cornerPointsSharp.size());
+        mCornerPointsSharp=cornerPointsSharp;
+//        for(int i = 0; i <mCornerPointsSharp.size();i++)
+//        {
+//            cout<<mCornerPointsSharp.points[i]<<endl;
+//        }
+        mCornerPointsLessSharp.resize(cornerPointsLessSharp.size());
+        mCornerPointsLessSharp=cornerPointsLessSharp;
+        mSurfPointsFlat.resize(surfPointsFlat.size());
+        mSurfPointsFlat=surfPointsFlat;
+        mSurfPointsLessFlat.resize(surfPointsLessFlat.size());
+        mSurfPointsLessFlat=surfPointsLessFlat;
+        printf("Corner Pt: %d, Less Corner : %d, Flat Pt: %d, Less Flat Pt : %d \n", mCornerPointsSharp.size(),mCornerPointsLessSharp.size(),mSurfPointsFlat.size(),mSurfPointsLessFlat.size());
+        int pause = 1;
+    }
+
+
+    ///Added module
+    /**
+ * @brief Project LiDAR Points to Image. src: https://github.com/williamhyin/lidar_to_camera/blob/master/src/project_lidar_to_camera.cpp
+ * @param[in] mK : camera distortion and project parameters
+ * @param[in] cols : image cols boundary
+ * @param[in] rows : image rows boundary
+ */
     void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
-        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+        //it seems like OpenCV upgraded, then the func changed?
+        //cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+        cv::Mat P_rect_00 = cv::Mat::zeros(3,4,CV_64F);
         P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
         P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
         P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
         P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
         P_rect_00.at<double>(2, 2) = 1;
-        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+        //cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+        cv::Mat R_rect_00 = cv::Mat::eye(4, 4, CV_64F);
         int ptNum = mLaserPt_cam.size();
         cv::Mat X(4, 1, CV_64F);//3D LiDAR point
         cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
@@ -316,35 +722,167 @@ namespace ORB_SLAM2
             pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
             pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
             if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+                //cout<<X.at<double>(0, 0)<<" "<<X.at<double>(1, 0)<<" "<<X.at<double>(2, 0)<<" -> "<<pt.x<<" "<<pt.y<<endl;
                 mLaserPt_cam[pi].index2d = -1;
                 continue;
             }
+            //cout<<X.at<double>(0, 0)<<" "<<X.at<double>(1, 0)<<" "<<X.at<double>(2, 0)<<" -> "<<pt.x<<" "<<pt.y<<endl;
             mLaserPt_cam[pi].pt2d = pt;
             mLaserPt_cam[pi].index2d = counter;
             counter++;
         }
-        cout << "Lidar points " << mLaserPt_cam.size() << " in image frame " << counter << endl;
+        //Test
+        X.at<double>(0, 0) = 3;
+        X.at<double>(1, 0) = 1;
+        X.at<double>(2, 0) = 5;
+        Y = P_rect_00 * R_rect_00 * X;
+        cv::Point pt;
+        pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+        pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+        //cout<<"(3,1,5) -> "<<pt.x<<" "<<pt.y<<endl;
+        //TODO Check why the Projected LiDAR points are under some certain height
+        cout << "Lidar points total : " << mLaserPt_cam.size() << " in image frame : " << counter << endl;
     }
+
+
     /**
-     * Project LiDAR point from LiDAR coordination to Cam coordination
+     * @brief Project LiDAR feature (camera coordination) to image
+     * @param mK camera intrinsic parameter
+     * @param cols
+     * @param rows
      */
-    void Frame::ProjectLiDARtoCam()
-    {
+    void Frame::ProjectLiDARFeaturetoImg(cv::Mat mK, int cols, int rows) {
+        //it seems like OpenCV upgraded, then the func changed?
+        //cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+        cv::Mat P_rect_00 = cv::Mat::zeros(3,4,CV_64F);
+        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
+        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
+        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
+        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
+        P_rect_00.at<double>(2, 2) = 1;
+        //cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+        cv::Mat R_rect_00 = cv::Mat::eye(4, 4, CV_64F);
+        ///Step 1. Project Corner Point First
+        int ptNum = mLaserCorner_cam.size();
+        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
+        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
+        int counter = 0;
+        for (int pi = 0; pi < ptNum; pi++) {
+            cv::Point pt;
+            X.at<double>(0, 0) = mLaserCorner_cam[pi].pt3d.x;
+            X.at<double>(1, 0) = mLaserCorner_cam[pi].pt3d.y;
+            X.at<double>(2, 0) = mLaserCorner_cam[pi].pt3d.z;
+            X.at<double>(3, 0) = 1;
+            Y = P_rect_00 * R_rect_00 * X;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            //cout<<mCornerPointsSharp.points[pi].x<<" "<<mCornerPointsSharp.points[pi].y<<" "<<mCornerPointsSharp.points[pi].z<<" "<<pt.x<<" "<<pt.y<<endl;
+            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+                mLaserCorner_cam[pi].index2d = -1;
+                continue;
+            }
+            mLaserCorner_cam[pi].pt2d = pt;
+            mLaserCorner_cam[pi].index2d = counter;
+            counter++;
+        }
+//        //Test
+//        X.at<double>(0, 0) = 3;
+//        X.at<double>(1, 0) = 1;
+//        X.at<double>(2, 0) = 5;
+//        Y = P_rect_00 * R_rect_00 * X;
+//        cv::Point pt;
+//        pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+//        pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+//        cout<<"(3,1,5) -> "<<pt.x<<" "<<pt.y<<endl;
+        //cout <<"Lidar corner points total : " << mCornerPointsSharp.size() << " in image frame : " << counter;
+        cout <<"Lidar corner points "<<counter<<"/"<<mLaserCorner_cam.size();
+        ///Step 2. Project Less Corner Point First
+        ptNum = mLaserLessCorner_cam.size();
+        counter = 0;
+        for (int pi = 0; pi < ptNum; pi++) {
+            cv::Point pt;
+            X.at<double>(0, 0) = mLaserLessCorner_cam[pi].pt3d.x;
+            X.at<double>(1, 0) = mLaserLessCorner_cam[pi].pt3d.y;
+            X.at<double>(2, 0) = mLaserLessCorner_cam[pi].pt3d.z;
+            X.at<double>(3, 0) = 1;
+            Y = P_rect_00 * R_rect_00 * X;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+                mLaserLessCorner_cam[pi].index2d = -1;
+                continue;
+            }
+            mLaserLessCorner_cam[pi].pt2d = pt;
+            mLaserLessCorner_cam[pi].index2d = counter;
+            counter++;
+        }
+        //cout <<" Lidar less corner points total : " << mCornerPointsLessSharp.size() << " in image frame : " << counter;
+        cout <<"Lidar less corner points "<<counter<<"/"<<mLaserLessCorner_cam.size();
+        ///Step 3. Project Flat Point First
+        ptNum = mLaserFlat_cam.size();
+        counter = 0;
+        for (int pi = 0; pi < ptNum; pi++) {
+            cv::Point pt;
+            X.at<double>(0, 0) = mLaserFlat_cam[pi].pt3d.x;
+            X.at<double>(1, 0) = mLaserFlat_cam[pi].pt3d.y;
+            X.at<double>(2, 0) = mLaserFlat_cam[pi].pt3d.z;
+            X.at<double>(3, 0) = 1;
+            Y = P_rect_00 * R_rect_00 * X;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+                mLaserFlat_cam[pi].index2d = -1;
+                continue;
+            }
+            mLaserFlat_cam[pi].pt2d = pt;
+            mLaserFlat_cam[pi].index2d = counter;
+            counter++;
+        }
+        //cout <<" Lidar surface points total : " << mSurfPointsFlat.size() << " in image frame : " << counter;
+        cout <<"Lidar surface points "<<counter<<"/"<<mLaserFlat_cam.size();
+        ///Step 4. Project Less Flat Point First
+        ptNum = mLaserLessFlat_cam.size();
+        counter = 0;
+        for (int pi = 0; pi < ptNum; pi++) {
+            cv::Point pt;
+            X.at<double>(0, 0) = mLaserLessFlat_cam[pi].pt3d.x;
+            X.at<double>(1, 0) = mLaserLessFlat_cam[pi].pt3d.y;
+            X.at<double>(2, 0) = mLaserLessFlat_cam[pi].pt3d.z;
+            X.at<double>(3, 0) = 1;
+            Y = P_rect_00 * R_rect_00 * X;
+            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
+            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
+            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
+                mLaserLessFlat_cam[pi].index2d = -1;
+                continue;
+            }
+            mLaserLessFlat_cam[pi].pt2d = pt;
+            mLaserLessFlat_cam[pi].index2d = counter;
+            counter++;
+        }
+        //cout <<" Lidar less surface points total : " << mSurfPointsLessFlat.size() << " in image frame : " << counter <<endl;
+        cout <<"Lidar less surface points "<<counter<<"/"<<mLaserLessFlat_cam.size();
+    }
+
+    ///Added module
+    /**
+     * @brief Project LiDAR Points and Features (PCL pointset) to Camera coordination system
+     */
+    void Frame::ProjectLiDARtoCam() {
+        ///Step1 Project common LiDAR points
         int lsrPtNum = mLaserPoints.size();
-        if(lsrPtNum>0)
-        {
+        if (lsrPtNum > 0) {
             cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
             cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
             int counter = 0;
-            for(int li=0; li<lsrPtNum;li++)
-            {
-                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-                double maxX=25.0, maxY = 6.0, minZ = -1.8;
+            for (int li = 0; li < lsrPtNum; li++) {
+                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
+                //X front, Y left, Z up
+                //Todo Test a valid threshold?
+                double maxX = 25.0, maxY = 25.0, minZ = 1.8;
                 if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
                     || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
-                    || mLaserPoints[li][2] < minZ
-                    || mLaserPoints[li][3] > -minZ)
-                {
+                    || mLaserPoints[li][2] > 10 || mLaserPoints[li][2] < -minZ) {
                     continue;
                 }
                 P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
@@ -352,24 +890,162 @@ namespace ORB_SLAM2
                 P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
                 P_lidar.at<double>(3, 0) = 1;
                 P_cam = mTcamlid * P_lidar;
-                vector<double> thisP;
-                thisP.push_back(P_cam.at<double>(0, 0));
-                thisP.push_back(P_cam.at<double>(1, 0));
-                thisP.push_back(P_cam.at<double>(2, 0));
-                thisP.push_back(mLaserPoints[li][3]);
                 cv::Point3d newP;
                 newP.x = P_cam.at<double>(0, 0);
                 newP.y = P_cam.at<double>(1, 0);
                 newP.z = P_cam.at<double>(2, 0);
                 PtLsr newPtLsr;
                 newPtLsr.pt3d = newP;
-                newPtLsr.index3d =counter;
+                newPtLsr.index3d = counter;
+                newPtLsr.intensity = mLaserPoints[li][3];
                 counter++;
                 mLaserPt_cam.push_back(newPtLsr);
             }
         }
-        //cout<<"frame "<<mnId<<" mLaserPt_cam "<<mLaserPt_cam.size()<<endl;
+        ///Step2 Project LiDAR feature points
+        //int lsrCornerNum = mLsrKeyCorner.size();
+        int lsrCornerNum = mCornerPointsSharp.points.size();
+        if (lsrCornerNum > 0) {
+            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
+            int counter = 0;
+            for (int li = 0; li < lsrCornerNum; li++) {
+                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
+                //X front, Y left, Z up
+                //Todo Test a valid threshold?
+                double maxX = 25.0, maxY = 25.0, minZ = 1.8;
+                if (mCornerPointsSharp.points[li].x > maxX || mCornerPointsSharp.points[li].x < 0.0
+                    || mCornerPointsSharp.points[li].y > maxY || mCornerPointsSharp.points[li].y < -maxY
+                    || mCornerPointsSharp.points[li].z > 10 || mCornerPointsSharp.points[li].z < -minZ) {
+                    continue;
+                }
+                P_lidar.at<double>(0, 0) = mCornerPointsSharp.points[li].x;
+                P_lidar.at<double>(1, 0) = mCornerPointsSharp.points[li].y;
+                P_lidar.at<double>(2, 0) = mCornerPointsSharp.points[li].z;
+                P_lidar.at<double>(3, 0) = 1;
+                P_cam = mTcamlid * P_lidar;
+                cv::Point3d newP;
+                newP.x = P_cam.at<double>(0, 0);
+                newP.y = P_cam.at<double>(1, 0);
+                newP.z = P_cam.at<double>(2, 0);
+                PtLsr newPtLsr;
+                newPtLsr.pt3d = newP;
+                newPtLsr.index3d = counter;
+                newPtLsr.intensity = mCornerPointsSharp.points[li].intensity;
+                //if(counter<5)
+                //    cout<<"pass mCornerPointsSharp.points[li].intensity; "<<mCornerPointsSharp.points[li].intensity<<" to newPtLsr.intensity "<<newPtLsr.intensity<<endl;
+                counter++;
+                mLaserCorner_cam.push_back(newPtLsr);
+                //cout<<mLaserCorner_cam[counter-1].intensity<<endl;
+            }
+        }
+        int lsrLessCornerNum = mCornerPointsLessSharp.size();
+        if (lsrLessCornerNum > 0) {
+            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
+            int counter = 0;
+            for (int li = 0; li < lsrLessCornerNum; li++) {
+                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
+                //X front, Y left, Z up
+                //Todo Test a valid threshold?
+                double maxX = 25.0, maxY = 25.0, minZ = 1.8;
+                if (mCornerPointsLessSharp.points[li].x > maxX || mCornerPointsLessSharp.points[li].x < 0.0
+                    || mCornerPointsLessSharp.points[li].y > maxY || mCornerPointsLessSharp.points[li].y < -maxY
+                    || mCornerPointsLessSharp.points[li].z > 10 || mCornerPointsLessSharp.points[li].z < -minZ) {
+                    continue;
+                }
+                P_lidar.at<double>(0, 0) = mCornerPointsLessSharp.points[li].x;
+                P_lidar.at<double>(1, 0) = mCornerPointsLessSharp.points[li].y;
+                P_lidar.at<double>(2, 0) = mCornerPointsLessSharp.points[li].z;
+                P_lidar.at<double>(3, 0) = 1;
+                P_cam = mTcamlid * P_lidar;
+                cv::Point3d newP;
+                newP.x = P_cam.at<double>(0, 0);
+                newP.y = P_cam.at<double>(1, 0);
+                newP.z = P_cam.at<double>(2, 0);
+                PtLsr newPtLsr;
+                newPtLsr.pt3d = newP;
+                newPtLsr.index3d = counter;
+                newPtLsr.intensity = mCornerPointsLessSharp.points[li].intensity;
+                //if(counter<5)
+                //    cout<<"pass mCornerPointsLessSharp.points[li].intensity; "<<mCornerPointsLessSharp.points[li].intensity<<" to newPtLsr.intensity "<<newPtLsr.intensity<<endl;
+                counter++;
+                mLaserLessCorner_cam.push_back(newPtLsr);
+            }
+        }
+        int lsrFlatNum = mSurfPointsFlat.size();
+        if (lsrFlatNum > 0) {
+            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
+            int counter = 0;
+            for (int li = 0; li < lsrFlatNum; li++) {
+                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
+                //X front, Y left, Z up
+                //Todo Test a valid threshold?
+                double maxX = 25.0, maxY = 25.0, minZ = 1.8;
+                if (mSurfPointsFlat.points[li].x > maxX || mSurfPointsFlat.points[li].x < 0.0
+                    || mSurfPointsFlat.points[li].y > maxY || mSurfPointsFlat.points[li].y < -maxY
+                    || mSurfPointsFlat.points[li].z > 10 || mSurfPointsFlat.points[li].z < -minZ) {
+                    continue;
+                }
+                P_lidar.at<double>(0, 0) = mSurfPointsFlat.points[li].x;
+                P_lidar.at<double>(1, 0) = mSurfPointsFlat.points[li].y;
+                P_lidar.at<double>(2, 0) = mSurfPointsFlat.points[li].z;
+                P_lidar.at<double>(3, 0) = 1;
+                P_cam = mTcamlid * P_lidar;
+                cv::Point3d newP;
+                newP.x = P_cam.at<double>(0, 0);
+                newP.y = P_cam.at<double>(1, 0);
+                newP.z = P_cam.at<double>(2, 0);
+                PtLsr newPtLsr;
+                newPtLsr.pt3d = newP;
+                newPtLsr.index3d = counter;
+                newPtLsr.intensity = mSurfPointsFlat.points[li].intensity;
+                //if(counter < 5)
+                //    cout<<"pass mSurfPointsFlat.points[li].intensity; "<<mSurfPointsFlat.points[li].intensity<<" to newPtLsr.intensity "<<newPtLsr.intensity<<endl;
+                counter++;
+                mLaserFlat_cam.push_back(newPtLsr);
+            }
+        }
+        int lsrLessFlatNum = mSurfPointsLessFlat.size();
+        if (lsrLessFlatNum > 0) {
+            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
+            int counter = 0;
+            for (int li = 0; li < lsrLessFlatNum; li++) {
+                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
+                //X front, Y left, Z up
+                //Todo Test a valid threshold?
+                double maxX = 25.0, maxY = 25.0, minZ = 1.8;
+                if (mSurfPointsLessFlat.points[li].x > maxX || mSurfPointsLessFlat.points[li].x < 0.0
+                    || mSurfPointsLessFlat.points[li].y > maxY || mSurfPointsLessFlat.points[li].y < -maxY
+                    || mSurfPointsLessFlat.points[li].z > 10 || mSurfPointsLessFlat.points[li].z < -minZ) {
+                    continue;
+                }
+                P_lidar.at<double>(0, 0) = mSurfPointsLessFlat.points[li].x;
+                P_lidar.at<double>(1, 0) = mSurfPointsLessFlat.points[li].y;
+                P_lidar.at<double>(2, 0) = mSurfPointsLessFlat.points[li].z;
+                P_lidar.at<double>(3, 0) = 1;
+                P_cam = mTcamlid * P_lidar;
+                cv::Point3d newP;
+                newP.x = P_cam.at<double>(0, 0);
+                newP.y = P_cam.at<double>(1, 0);
+                newP.z = P_cam.at<double>(2, 0);
+                PtLsr newPtLsr;
+                newPtLsr.pt3d = newP;
+                newPtLsr.index3d = counter;
+                newPtLsr.intensity = mSurfPointsLessFlat.points[li].intensity;
+                //if(counter < 5)
+                //    cout<<"pass mSurfPointsLessFlat.points[li].intensity; "<<mSurfPointsLessFlat.points[li].intensity<<" to newPtLsr.intensity "<<newPtLsr.intensity<<endl;
+                counter++;
+                mLaserLessFlat_cam.push_back(newPtLsr);
+            }
+        }
+        cout << "frame " << mnId << " mLaserPt_cam " << mLaserPt_cam.size() << " mLaserCorner_cam "
+             << mLaserCorner_cam.size() << " mLaserLessCorner_cam " << mLaserLessCorner_cam.size() << " mLaserFlat_cam "
+             << mLaserFlat_cam.size() << " mLaserLessFlat_cam " << mLaserLessFlat_cam.size() << endl;
     }
+
 
 /**
  * @brief 单目帧构造函数

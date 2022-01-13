@@ -28,6 +28,7 @@ namespace ORB_SLAM2
 {
 
 // THIS IS THE INITIALIZER FOR MONOCULAR SLAM. NOT USED IN THE STEREO OR RGBD CASE.
+// Just some functions that receives two groups of features and output matrix
 class Initializer
 {
     typedef pair<int,int> Match;

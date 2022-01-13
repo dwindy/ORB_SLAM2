@@ -120,6 +120,16 @@ namespace ORB_SLAM2
         std::vector<cv::Point2f> mvbPrevMatched;
         std::vector<cv::Point3f> mvIniP3D;
         Frame mInitialFrame;
+        ///Added Module
+        eTrackingState mLiDARState;
+        bool mbLiDARStartInit; //If the LiDAR has init
+//        pcl::PointCloud<PointType>::Ptr laserCloudCornerLast(new pcl::PointCloud<PointType>());
+//        pcl::PointCloud<PointType>::Ptr laserCloudSurfLast(new pcl::PointCloud<PointType>());
+//        pcl::PointCloud<PointType>::Ptr laserCloudFullRes(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr laserCloudCornerLast;
+        pcl::PointCloud<PointType>::Ptr laserCloudSurfLast;
+        pcl::PointCloud<PointType>::Ptr laserCloudFullRes;
+        ///-----
 
         // Lists used to recover the full camera trajectory at the end of the execution.
         // Basically we store the reference keyframe for each frame and its relative transformation
@@ -163,6 +173,26 @@ namespace ORB_SLAM2
         void CreateNewKeyFrame();
 
         ///Added Module
+        // Transformation from current frame to world frame
+        double para_q[4];//  {0, 0, 0, 1};
+        double para_t[3];//  {0, 0, 0};
+        Eigen::Quaterniond q_w_curr;//(1, 0, 0, 0);
+        Eigen::Vector3d t_w_curr;//(0, 0, 0);
+//        Eigen::Map<Eigen::Quaterniond> q_last_curr;
+//        Eigen::Map<Eigen::Vector3d> t_last_curr;
+        Eigen::Quaterniond q_last_curr;
+        Eigen::Vector3d t_last_curr;
+        int DISTORTION = 0;
+        int SCAN_PERIOD = 0.1;
+        double DISTANCE_SQ_THRESHOLD = 25;
+        double NEARBY_SCAN = 2.5;
+        void TransformToStart(PointType const *const pi, PointType *const po);
+        void TransformToEnd(PointType const *const pi, PointType *const po);
+        void LiDARInit();
+        bool mbLiDARInit;
+        void cereInit(pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr,
+                      pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr, int );
+
         void UndisLiDAR();
         //void ApplyLiDARRatio();
         void RegionGrowing(Frame &inputFrame,bool Undistored);
