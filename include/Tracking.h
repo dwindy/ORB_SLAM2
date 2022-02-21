@@ -173,6 +173,7 @@ namespace ORB_SLAM2
         void CreateNewKeyFrame();
 
         ///Added Module
+        bool TrackLiDAR();
         // Transformation from current frame to world frame
         double para_q[4];//  {0, 0, 0, 1};
         double para_t[3];//  {0, 0, 0};
@@ -190,8 +191,8 @@ namespace ORB_SLAM2
         void TransformToEnd(PointType const *const pi, PointType *const po);
         void LiDARInit();
         bool mbLiDARInit;
-        void cereInit(pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr,
-                      pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr, int );
+        bool cereLiDAR(pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr,
+                      pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr );
 
         void UndisLiDAR();
         //void ApplyLiDARRatio();

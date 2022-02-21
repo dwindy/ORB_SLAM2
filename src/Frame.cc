@@ -302,6 +302,9 @@ namespace ORB_SLAM2
         ProjectLiDARtoCam();
         ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
         ProjectLiDARFeaturetoImg(mK, imGray.cols, imGray.rows);
+        ///Pair the LiDAR Features and Img Features
+        PairLaserVisionFeatures();
+        float wait = 0;
     }
     ///Added module
 
@@ -689,6 +692,33 @@ namespace ORB_SLAM2
         int pause = 1;
     }
 
+
+    ///Added module
+    /**
+     * @brief search the image feature with nearby Laser depth
+     */
+    void Frame::PairLaserVisionFeatures(){
+        int visionFeatureNum = mvKeys.size();
+        for(int i = 0; i < visionFeatureNum; i++){
+            double minDis = 99999;
+            int lsrIndex = -1;
+            for(int j = 0; j < mLaserPt_cam.size();j++){
+                if(abs(mvKeys[i].pt.x - mLaserPt_cam[j].pt2d.x)<10 && abs(mvKeys[i].pt.y - mLaserPt_cam[j].pt2d.y)<10)
+                {
+                    float disSQR = (mvKeys[i].pt.x - mLaserPt_cam[j].pt2d.x) * (mvKeys[i].pt.x - mLaserPt_cam[j].pt2d.x) +
+                            (mvKeys[i].pt.y - mLaserPt_cam[j].pt2d.y) * (mvKeys[i].pt.y - mLaserPt_cam[j].pt2d.y);
+                    if(disSQR < minDis && disSQR <100){
+                        minDis = disSQR;
+                        lsrIndex = j;
+                    }
+                }
+            }
+            if(lsrIndex>=0){
+                cout<<mvKeys[i].pt.x<<" "<<mvKeys[i].pt.y<<" "<<mLaserPt_cam[lsrIndex].pt2d.x<<" "<<mLaserPt_cam[lsrIndex].pt2d.y<<" "
+                <<mLaserPt_cam[lsrIndex].pt3d.x<<" "<<mLaserPt_cam[lsrIndex].pt3d.y<<" "<<mLaserPt_cam[lsrIndex].pt3d.z<<endl;
+            }
+        }
+    }
 
     ///Added module
     /**

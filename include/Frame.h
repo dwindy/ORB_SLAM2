@@ -160,6 +160,7 @@ public:
     void ProjectLiDARtoImg(cv::Mat, int cols, int rows);
     void ExtractLiDARFeature();
     void ProjectLiDARFeaturetoImg(cv::Mat, int cols, int rows);
+    void PairLaserVisionFeatures();
     vector<std::vector<double>> mLaserPoints; //Raw LiDAR point under LiDAR coordination System
     pcl::PointCloud<PointType> mCornerPointsSharp;
     pcl::PointCloud<PointType> mCornerPointsLessSharp;
