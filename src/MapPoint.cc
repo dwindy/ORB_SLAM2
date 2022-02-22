@@ -463,7 +463,21 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
         PI1 = inputPlane.PI[1];
         PI2 = inputPlane.PI[2];
         mvMapPoints.assign(inputPlane.mvMappoints.begin(),inputPlane.mvMappoints.end());
-
+        //transform local rgbd plane points to world frame.
+        cv::Mat p3l(4,1,CV_32F);
+        cv::Mat p3w(4,1,CV_32F);
+        cv::Mat Pwc = pRefKF->GetPoseInverse();
+        for (int i = 0; i < inputPlane.planePts.size(); i++) {
+            p3l.at<float>(0,0) = inputPlane.planePts[i].pt3d.x;
+            p3l.at<float>(1,0) = inputPlane.planePts[i].pt3d.y;
+            p3l.at<float>(2,0) = inputPlane.planePts[i].pt3d.z;
+            p3l.at<float>(3,0) = 1;
+//            cout<<p3l<<endl<<endl;
+//            cout<<Pwc<<endl<<endl;
+            p3w = Pwc * p3l;
+            cv::Point3d newPt(p3w.at<float>(0,0), p3w.at<float>(1,0),p3w.at<float>(2,0));
+            this->planePts.push_back(newPt);
+        }
 
         // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
         unique_lock<mutex> lock(mpMap->mMutexPointCreation);

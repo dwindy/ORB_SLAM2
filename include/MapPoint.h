@@ -161,6 +161,8 @@ protected:
         MapPlane(Plane inputPlane, KeyFrame* pRefKF, Map* pMap);
         void setPhiTheta(float Phi, float Theta, float D);
         void setABCD(float A, float B, float C, float D);
+        vector<cv::Point3d> planePts;//the rgbd points that consist to the plane. need be transformed to world frame
+
 
         void SetWorldPos(const cv::Mat &Pos);
         cv::Mat GetWorldPos();

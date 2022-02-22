@@ -83,16 +83,17 @@ class MapPlane;
         Plane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) { PlaneId = -1; }
         Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
         Plane() { PlaneId = -1; }
+        void foundContour(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud);
 
         void Norm2Angle();
         void NormD2CP();
         cv::Point3d centreP;
 //        vector<cv::Point3d> pointList;
 //        vector<cv::Point2d> pointList2D;
-        vector<PtRGBD> planePts;
+        vector<PtRGBD> planePts; //the poinst that consisits to this plane
         vector<int> keyPointList; //todo store keypoint in this plane
         vector<int> mindices;     //todo indexs of keypoint in image
-        std::vector<MapPoint *> mvMappoints; //todo pointer to Map point that contained in this plane
+        std::vector<MapPoint *> mvMappoints;//pointer to Map point that contained in this plane
     };
 
 class Frame

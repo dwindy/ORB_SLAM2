@@ -46,8 +46,10 @@ void MapDrawer::DrawMapPoints()
     const vector<MapPoint*> &vpMPs = mpMap->GetAllMapPoints();
     //mvpreferenceMappoints 局部地图点
     const vector<MapPoint*> &vpRefMPs = mpMap->GetReferenceMapPoints();
-
     set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+
+    ///added module --- planes
+    const vector<MapPlane *> &vpMPls = mpMap->GetAllMapPlanes();
 
     if(vpMPs.empty())
         return;
@@ -78,6 +80,49 @@ void MapDrawer::DrawMapPoints()
 
     }
 
+    glEnd();
+
+    ///added Module --- Planes
+    glPointSize(mPointSize);
+    glBegin(GL_POINTS);
+    for (size_t i = 0, iend = vpMPls.size(); i < iend; i++) {
+        switch (i) {
+            case 0: //cv 255,0,0
+                glColor3ub(0,0.0,255);
+                break;
+            case 1: //0,255,255
+                glColor3ub(255,255,0.0);
+                break;
+            case 2: //0,0,255
+                glColor3ub(255,0.0,0.0);
+                break;
+            case 3: //255,255,0
+                glColor3ub(0,255.0,255.0);
+                break;
+            case 4: //127,0,127
+                glColor3ub(127,0,127);
+                break;
+            case 5: //255, 0, 255
+                glColor3ub(255,0,255);
+                break;
+            case 6: //127, 127, 0
+                glColor3ub(0,127,127);
+                break;
+            case 7: //0, 127, 127
+                glColor3ub(127,127,0);
+                break;
+            case 8: //0, 255, 0
+                glColor3ub(0,255,0);
+                break;
+            default://255, 255, 255
+                glColor3ub(255,255,255);
+                break;
+        }
+        int plPtNum = vpMPls[i]->planePts.size();
+        for (int pi = 0; pi < plPtNum; pi++) {
+            glVertex3f(vpMPls[i]->planePts[pi].x, vpMPls[i]->planePts[pi].y, vpMPls[i]->planePts[pi].z);
+        }
+    }
     glEnd();
 }
 

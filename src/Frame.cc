@@ -301,89 +301,9 @@ namespace ORB_SLAM2
 
         //把特征点分配到网格中，默认64/48
         AssignFeaturesToGrid();
-
-        ///added module
-        //Project LiDAR point to Cam coordination
-//        ProjectLiDARtoCam();
-//        ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
     }
 
-//    void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
-//        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-//        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-//        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-//        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-//        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-//        P_rect_00.at<double>(2, 2) = 1;
-//        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-//        int ptNum = mLaserPt_cam.size();
-//        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-//        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-//        int counter = 0;
-//        for (int pi = 0; pi < ptNum; pi++) {
-//            cv::Point pt;
-//            X.at<double>(0, 0) = mLaserPt_cam[pi].pt3d.x;
-//            X.at<double>(1, 0) = mLaserPt_cam[pi].pt3d.y;
-//            X.at<double>(2, 0) = mLaserPt_cam[pi].pt3d.z;
-//            X.at<double>(3, 0) = 1;
-//            Y = P_rect_00 * R_rect_00 * X;
-//            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
-//                mLaserPt_cam[pi].index2d = -1;
-//                continue;
-//            }
-//            mLaserPt_cam[pi].pt2d = pt;
-//            mLaserPt_cam[pi].index2d = counter;
-//            counter++;
-//        }
-//        cout << "Lidar points " << mLaserPt_cam.size() << " in image frame " << counter << endl;
-//    }
-//    /**
-//     * Project LiDAR point from LiDAR coordination to Cam coordination
-//     */
-//    void Frame::ProjectLiDARtoCam()
-//    {
-//        int lsrPtNum = mLaserPoints.size();
-//        if(lsrPtNum>0)
-//        {
-//            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
-//            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
-//            int counter = 0;
-//            for(int li=0; li<lsrPtNum;li++)
-//            {
-//                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-//                double maxX=25.0, maxY = 6.0, minZ = -1.8;
-//                if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
-//                    || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
-//                    || mLaserPoints[li][2] < minZ
-//                    || mLaserPoints[li][3] > -minZ)
-//                {
-//                    continue;
-//                }
-//                P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
-//                P_lidar.at<double>(1, 0) = mLaserPoints[li][1];
-//                P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
-//                P_lidar.at<double>(3, 0) = 1;
-//                P_cam = mTcamlid * P_lidar;
-//                vector<double> thisP;
-//                thisP.push_back(P_cam.at<double>(0, 0));
-//                thisP.push_back(P_cam.at<double>(1, 0));
-//                thisP.push_back(P_cam.at<double>(2, 0));
-//                thisP.push_back(mLaserPoints[li][3]);
-//                cv::Point3d newP;
-//                newP.x = P_cam.at<double>(0, 0);
-//                newP.y = P_cam.at<double>(1, 0);
-//                newP.z = P_cam.at<double>(2, 0);
-//                PtLsr newPtLsr;
-//                newPtLsr.pt3d = newP;
-//                newPtLsr.index3d =counter;
-//                counter++;
-//                mLaserPt_cam.push_back(newPtLsr);
-//            }
-//        }
-//        //cout<<"frame "<<mnId<<" mLaserPt_cam "<<mLaserPt_cam.size()<<endl;
-//    }
+
 
 /**
  * @brief 单目帧构造函数
@@ -1239,6 +1159,22 @@ namespace ORB_SLAM2
         }
         int pause = 1;
     }
+
+//    /**
+//     * for a Plane, found the contour points so it can be drew in Map
+//     * just finding the most east/north/south/west
+//     * @param inputs cloud
+//     */
+//    void Plane::foundContour(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud) {
+//        float eastest = -1;
+//        float westest = 9999;
+//        float southest = -1;
+//        float northest = 9999;
+//        size_t ptNum = cloud->points.size();
+//        for(int i = 0; i < ptNum; i++){
+//
+//        }
+//    }
 
     /**
      * input a pointcloud, run RANSAC to fit a plane, return inliner number
