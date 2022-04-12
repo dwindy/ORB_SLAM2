@@ -1014,7 +1014,7 @@ namespace ORB_SLAM2
 
             if (d > 0) {
                 mvDepth[i] = d;
-                mvuRight[i] = kpU.pt.x - mbf / d; //disparity
+                mvuRight[i] = kpU.pt.x - mbf / d;
             }
         }
     }

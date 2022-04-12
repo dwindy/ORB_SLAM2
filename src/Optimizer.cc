@@ -1158,42 +1158,24 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 */
 int Optimizer::PoseOptimization(Frame *pFrame)
 {
+    cout<<"system in the PoseOptimization function "<<endl;
     //*Step 1: 构造g2o优化器,BlockSolver_6_3：位姿_PoseDim 6维 路标 _LandmarkDim 3维
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
     linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
-
     g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
-
     int nInitialCorrespondences=0;
 
     // Set Frame vertex
     //*Step 2: 添加顶点,待优化帧的Tcw
     g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
     vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
-
-//    if (pFrame->mnId == 120) {
-//        ofstream writer("frame150points.txt");
-//        cout << "pose before pose optimization " << endl;
-//        cout << pFrame->mTcw << endl;
-//        vector<float> qcw1 = Converter::toQuaternion(pFrame->mTcw(cv::Rect(0, 0, 3, 3)));
-//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7)
-//             << " | " << pFrame->mTcw.at<float>(0, 3) << " " << pFrame->mTcw.at<float>(1, 3) << " " << pFrame->mTcw.at<float>(2, 3)
-//             << " | " << qcw1[0] << " " << qcw1[1] << " " << qcw1[2] << " " << qcw1[3] << endl;
-//        for (int i = 0; i < pFrame->N; i++) {
-//            MapPoint *pMP = pFrame->mvpMapPoints[i];
-//            if (pMP) {
-//                writer << pMP->GetWorldPos().at<float>(0) << " " << pMP->GetWorldPos().at<float>(1) << " "
-//                       << pMP->GetWorldPos().at<float>(2) << endl;
-//            }
-//        }
-//        writer.close();
-//    }
-
+    cout<<"pFrame->mTcw "<<endl<<Converter::toSE3Quat(pFrame->mTcw)<<endl;
+    ofstream writer;writer.open("pFramePose.txt");
+    writer<<Converter::toSE3Quat(pFrame->mTcw)<<endl;
+    writer.close();
     //设置ID
     vSE3->setId(0);
     //要优化所以不能fixed
@@ -1218,6 +1200,10 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     const float deltaMono = sqrt(5.991);
     const float deltaStereo = sqrt(7.815);
 
+    ofstream edgewriter;
+    edgewriter.open("unaryEdges.txt");
+    ofstream edgewriter2;
+    edgewriter2.open("unaryEdgesWorld.txt");
     //*Step 3: 添加一元边
     {
     //使用地图点构建图的时候，不希望地图点被修改。
@@ -1280,6 +1266,8 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
                 e->setMeasurement(obs);
+                cout<<"new edeg add measurement "<<endl<<obs.transpose()<<endl;
+                edgewriter<<obs.transpose()<<endl;
                 const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                 Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
                 e->setInformation(Info);
@@ -1298,6 +1286,8 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 e->Xw[1] = Xw.at<float>(1);
                 e->Xw[2] = Xw.at<float>(2);
 
+                edgewriter2<<Xw.at<float>(0)<<" "<<Xw.at<float>(1)<<" "<<Xw.at<float>(2)<<endl;
+
                 optimizer.addEdge(e);
 
                 vpEdgesStereo.push_back(e);
@@ -1307,6 +1297,8 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
     }
     }
+    edgewriter.close();
+    edgewriter2.close();
 
 
     if(nInitialCorrespondences<3)
@@ -1404,14 +1396,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
     cv::Mat pose = Converter::toCvMat(SE3quat_recov);
     pFrame->SetPose(pose);
-//    if (pFrame->mnId ==120) {
-//        cout << "pose after pose optimization " << endl;
-//        cout << pose << endl;
-//        vector<float> qcw2 = Converter::toQuaternion(pose(cv::Rect(0, 0, 3, 3)));
-//        cout << setprecision(6) << pFrame->mTimeStamp << setprecision(7) << " | "
-//             << pose.at<float>(0, 3) << " " << pose.at<float>(1, 3) << " " << pose.at<float>(2, 3) << " | "
-//             << qcw2[0] << " " << qcw2[1] << " " << qcw2[2] << " " << qcw2[3] << endl;
-//    }
     return nInitialCorrespondences-nBad;
 }
 

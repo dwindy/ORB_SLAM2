@@ -39,17 +39,17 @@
 
 ///added module
 #include <math.h>
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl-1.8/pcl/segmentation/region_growing.h>
-#include <pcl-1.8/pcl/search/search.h>
-#include <pcl-1.8/pcl/search/kdtree.h>
-#include <pcl-1.8/pcl/features/normal_3d.h>
-//#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
-#include <pcl-1.8/pcl/ModelCoefficients.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/registration/icp.h>
+//#include <pcl/point_cloud.h>
+//#include <pcl-1.8/pcl/segmentation/region_growing.h>
+//#include <pcl-1.8/pcl/search/search.h>
+//#include <pcl-1.8/pcl/search/kdtree.h>
+//#include <pcl-1.8/pcl/features/normal_3d.h>
+////#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
+//#include <pcl-1.8/pcl/ModelCoefficients.h>
+//#include <pcl/sample_consensus/method_types.h>
+//#include <pcl/sample_consensus/model_types.h>
+//#include <pcl/segmentation/sac_segmentation.h>
+//#include <pcl/registration/icp.h>
 
 using namespace std;
 
@@ -2149,9 +2149,9 @@ bool Tracking::TrackWithMotionModel()
     RegisterFeature2Plane2(mpMap, mCurrentFrame,mVelocity * mLastFrame.mTcw,0.10);
     //vector<int> matchPlanes;
     int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
-    if (nplnmatches >= 2)
-        Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
-    else
+//    if (nplnmatches >= 2)
+//        Optimizer::JointOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
+//    else
         //*Step 3 优化当前位姿
         // Optimize frame pose with all matches
         Optimizer::PoseOptimization(&mCurrentFrame);

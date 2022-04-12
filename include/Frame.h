@@ -34,13 +34,13 @@
 
 ///added module
 #include <math.h>
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl-1.8/pcl/segmentation/region_growing.h>
-#include <pcl-1.8/pcl/search/search.h>
-#include <pcl-1.8/pcl/search/kdtree.h>
-#include <pcl-1.8/pcl/features/normal_3d.h>
+#include <pcl/point_cloud.h>
+#include <pcl/segmentation/region_growing.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
 //#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
-#include <pcl-1.8/pcl/ModelCoefficients.h>
+#include <pcl/ModelCoefficients.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
