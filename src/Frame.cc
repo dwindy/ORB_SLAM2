@@ -189,6 +189,8 @@ namespace ORB_SLAM2
         RegionGrowing();
         ///Restore keypoints to 3d keypoints
         ComputeKeyPoint3D(imDepth);
+        mvpMapPlanes = vector<MapPlane *>(mvPlanes.size(), static_cast<MapPlane *>(NULL));
+        mvbOutlierPlane = vector<bool>(mvPlanes.size(), false);
         ///--- end
 
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
@@ -959,6 +961,7 @@ namespace ORB_SLAM2
 /**
  * Register Feature to Plane Can decide when to add new plane
  * No plane transform. Just compare Map Point with local Plane
+ * WHY I DESIGN THIS?
  */
     void Frame::RegisterFeature2Plane(double disThres) {
         ///Compare with mapPoint of this frame
@@ -976,9 +979,10 @@ namespace ORB_SLAM2
                 double minDistance = 65535;
                 for (size_t j = 0; j < mvPlanes.size(); j++) {
                     Plane *thisPln = &mvPlanes[j];
-                    double distance =
-                            abs(thisPln->A * x + thisPln->B * y + thisPln->C * z + thisPln->D) /
-                            sqrt(thisPln->A * thisPln->A + thisPln->B * thisPln->B + thisPln->C * thisPln->C);
+                    Eigen::Vector3d point(x,y,z);
+                    Eigen::Vector3d planeNorm(thisPln->A,thisPln->B,thisPln->C);
+                    // abs(Ax+By+Cz+D)/sqrt(A*A + B*B + C*C)
+                    double distance = abs(planeNorm.dot(point) + thisPln->D) / planeNorm.norm();
                     if (distance < disThres && distance < minDistance) {
                         minDistance = distance;
                         closePlaneIndex = j;
@@ -991,7 +995,6 @@ namespace ORB_SLAM2
                 }
             }
         }
-//        int pause = 0;
         for (size_t j = 0; j < mvPlanes.size(); j++) {
             cout<<"map plane "<<mvPlanes[j].PlaneId<<" contains "<<mvPlanes[j].mvMappoints.size()<<endl;
         }
@@ -1104,13 +1107,13 @@ namespace ORB_SLAM2
         double timeUsed = double(endTime - startTime)/CLOCKS_PER_SEC;
         //cout<<"region growing "<<timeUsed<<" sec ";
         ///Step 2 Call RANSAC plane fitting for each Cluster
-        for (int ci = 0; ci < clusters.size(); ci++) {
+        for (size_t ci = 0; ci < clusters.size(); ci++) {
             pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
             thisCloud->points.resize(clusters[ci].indices.size());
             thisCloud->height = 1;
             thisCloud->width = clusters[ci].indices.size();
             //cout << " | cluster contains " << clusters[ci].indices.size();
-            for (int index = 0; index < clusters[ci].indices.size(); index++) {
+            for (size_t index = 0; index < clusters[ci].indices.size(); index++) {
                 thisCloud->points[index].x = RGBDCloudDownSample->points[clusters[ci].indices[index]].x;
                 thisCloud->points[index].y = RGBDCloudDownSample->points[clusters[ci].indices[index]].y;
                 thisCloud->points[index].z = RGBDCloudDownSample->points[clusters[ci].indices[index]].z;
@@ -1157,7 +1160,7 @@ namespace ORB_SLAM2
                 }
             }
         }
-        int pause = 1;
+        return 1;
     }
 
 //    /**
@@ -1217,7 +1220,7 @@ namespace ORB_SLAM2
 //            foundPlane.D = -foundPlane.D;
 //        }
         double sumX = 0, sumY = 0, sumZ = 0;
-        for (int i = 0; i < inliers->indices.size(); i++) {
+        for (size_t i = 0; i < inliers->indices.size(); i++) {
             double x = cloud->points[inliers->indices[i]].x;
             double y = cloud->points[inliers->indices[i]].y;
             double z = cloud->points[inliers->indices[i]].z;
@@ -1229,7 +1232,7 @@ namespace ORB_SLAM2
             newPtRGBD.pt3d = newP;
             foundPlane.planePts.push_back(newPtRGBD);
         }
-        foundPlane.Norm2Angle();
+        foundPlane.Norm2Radian();
         foundPlane.NormD2CP();
         foundPlane.centreP = cv::Point3d(sumX / inliers->indices.size(), sumY / inliers->indices.size(),
                                          sumZ / inliers->indices.size());
@@ -1261,27 +1264,41 @@ namespace ORB_SLAM2
         return intersect;
     }
 
+//    /**
+//     * (phi, theta, d) | (nx,ny,nz,d)
+//     * phi = arctan(ny/nx), theta = arccos(nz)
+//     * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
+//     */
+//    void Plane::Norm2Angle() {
+//        //cout << "Norm2Angle() with ABCD " << this->A << " " << this->B << " " << this->C << " " << this->D;
+//        double phi = atan2(this->B, this->A) * 180 / 3.141592653;
+////        if (phi >= 180)
+////            phi = fmod(phi, 180);
+////        if (phi < 0)
+////            phi = phi + 180;
+//        this->phi = phi;
+//        double devidor = sqrt(this->A * this->A + this->B * this->B + this->C * this->C);
+//        double theta = acos(this->C / devidor) * 180 / 3.141592653;
+////        if (theta >= 180)
+////            theta = fmod(theta, 180);
+////        if (theta < 0)
+////            theta = theta + 180;
+//        this->theta = theta;
+//        //cout << " | theta " << this->theta << " phi " << this->phi << endl;
+//    }
+
     /**
-     * (phi, theta, d) | (nx,ny,nz,d)
-     * phi = arctan(ny/nx), theta = arccos(nz)
-     * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
-     */
-    void Plane::Norm2Angle() {
+ * (phi, theta, d) | (nx,ny,nz,d)
+ * phi = arctan(ny/nx), theta = arccos(nz)
+ * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
+ */
+    void Plane::Norm2Radian() {
         //cout << "Norm2Angle() with ABCD " << this->A << " " << this->B << " " << this->C << " " << this->D;
-        double phi = atan2(this->B, this->A) * 180 / 3.141592653;
-//        if (phi >= 180)
-//            phi = fmod(phi, 180);
-//        if (phi < 0)
-//            phi = phi + 180;
+        double phi = atan2(this->B, this->A);
         this->phi = phi;
         double devidor = sqrt(this->A * this->A + this->B * this->B + this->C * this->C);
-        double theta = acos(this->C / devidor) * 180 / 3.141592653;
-//        if (theta >= 180)
-//            theta = fmod(theta, 180);
-//        if (theta < 0)
-//            theta = theta + 180;
+        double theta = acos(this->C / devidor);
         this->theta = theta;
-        //cout << " | theta " << this->theta << " phi " << this->phi << endl;
     }
 
     /**

@@ -69,31 +69,59 @@ class MapPlane;
 
     class Plane {
     public:
+        //Ax + By + Cz = D ; D > 0
         double A, B, C, D;
         /**
         * (phi, theta, d) | (nx,ny,nz,d)
-        * phi = arctan(ny/nx), theta = arccos(nz)
+        * phi = arctan(ny/nx), theta = arccos(nz) ?
         * A = cos(phi)cos(theta), B = sin(phi)cos(tehta), C = -sin(theta)
         */
-        double phi, theta, dis; //in degree
+        double phi, theta, dis; //should change to radian
         Eigen::Vector3d PI;
         int count;
         int PlaneId;//Id in cur frame
         int IdGlobal;//In in map/global
-        Plane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) { PlaneId = -1; }
-        Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
-        Plane() { PlaneId = -1; }
+        Plane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) {
+            PlaneId = -1;
+            count = -1;
+            IdGlobal = -1;
+            NormD2CP();
+            NormD2CP();
+        }
+
+        Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) {
+            PlaneId = -1;
+            count = -1;
+            IdGlobal = -1;
+        }
+
+        Plane(Eigen::Vector3d PIin) : PI(PIin) {
+            PlaneId = -1;
+            count = -1;
+            IdGlobal = -1;
+        }
+
+        Plane() {
+            PlaneId = -1;
+            count = -1;
+            IdGlobal = -1;
+        }
+
+        //not in use now. find plane contour?
         void foundContour(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud);
 
-        void Norm2Angle();
+        //void Norm2Angle();
+        void Norm2Radian();
+
         void NormD2CP();
-        cv::Point3d centreP;
+
+        cv::Point3d centreP;//why i need this?
 //        vector<cv::Point3d> pointList;
 //        vector<cv::Point2d> pointList2D;
         vector<PtRGBD> planePts; //the poinst that consisits to this plane
         vector<int> keyPointList; //todo store keypoint in this plane
         vector<int> mindices;     //todo indexs of keypoint in image
-        std::vector<MapPoint *> mvMappoints;//pointer to Map point that contained in this plane
+        std::vector<MapPoint *> mvMappoints;//pointer to Map point that contained in this local plane | Why I need this?
     };
 
 class Frame
@@ -230,7 +258,7 @@ public:
     ///Added Module
     std::vector<cv::Point3d> mvPtRGBD; //All 3d Points
     std::vector<cv::Point3d> mvKeyPt3D; //keypoint 3D coordinate
-    std::vector<pair<MapPoint*,int>> mvMapPoint2Plane;
+    std::vector<pair<MapPoint*,int>> mvMapPoint2Plane;//<MapPoint, local Plane Index> | Why I need this?
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.
@@ -251,6 +279,8 @@ public:
 
     // Flag to identify outlier associations.
     std::vector<bool> mvbOutlier;
+    ///Added Module --- Flag to identify plane outlier associations.
+    std::vector<bool> mvbOutlierPlane;
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
     static float mfGridElementWidthInv;

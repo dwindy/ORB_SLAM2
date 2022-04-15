@@ -49,6 +49,7 @@ public:
     void AddMapPlane(MapPlane* pMPln);
     int GetMapPlaneNum();
     std::vector<MapPlane*> GetAllMapPlanes();
+    void RegisterPoint2Plane(float disThres);
     //todo EraseMapPlane();
     void EraseKeyFrame(KeyFrame* pKF);
     void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);

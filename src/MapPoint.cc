@@ -36,7 +36,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
     mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
     mpReplaced(static_cast<MapPoint*>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap)
     ///Added
-    ,registerPlaneID(-1)
+    ,registerPlaneID(-1),distance2Plane(-1),registerPlaneIndex(-1),fixwithPlane(false)
 {
     Pos.copyTo(mWorldPos);
     //平均观测方向初始化为0
@@ -53,7 +53,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame*>(NULL)), mnVisible(1),
     mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(pMap)
     ///Added
-    ,registerPlaneID(-1)
+    ,registerPlaneID(-1),distance2Plane(-1),registerPlaneIndex(-1),fixwithPlane(false)
 {
     Pos.copyTo(mWorldPos);
     cv::Mat Ow = pFrame->GetCameraCenter();
@@ -448,17 +448,18 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
 }
 
 ///Added module
-    MapPlane::MapPlane(Plane inputPlane, KeyFrame *pRefKF, Map *pMap) :
+    MapPlane::MapPlane(Plane inputPlane, KeyFrame *pRefKF, Map *pMap, cv::Mat Tcw) :
             mnFirstKFid(pRefKF->mnId), mnFirstFrame(pRefKF->mnFrameId), nObs(0), mnTrackReferenceForFrame(0),
             mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
             mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
             mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap) {
+    //copy Attribution from local plane. need transform to map frame.
         A = inputPlane.A;
         B = inputPlane.B;
         C = inputPlane.C;
         D = inputPlane.D;
-        theta = inputPlane.theta;
-        phi = inputPlane.phi;
+        theta = inputPlane.theta;//NOTE the theta was not update when add new map plane
+        phi = inputPlane.phi;//NOTE the phi was not update when add new map plane
         PI0 = inputPlane.PI[0];
         PI1 = inputPlane.PI[1];
         PI2 = inputPlane.PI[2];
@@ -466,15 +467,14 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
         //transform local rgbd plane points to world frame.
         cv::Mat p3l(4,1,CV_32F);
         cv::Mat p3w(4,1,CV_32F);
-        cv::Mat Pwc = pRefKF->GetPoseInverse();
+        //cv::Mat Pwc = pRefKF->GetPoseInverse();//NOTE should not using RefKF's pose
+        cv::Mat Twc = Tcw.inv();//NOTE using current frame's pose
         for (int i = 0; i < inputPlane.planePts.size(); i++) {
             p3l.at<float>(0,0) = inputPlane.planePts[i].pt3d.x;
             p3l.at<float>(1,0) = inputPlane.planePts[i].pt3d.y;
             p3l.at<float>(2,0) = inputPlane.planePts[i].pt3d.z;
             p3l.at<float>(3,0) = 1;
-//            cout<<p3l<<endl<<endl;
-//            cout<<Pwc<<endl<<endl;
-            p3w = Pwc * p3l;
+            p3w = Twc * p3l;
             cv::Point3d newPt(p3w.at<float>(0,0), p3w.at<float>(1,0),p3w.at<float>(2,0));
             this->planePts.push_back(newPt);
         }

@@ -53,6 +53,50 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         return mspMapPlanes.size();
     }
 
+    ///Function in map.cpp
+    int searchForPlane(int planeID, std::vector<MapPlane *> inPutPlanes) {
+        for (int i = 0; i < inPutPlanes.size(); i++) {
+            if (inPutPlanes[i]->mnId == planeID)
+                return i;
+        }
+        return -1;
+    }
+
+///Added Module
+/* *
+ * Register MapPoint with Map Planes
+ */
+    void Map::RegisterPoint2Plane(float disThres) {
+        auto mapPoints = GetAllMapPoints();
+        auto mapPlanes = GetAllMapPlanes();
+        for (size_t i = 0; i < mapPoints.size(); i++) {
+            //only when map point exist && did not register to any Plane
+            if (mapPoints[i] && mapPoints[i]->registerPlaneID < 0) {
+                MapPoint *thisPt = mapPoints[i];
+                cv::Mat PointMat = thisPt->GetWorldPos();
+                Eigen::Vector3f VPoint(PointMat.at<float>(0, 0), PointMat.at<float>(1, 0), PointMat.at<float>(2, 0));
+                int closePlaneIndex = -1;
+                double minDistance = 65535;
+                for (size_t j = 0; j < mapPlanes.size(); j++) {
+                    MapPlane *thisPln = mapPlanes[j];
+                    Eigen::Vector3f planeNorm(thisPln->A, thisPln->B, thisPln->C);
+                    // abs(Ax+By+Cz+D)/sqrt(A*A + B*B + C*C)
+                    float distance = abs(planeNorm.dot(VPoint) + thisPln->D) / planeNorm.norm();
+                    if (distance < disThres && distance < minDistance) {
+                        minDistance = distance;
+                        closePlaneIndex = j;
+                    }
+                }
+                if (closePlaneIndex > -1) {
+                    thisPt->registerPlaneID = mapPlanes[closePlaneIndex]->mnId;
+                    thisPt->registerPlaneIndex = closePlaneIndex; ///TODO check why Plane ID is not equal to Index?
+                    mapPlanes[closePlaneIndex]->registedMapPoints.push_back(thisPt);
+                    thisPt->distance2Plane = minDistance;
+                }
+            }
+        }
+    }
+
 void Map::EraseMapPoint(MapPoint *pMP)
 {
     unique_lock<mutex> lock(mMutexMap);

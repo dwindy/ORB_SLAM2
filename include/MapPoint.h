@@ -84,6 +84,9 @@ public:
 public:
     ///Added Module
     int registerPlaneID;
+    int registerPlaneIndex;
+    float distance2Plane;
+    bool fixwithPlane;
 
     long unsigned int mnId;
     static long unsigned int nNextId;
@@ -158,11 +161,13 @@ protected:
     {
     public:
         ///added module
-        MapPlane(Plane inputPlane, KeyFrame* pRefKF, Map* pMap);
+        MapPlane(Plane inputPlane, KeyFrame* pRefKF, Map* pMap, cv::Mat);
         void setPhiTheta(float Phi, float Theta, float D);
         void setABCD(float A, float B, float C, float D);
-        vector<cv::Point3d> planePts;//the rgbd points that consist to the plane. need be transformed to world frame
+        //for showing
+        vector<cv::Point3d> planePts;//the rgbd points that consist to the plane. be transformed to world frame while init a new MapPlane
 
+        vector<MapPoint*> registedMapPoints;
 
         void SetWorldPos(const cv::Mat &Pos);
         cv::Mat GetWorldPos();
@@ -208,9 +213,10 @@ protected:
         float A,B,C,D;
         float phi,theta;
         double PI0,PI1,PI2;
+
         std::vector<MapPoint *> mvMapPoints;
 
-        long unsigned int mnId;
+        long unsigned int mnId; //Map Plane ID
         static long unsigned int nNextId;
         long int mnFirstKFid;
         long int mnFirstFrame;

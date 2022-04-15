@@ -180,7 +180,7 @@ namespace ORB_SLAM2
         int SearchPlane(Map *map, Frame &curFrame, vector<int> &matchPlanes, float disThres);
         void RegisterFeature2Plane(Map *map, Frame &curFrame, float disThres);
         void RegisterFeature2Plane2(Map *map, Frame &curFrame, cv::Mat Tcw, float disThres);
-        void FixPlanePointDepth(Map *map, float threshold);
+        void FixMapPlanePointsDepth(Map *map, float threshold);
         void FixPlaneSinglePointDepth(Map *map, MapPoint *mapPoint, float threshold);
         void createNewMapPlane();
         bool CheckWithMapPlane(Map *mpMap, MapPoint *mp, double disThreshold);
