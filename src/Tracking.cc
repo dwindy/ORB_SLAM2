@@ -454,8 +454,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     }
 
 void Tracking::Track()
-{
-        cout<<"Track Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
+{   cout<<"Track Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
     ///Added Module --- project current frame plane points to image
     ProjectPlanetoImage();
 
@@ -524,12 +523,12 @@ void Tracking::Track()
                         bOK = TrackReferenceKeyFrame();
                 }
             }
-            else
+            else //from ---if(mState==OK)
             {
                 bOK = Relocalization();
             }
         }
-        else
+        else //from ---if(!mbOnlyTracking)
         {
             // Localization Mode: Local Mapping is deactivated
             //*Step 2 跟丢了，重定位
@@ -633,9 +632,9 @@ void Tracking::Track()
         if(!mbOnlyTracking)
         {
             if(bOK)
-                bOK = TrackLocalMap();
+                bOK = TrackLocalMap();//Unary Edge Optimization
         }
-        else
+        else //from if(!mbOnlyTracking)
         {
             // mbVO true means that there are few matches to MapPoints in the map. We cannot retrieve
             // a local map and therefore we do not perform TrackLocalMap(). Once the system relocalizes
@@ -814,6 +813,9 @@ void Tracking::Track()
             //mCurrentFrame.RegisterFeature2Plane(0.10); //This Should not be called by frame right?
             mpMap->RegisterPoint2Plane(0.1);
             FixMapPlanePointsDepth(mpMap, 0.10);
+            auto mapPlanesTemp = mpMap->GetAllMapPlanes();
+            for (size_t i = 0; i < mpMap->GetMapPlaneNum(); i++)
+                cout << "Plane " << mapPlanesTemp[i]->mnId << " connecting to " << mapPlanesTemp[i]->mvMapPoints.size()<< endl;
             ///---end
 
             cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
@@ -1201,8 +1203,9 @@ void Tracking::CheckReplacedInLastFrame()
     }
 }
 
+//Not in use
 /**
- * @brief search map plane and current frame plane pair
+ * @brief search map plane and current frame plane pair ( using Aangle and Dis)
  * @param map
  * @param curFrameSearchPlane
  * @param matchPlanes
@@ -1460,6 +1463,7 @@ void Tracking::CheckReplacedInLastFrame()
                 cout<<"map point "<<point3D.transpose()<<" project to uv "<<x<<" "<<y<<" invalid "<<endl;
             }
         } else {
+            //Note sometime no nearby
             cout << "new MapPoint found no nearby plane , min dis " << mindistance << endl;
         }
     }
@@ -1620,9 +1624,9 @@ void Tracking::CheckReplacedInLastFrame()
     }
 
     /**
-     * Transform mapPoint to local frame
-     * Found close plane to register
-     * WHY I NEED THIS FUNCTION?
+     * Register Map Point with Local Plane
+     * So when adding a new map plane.
+     * the register MapPoint-LocalPlane pair should less then 10
      * @param map
      * @param curFrame
      * @param Tcw
@@ -1666,6 +1670,7 @@ void Tracking::CheckReplacedInLastFrame()
                     curFrame.mvPlanes[closePlaneIndex].mvMappoints.push_back(curFrame.mvpMapPoints[i]);
                     regiestedNum++;
                 }
+                ///TODO so we dont need compare local'planes mapppoint with global mappoint again? when Add new map plane
             }
         }
     }
@@ -1705,6 +1710,13 @@ void Tracking::CheckReplacedInLastFrame()
             Eigen::Vector3f PI_proj = (rotation_AL * n_local)*(d_local - tranlate_LA.transpose()*n_local );
 //            cout <<" PI local "<<PI_local[0]<<" "<<PI_local[1]<<" "<<PI_local[2]<<" | ";
 //            cout << "PI proj " << PI_proj.transpose() <<" | ";
+            ///Note - P^A_L.translate is not the t part of T
+            //so using the inverse transpose way
+            Eigen::Vector4f PI_proj_V4, PI_local_V4(curFrame.mvPlanes[i].A,curFrame.mvPlanes[i].B,curFrame.mvPlanes[i].C, curFrame.mvPlanes[i].D);
+            PI_proj_V4 = (Twc_matrix.inverse()).transpose() *  PI_local_V4;
+            PI_proj[0] = PI_proj_V4[0] * PI_proj_V4[3];
+            PI_proj[1] = PI_proj_V4[1] * PI_proj_V4[3];
+            PI_proj[2] = PI_proj_V4[2] * PI_proj_V4[3];
             pjtMapPlanes[i] = PI_proj;
         }
 
@@ -1748,10 +1760,10 @@ void Tracking::CheckReplacedInLastFrame()
     }
 
     /**
-     * @brief Search Map Plane PI and Local Plane PI pairs
+     * @brief Search Map Plane PI and Local Plane PI pairs. No velocity so give large threshold
      * @param map
      * @param curFrame
-     * @param matchPlanes pairs <local index - map plane ID>
+     * @param matchPlanes pairs <local plane index - map plane ID>
      * @param disThres
      * @return pair number
      */
@@ -1796,7 +1808,7 @@ void Tracking::CheckReplacedInLastFrame()
     }
 
     /**
-     * search Map plane and local plane pairs
+     * @brief Search Map Plane PI and Local Plane PI pairs
      * @param map
      * @param curFrame
      * @param matchPlanes : store matched MapPlane id
@@ -1818,7 +1830,7 @@ void Tracking::CheckReplacedInLastFrame()
         ///Step2 Transfer from Map to Cur Frame
         vector<MapPlane *> mapPlanes = map->GetAllMapPlanes();
         //vector<Eigen::Vector4d> pjtPlanes;  //under C++17 could have vector<Eigen> memeroy allocation issue
-        std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> pjtPlanes;
+        std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> pjtPlanes;
         pjtPlanes.resize(mapPlanes.size());
         for (size_t plni = 0; plni < mapPlanes.size(); plni++){
             Eigen::Vector3f PI_w(mapPlanes[plni]->PI0, mapPlanes[plni]->PI1, mapPlanes[plni]->PI2);
@@ -1827,7 +1839,14 @@ void Tracking::CheckReplacedInLastFrame()
             Eigen::Vector3f t_AL = Twc_matrix.block<3,1>(0,3);
             ///PI' = (R^L_A * n^A) * (d^A - P^A_L.translate * n^A)
             Eigen::Vector3f PI_proj = (R_cw_matrix * n_w)*(d_w - t_AL.transpose()*n_w );
-            pjtPlanes[plni] = Eigen::Vector4d(PI_proj[0],PI_proj[1],PI_proj[2],1);
+            pjtPlanes[plni] = Eigen::Vector3d(PI_proj[0],PI_proj[1],PI_proj[2]);
+            //Note the (- P^A_L.translate) is not the t part of T^A_L
+            //so using inverse transpose way
+            Eigen::Vector4f PI_proj_v4, PI_w_v4(mapPlanes[plni]->A,mapPlanes[plni]->B,mapPlanes[plni]->C,mapPlanes[plni]->D);
+            PI_proj_v4 = (Tcw_matrix.inverse()).transpose() * PI_w_v4;
+            PI_proj[0] = PI_proj_v4[0] * PI_proj_v4[3];
+            PI_proj[1] = PI_proj_v4[1] * PI_proj_v4[3];
+            PI_proj[2] = PI_proj_v4[2] * PI_proj_v4[3];
         }
         ///Step3 Pair projected map planes and current frame planes
         int foundNum = 0;
@@ -1854,8 +1873,13 @@ void Tracking::CheckReplacedInLastFrame()
         for (size_t localIndex = 0; localIndex < matchPlanes.size(); localIndex++) {
             if (matchPlanes[localIndex] >= 0) {
                 int mapPlaneID = matchPlanes[localIndex];
+                int closeMapPlaneIndex = -1;
+                for (size_t mapPlaneIndex = 0; mapPlaneIndex < mapPlanes.size(); mapPlaneIndex++) {
+                    if (mapPlanes[mapPlaneIndex]->mnId == mapPlaneID)
+                        closeMapPlaneIndex = mapPlaneIndex;
+                }
                 //curFrame.mvpMapPlanes.push_back(mapPlanes[mapPlaneID]); //Do not push back, allocation done in Frame initi
-                curFrame.mvpMapPlanes[localIndex] = mapPlanes[mapPlaneID];//Map Plane ID == Map Plane Index?
+                curFrame.mvpMapPlanes[localIndex] = mapPlanes[closeMapPlaneIndex];///Note Map Plane ID != Map Plane Index
             } else {
                 curFrame.mvpMapPlanes[localIndex] = NULL;
             }
@@ -2092,18 +2116,6 @@ bool Tracking::TrackWithMotionModel()
         }
     }
 
-    ///Added Module
-//    //Register feature point with planes
-//    mCurrentFrame.RegisterFeature2Plane(0.15);
-//    int nplnmatches = SearchPlaneWithMotion(mpMap, mCurrentFrame, mCurrentFrame.matchPlanes, 0.3);
-//    cout<<"plane match num "<<nplnmatches<<endl;
-//    if (nplnmatches >= 2)
-//        Optimizer::PlaneOptimization(mpMap, &mCurrentFrame, mCurrentFrame.matchPlanes);
-////    if (nplnmatches >= 2)
-////        Optimizer::Point3dOptimization(mpMap, &mCurrentFrame, matchPlanes);
-    ///end---
-
-
     //纯跟踪模式以匹配数目来判断是否跟踪成功
     if(mbOnlyTracking)
     {
@@ -2117,6 +2129,7 @@ bool Tracking::TrackWithMotionModel()
 
 /**
  * @brief 对local map 的mappoints进行跟踪
+ * Local Map contains nearby frames
  * 1. 更新局部关键帧（加入1共视关键帧，2共视关键帧的共视帧，3共视关键帧的父子帧）和局部地图点（前者新引入的地图点）
  * 2. 对局部mappoints进行投影匹配（排除掉视野范围外的等等）
  * 3. 根据匹配估计当前帧姿态
@@ -2328,11 +2341,9 @@ bool Tracking::NeedNewKeyFrame()
  */
     void Tracking::createNewMapPlane() {
         vector<MapPoint *> planeMapPoints;//all map plane's mappoints
-        ///Step 1 : fill up a container with map points from all map planes
+        ///Step 1 : fill up a container with all map points from all map planes
         vector<MapPlane *> mapPlanes = mpMap->GetAllMapPlanes();
         for (size_t i = 0; i < mapPlanes.size(); i++) {
-//            cout << "map Plane " << mapPlanes[i]->PI0 << " " << mapPlanes[i]->PI1 << " " << mapPlanes[i]->PI2
-//                 << " with " << mapPlanes[i]->mvMapPoints.size() << endl;
             for (size_t j = 0; j < mapPlanes[i]->mvMapPoints.size(); j++) {
                 planeMapPoints.push_back(mapPlanes[i]->mvMapPoints[j]);
             }
@@ -2360,7 +2371,14 @@ bool Tracking::NeedNewKeyFrame()
                 ///PI' = (R^L_A * n^A) * (d^A - P^A_L.transpose * n^A) --- PI Anchor to Local
                 ///PI' = (R^A_L * n^L) * (d^L - P^L_A.transpose * n^L) --- PI Local to Anchor
                 Eigen::Vector3f PI_proj = (rotation_AL * n_local) * (d_local - tranlate_LA.transpose() * n_local);//PI^Map (projected)
-
+                ///Note the (-P^A_L.transpose) is not t^A_L of T^A_L
+                ///Note using the P^c = Tcw.inv().trans() * P^w . the inverse transpose way
+                Eigen::Vector4f PI_local_V4(mCurrentFrame.mvPlanes[i].A, mCurrentFrame.mvPlanes[i].B, mCurrentFrame.mvPlanes[i].C, mCurrentFrame.mvPlanes[i].D);
+                Eigen::Vector4f PI_proj_V4;
+                PI_proj_V4 = (Twc_matrix.inverse()).transpose() * PI_local_V4;
+                PI_proj[0] = PI_proj_V4[0] * PI_proj_V4[3];
+                PI_proj[1] = PI_proj_V4[1] * PI_proj_V4[3];
+                PI_proj[2] = PI_proj_V4[2] * PI_proj_V4[3];
                 ///Step 3 Check current frame plane's feature point with Map plane's feature points
                 int matchNum = 0;
                 Plane *thisPlane = &mCurrentFrame.mvPlanes[i];
@@ -2505,159 +2523,6 @@ void Tracking::CreateNewKeyFrame()
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
 }
-
-///Added Module
-/**
- * @brief Based on Velocity captured from VO
- * Undistort LiDAR point cloud
-*/
-//    void Tracking::UndisLiDAR() {
-//        //laser time, start time, end time
-//        double t_l = mCurrentFrame.mLaserTimes[0];
-//        double t_ls = mCurrentFrame.mLaserTimes[1];
-//        double t_le = mCurrentFrame.mLaserTimes[2];
-//        //last vision frame time, current frame time.
-//        double t_last = mLastFrame.mTimeStamp;
-//        double t_cur = mCurrentFrame.mTimeStamp;
-//        //vision frame delta time.
-//        double deltaTime = t_cur - t_last;
-//        cv::Mat V = cv::Mat::zeros(3, 1, CV_64F);
-//        V.at<double>(0, 0) = mVelocity.at<float>(0, 3) / deltaTime;
-//        V.at<double>(1, 0) = mVelocity.at<float>(1, 3) / deltaTime;
-//        V.at<double>(2, 0) = mVelocity.at<float>(2, 3) / deltaTime;
-//        //cout << "Velocity " <<endl<< V << endl;
-//        double timeToProj = t_cur - t_l;
-//        cv::Mat timeToProjM = cv::Mat::zeros(3, 1, CV_64F);
-//        timeToProjM.at<double>(0, 0) = timeToProj;
-//        timeToProjM.at<double>(1, 0) = timeToProj;
-//        timeToProjM.at<double>(2, 0) = timeToProj;
-//        //cout << "timeToProjM " <<endl<< timeToProjM << endl;
-//        cv::Mat P_undis = cv::Mat::zeros(3, 1, CV_64F);
-//        cv::Mat P_distor = cv::Mat::zeros(3, 1, CV_64F);
-//        for (int i = 0; i < mCurrentFrame.mLaserPt_cam.size(); i++) {
-//            P_distor.at<double>(0, 0) = mCurrentFrame.mLaserPt_cam[i][0];
-//            P_distor.at<double>(1, 0) = mCurrentFrame.mLaserPt_cam[i][1];
-//            P_distor.at<double>(2, 0) = mCurrentFrame.mLaserPt_cam[i][2];
-//            //cout << "P_distor " <<endl<< P_distor << endl;
-//            if (t_l < t_cur)
-//                ///t_last ---> t_ls ---> t_l ---> t_cur ---> t_le
-//                ///forward from t_1 to t_cur
-//                P_undis = P_distor + V.mul(timeToProjM);
-//            else
-//                ///t_last ---> t_ls ---> t_cur ---> t_l ---> t_le
-//                ///backward from t_1 to t_cur
-//            if (t_l > t_cur)
-//                P_undis = P_distor - V.mul(timeToProjM);
-//            else
-//                ///t_l==t_cur
-//                P_undis = P_distor;
-//            //cout << "P_undis " << endl << P_undis << endl;
-//            vector<double> undisPoint{P_undis.at<double>(0, 0), P_undis.at<double>(1, 0), P_undis.at<double>(2, 0)};
-//            mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
-//        }
-//    }
-
-//void Tracking::LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation)
-//{
-//    int numInit = 30000;
-//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>);
-//    cloud1->points.resize(numInit);
-//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZ>);
-//    cloud2->points.resize(numInit);
-//    int actualNum = 0;
-//    for (int plnIndex1 = 0; plnIndex1 < inputFrame1.mvPlanes.size(); plnIndex1++) {
-//        for (int ptIndex = 0; ptIndex < inputFrame1.mvPlanes[plnIndex1].pointList.size(); ptIndex++) {
-//            cloud1->points[actualNum].x = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].x;
-//            cloud1->points[actualNum].y = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].y;
-//            cloud1->points[actualNum].z = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].z;
-//            actualNum++;
-//        }
-//    }
-//    cloud1->points.resize(actualNum);
-//    int actualNum2 = 0;
-//    for (int plnIndex2 = 0; plnIndex2 < inputFrame2.mvPlanes.size(); plnIndex2++) {
-//        for (int ptIndex = 0; ptIndex < inputFrame2.mvPlanes[plnIndex2].pointList.size(); ptIndex++) {
-//            cloud2->points[actualNum2].x = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].x;
-//            cloud2->points[actualNum2].y = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].y;
-//            cloud2->points[actualNum2].z = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].z;
-//            actualNum2++;
-//        }
-//    }
-//    cloud2->points.resize(actualNum2);
-//    ///ICP
-////    Eigen::Matrix4f init;
-////    cv::Mat pose2 = inputFrame2.GetPose();
-////    //Todo float or double?
-////    init << pose2.at<float>(0,0), pose2.at<float>(0,1), pose2.at<float>(0,2), pose2.at<float>(0,3),
-////            pose2.at<float>(1,0), pose2.at<float>(1,1), pose2.at<float>(1,2), pose2.at<float>(1,3),
-////            pose2.at<float>(2,0), pose2.at<float>(2,1), pose2.at<float>(2,2), pose2.at<float>(2,3),
-////            pose2.at<float>(3,0), pose2.at<float>(3,1), pose2.at<float>(3,2), pose2.at<float>(3,3);
-//    pcl::PointCloud<pcl::PointXYZ> cloudRegistered;
-//    cloudRegistered.points.resize(actualNum);
-//    pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> ICPer;
-//    ICPer.setInputSource(cloud1);
-//    ICPer.setInputTarget(cloud2);
-//    //icper.setMaxCorrespondenceDistance(1);
-//    //icper.setTransformationEpsilon(1e-8);//?
-//    //icper.setEuclideanFitnessEpsilon(0.01);
-//    ICPer.setMaximumIterations(100);
-//    ICPer.align(cloudRegistered);
-//    Eigen::Matrix4f Tc1c2 = ICPer.getFinalTransformation();
-//    transformation.at<float>(0,0) = Tc1c2(0,0);transformation.at<float>(0,1) = Tc1c2(0,1);transformation.at<float>(0,2) = Tc1c2(0,2);transformation.at<float>(0,3) = Tc1c2(0,3);
-//    transformation.at<float>(1,0) = Tc1c2(1,0);transformation.at<float>(1,1) = Tc1c2(1,1);transformation.at<float>(1,2) = Tc1c2(1,2);transformation.at<float>(1,3) = Tc1c2(1,3);
-//    transformation.at<float>(2,0) = Tc1c2(2,0);transformation.at<float>(2,1) = Tc1c2(2,1);transformation.at<float>(2,2) = Tc1c2(2,2);transformation.at<float>(2,3) = Tc1c2(2,3);
-//    transformation.at<float>(3,0) = Tc1c2(3,0);transformation.at<float>(3,1) = Tc1c2(3,1);transformation.at<float>(3,2) = Tc1c2(3,2);transformation.at<float>(3,3) = Tc1c2(3,3);
-//}
-
-/**
- * This function will associate the ORB feature and Plane
- * TODO: what if a vision feature point is close to two plane?
- * TODO: what if a plane contains no ORB feature?
- */
-//    bool Tracking::associateVisionLiDAR() {
-//        //Step 1 : associate in 2D
-//        int keyPtNum = mCurrentFrame.mvKeysUn.size();
-//        int planeNum = mCurrentFrame.mvPlanes.size();
-//        for (int kpIndex = 0; kpIndex < keyPtNum; kpIndex++) {
-//            double minDis = 65535;
-//            int foundPlaneIndex = -1;
-//            int foundLiDARPtIndex = -1;
-//            for (int plnIndex = 0; plnIndex < planeNum; plnIndex++) {
-//                int planePtNum = mCurrentFrame.mvPlanes[plnIndex].pointList2D.size();//todo check if the 3D num match 2D num (sometime projection out of boundires)
-//                for (int ldPtIndex = 0; ldPtIndex < planePtNum; ldPtIndex++) {
-//                    double xdiff = mCurrentFrame.mvKeysUn[kpIndex].pt.x -
-//                                   mCurrentFrame.mvPlanes[plnIndex].pointList2D[ldPtIndex].x;
-//                    double ydiff = mCurrentFrame.mvKeysUn[kpIndex].pt.y -
-//                                   mCurrentFrame.mvPlanes[plnIndex].pointList2D[ldPtIndex].y;
-//                    double distance = sqrt(xdiff * xdiff + ydiff * ydiff);
-//                    if (distance < 5 && distance < minDis) {
-//                        minDis = distance;
-//                        foundPlaneIndex = plnIndex;
-//                        foundLiDARPtIndex = ldPtIndex;
-//                    }
-//                }
-//            }
-//            //Step 2: associate in 3D
-//            if(mCurrentFrame.mvpMapPoints[kpIndex]!=NULL)//todo 是这么用的吗？
-//            {
-//                mCurrentFrame.mvPlanes[foundPlaneIndex].vpMapPointMatches.push_back(mCurrentFrame.mvpMapPoints[kpIndex]);
-//                mCurrentFrame.mvPlanes[foundPlaneIndex].mindices.push_back(kpIndex);
-//            }
-//        }
-//        //test distance to plane
-//        for(int plnIndex = 0; plnIndex < planeNum; plnIndex++)
-//        {
-//            int mpNum = mCurrentFrame.mvPlanes[plnIndex].vpMapPointMatches.size();
-//            double fenmu = sqrt(mCurrentFrame.mvPlanes[plnIndex].A * mCurrentFrame.mvPlanes[plnIndex].A
-//                                + mCurrentFrame.mvPlanes[plnIndex].B * mCurrentFrame.mvPlanes[plnIndex].B
-//                                + mCurrentFrame.mvPlanes[plnIndex].C * mCurrentFrame.mvPlanes[plnIndex].C);
-//            for(int mpIndex = 0; mpIndex < mpNum; mpIndex++)
-//            {
-//                //todo establish plane world pose.
-//                //mCurrentFrame.mvPlanes[plnIndex].A*mCurrentFrame.mvPlanes[plnIndex].vpMapPointMatches[mpIndex]->GetWorldPos())
-//            }
-//        }
-//    }
 
 void Tracking::SearchLocalPoints()
 {

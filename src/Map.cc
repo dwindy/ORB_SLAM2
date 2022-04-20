@@ -89,7 +89,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
                 }
                 if (closePlaneIndex > -1) {
                     thisPt->registerPlaneID = mapPlanes[closePlaneIndex]->mnId;
-                    thisPt->registerPlaneIndex = closePlaneIndex; ///TODO check why Plane ID is not equal to Index?
+                    thisPt->registerPlaneIndex = closePlaneIndex; ///Neto Plane ID is not equal to Index
                     mapPlanes[closePlaneIndex]->registedMapPoints.push_back(thisPt);
                     thisPt->distance2Plane = minDistance;
                 }

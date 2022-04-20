@@ -122,6 +122,8 @@ class MapPlane;
         vector<int> keyPointList; //todo store keypoint in this plane
         vector<int> mindices;     //todo indexs of keypoint in image
         std::vector<MapPoint *> mvMappoints;//pointer to Map point that contained in this local plane | Why I need this?
+        //Some funcs
+        void oplus(const Eigen::Vector3d &v);
     };
 
 class Frame
@@ -275,6 +277,7 @@ public:
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;
     ///Added Module
+    // MapPlanes associated to localPlanes, NULL pointer if no association.
     std::vector<MapPlane*> mvpMapPlanes;
 
     // Flag to identify outlier associations.

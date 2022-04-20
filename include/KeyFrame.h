@@ -50,13 +50,6 @@ public:
     ///added module
     cv::Mat mTcamlid;
     void ProjectLiDARtoCam();
-    //vector<std::vector<double>> mLaserPoints;
-    //vector<PtRGBD> mLaserPt_cam;
-    //vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
-    //vector<double> mLaserTimes; //{middle time, start, end}
-    //vector<cv::Point> mPjcLaserPts;
-    //vector<cv::KeyPoint> mPjcLaserPtsUndis;
-    //vector<vector<cv::Point>> planNorms;
     std::vector<Plane> mvPlanes;
 
     // Pose functions

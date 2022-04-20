@@ -303,7 +303,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     int BestIdx = 0;
     for(size_t i=0;i<N;i++)
     {
-        //TODO 还可以这样初始化？
+        //NOTE 还可以这样初始化？
         vector<int> vDists(Distances[i],Distances[i]+N); 
         sort(vDists.begin(),vDists.end());
         int median = vDists[0.5*(N-1)];
