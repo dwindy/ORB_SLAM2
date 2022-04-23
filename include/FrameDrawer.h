@@ -71,7 +71,7 @@ protected:
     vector<cv::KeyPoint> mvPjcLsrPts;
     vector<cv::KeyPoint> mvPjcLsrPtsUndis;
     vector<vector<cv::Point2d>> mvPlanePoints;//TODO update to plane structure in the future?
-
+    vector<Plane2Show> mvPlanePts;
     Map* mpMap;
 
     std::mutex mMutex;

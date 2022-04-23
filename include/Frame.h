@@ -126,6 +126,12 @@ class MapPlane;
         void oplus(const Eigen::Vector3d &v);
     };
 
+    //For showing Plane points in 2d and 3d
+    struct Plane2Show{
+        int PlaneMapID;
+        vector<cv::Point2d> point2Ds;
+    };
+
 class Frame
 {
 public:
@@ -221,7 +227,8 @@ public:
     //vector<std::vector<double>> mLaserPt_cam;
     vector<PtRGBD> mLaserPt_cam;
     vector<double> mLaserTimes; //{middle time, start, end}
-    vector<vector<cv::Point2d>> mPjcRGBDPts;//for pass to framedrawer
+    vector<vector<cv::Point2d>> mPjcRGBDPts;//passing to framedrawer for showing 2d plane points
+    vector<Plane2Show> mPjcPlanePts;//passing to framedrawer for showing 2d plane points
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
     //vector<vector<cv::Point>> planNorms;
     std::vector<Plane> mvPlanes;

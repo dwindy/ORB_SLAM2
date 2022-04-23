@@ -430,6 +430,9 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
             cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
             cv::Point pt;
             vector<cv::Point2d> thisPlanePt;
+            Plane2Show thisPlane;
+            thisPlane.PlaneMapID = mCurrentFrame.mvPlanes[indexPln].IdGlobal;//-1 when new plane
+            //thisPlane.PlaneMapID = mCurrentFrame.mvpMapPlanes[indexPln]->mnId;//sometime this could be NULL when new Plane detected
             for (size_t indexPt = 0; indexPt < mCurrentFrame.mvPlanes[indexPln].planePts.size(); indexPt++) {
                 X.at<double>(0, 0) = mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt3d.x;
                 X.at<double>(1, 0) = mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt3d.y;
@@ -438,25 +441,21 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
                 //Y = P_rect_00 * R_rect_00 * mTcamlid * X;
                 //Y = P_rect_00 * R_rect_00 * X;
                 Y = P_rect_00 * X;
-//                cout<<" X "<<X<<endl;
-//                cout<<" Y "<<Y<<endl;
-//                cout<<"fenzi "<<Y.at<double>(0, 0) / Y.at<double>(2, 0)<<endl;
-//                cout<<"fenmu "<<Y.at<double>(1, 0) / Y.at<double>(2, 0)<<endl;
                 pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
                 pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
                 mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt2d.x = pt.x;
                 mCurrentFrame.mvPlanes[indexPln].planePts[indexPt].pt2d.y = pt.y;
                 thisPlanePt.push_back(pt);
+                thisPlane.point2Ds.push_back(pt);
             }
             mCurrentFrame.mPjcRGBDPts.push_back(thisPlanePt);
+            mCurrentFrame.mPjcPlanePts.push_back(thisPlane);
         }
         //cout<<"project "<<mCurrentFrame.mPjcRGBDPts.size()<<" planes "<<endl;
     }
 
 void Tracking::Track()
 {   cout<<"Track Current Frame ID ------------------------ "<<mCurrentFrame.mnId<<endl;
-    ///Added Module --- project current frame plane points to image
-    ProjectPlanetoImage();
 
     //Track包含估计运动和跟踪局部地图两个部分
     if(mState==NO_IMAGES_YET)
@@ -713,6 +712,8 @@ void Tracking::Track()
 
         ///added Need to check if safe or not
         //*Step 4 更新显示线城的信息 比如图像 特征点 地图点
+        ///Added Module --- project current frame plane points to image
+        ProjectPlanetoImage();
         // Update drawer
         mpFrameDrawer->Update(this);
 
@@ -1448,15 +1449,15 @@ void Tracking::CheckReplacedInLastFrame()
                     float diffDis = (direction - intersect).norm();
                     ///If fix point too away?
                     if (diffDis > 0.2) {
-                        cout << "FixPlaneSinglePointDepth. Point: ";
-                        cout << direction.transpose() << " "
-                             << " fix to " << intersect.transpose() << " moved " << diffDis << " "
-                             << "distance to plane " << mindistance
-                             << endl;
-                        cout << "Plane : ";
-                        cout << mapPlanes[minPlaneIndex]->A << " " << mapPlanes[minPlaneIndex]->B
-                             << " " << mapPlanes[minPlaneIndex]->C << " " << mapPlanes[minPlaneIndex]->D
-                             << endl;
+//                        cout << "FixPlaneSinglePointDepth. Point: ";
+//                        cout << direction.transpose() << " "
+//                             << " fix to " << intersect.transpose() << " moved " << diffDis << " "
+//                             << "distance to plane " << mindistance
+//                             << endl;
+//                        cout << "Plane : ";
+//                        cout << mapPlanes[minPlaneIndex]->A << " " << mapPlanes[minPlaneIndex]->B
+//                             << " " << mapPlanes[minPlaneIndex]->C << " " << mapPlanes[minPlaneIndex]->D
+//                             << endl;
                     }
                 }
             } else {
@@ -1464,7 +1465,7 @@ void Tracking::CheckReplacedInLastFrame()
             }
         } else {
             //Note sometime no nearby
-            cout << "new MapPoint found no nearby plane , min dis " << mindistance << endl;
+            //cout << "new MapPoint found no nearby plane , min dis " << mindistance << endl;
         }
     }
 
@@ -1778,7 +1779,8 @@ void Tracking::CheckReplacedInLastFrame()
             double minDistance = 65535;
             int minPlaneID = -1;
             for (size_t mapPlnIndex = 0; mapPlnIndex < mapPlanes.size(); mapPlnIndex++) {
-                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0, mapPlanes[mapPlnIndex]->PI1,mapPlanes[mapPlnIndex]->PI2);
+                Eigen::Vector3d mapVector(mapPlanes[mapPlnIndex]->PI0, mapPlanes[mapPlnIndex]->PI1,
+                                          mapPlanes[mapPlnIndex]->PI2);
                 Eigen::Vector3d diffvector = mapVector - curFrame.mvPlanes[plni].PI;
                 if (diffvector.norm() < minDistance && diffvector.norm() < disThres) {
                     minDistance = diffvector.norm();
@@ -1787,6 +1789,7 @@ void Tracking::CheckReplacedInLastFrame()
                 }
             }
             matchPlanes[plni] = minPlaneID;
+            curFrame.mvPlanes[plni].IdGlobal = minPlaneID;
             if (foundFlag)
                 foundNum++;
         }
@@ -1800,6 +1803,12 @@ void Tracking::CheckReplacedInLastFrame()
                         closeMapPlaneIndex = mapPlaneIndex;
                 }
                 curFrame.mvpMapPlanes[localIndex] = mapPlanes[closeMapPlaneIndex];///Note Map Plane ID != Map Plane Index
+//                cout << "mCurrentFrame.mvPlanes[indexPln].IdGlobal : " << mCurrentFrame.mvPlanes[localIndex].IdGlobal
+//                     << " mCurrentFrame.mvpMapPlanes[indexPln]->mnId : " << mCurrentFrame.mvpMapPlanes[localIndex]->mnId
+//                     << endl;
+                if (mCurrentFrame.mvPlanes[localIndex].IdGlobal != mCurrentFrame.mvpMapPlanes[localIndex]->mnId) {
+                    cout << "WHY NOT Equal?" << endl;
+                }
             } else {
                 curFrame.mvpMapPlanes[localIndex] = NULL;
             }
@@ -1842,11 +1851,12 @@ void Tracking::CheckReplacedInLastFrame()
             pjtPlanes[plni] = Eigen::Vector3d(PI_proj[0],PI_proj[1],PI_proj[2]);
             //Note the (- P^A_L.translate) is not the t part of T^A_L
             //so using inverse transpose way
-            Eigen::Vector4f PI_proj_v4, PI_w_v4(mapPlanes[plni]->A,mapPlanes[plni]->B,mapPlanes[plni]->C,mapPlanes[plni]->D);
+            Eigen::Vector4f PI_proj_v4, PI_w_v4(n_w[0],n_w[1],n_w[2], d_w);
             PI_proj_v4 = (Tcw_matrix.inverse()).transpose() * PI_w_v4;
             PI_proj[0] = PI_proj_v4[0] * PI_proj_v4[3];
             PI_proj[1] = PI_proj_v4[1] * PI_proj_v4[3];
             PI_proj[2] = PI_proj_v4[2] * PI_proj_v4[3];
+            pjtPlanes[plni] = Eigen::Vector3d(PI_proj[0],PI_proj[1],PI_proj[2]);
         }
         ///Step3 Pair projected map planes and current frame planes
         int foundNum = 0;
@@ -1864,6 +1874,7 @@ void Tracking::CheckReplacedInLastFrame()
                 }
             }
             matchPlanes.push_back(minPlaneID);
+            mCurrentFrame.mvPlanes[localIndex].IdGlobal = minPlaneID;
             if (found) {
                 foundNum++;
             }
@@ -1880,8 +1891,20 @@ void Tracking::CheckReplacedInLastFrame()
                 }
                 //curFrame.mvpMapPlanes.push_back(mapPlanes[mapPlaneID]); //Do not push back, allocation done in Frame initi
                 curFrame.mvpMapPlanes[localIndex] = mapPlanes[closeMapPlaneIndex];///Note Map Plane ID != Map Plane Index
+//                cout << "mCurrentFrame.mvPlanes[indexPln].IdGlobal : " << mCurrentFrame.mvPlanes[localIndex].IdGlobal
+//                     << " mCurrentFrame.mvpMapPlanes[indexPln]->mnId : " << mCurrentFrame.mvpMapPlanes[localIndex]->mnId
+//                     << endl;
+                if (mCurrentFrame.mvPlanes[localIndex].IdGlobal != mCurrentFrame.mvpMapPlanes[localIndex]->mnId) {
+                    cout << "WHY NOT Equal?" << endl;
+                }
             } else {
                 curFrame.mvpMapPlanes[localIndex] = NULL;
+                cout << "unpaired plane " << curFrame.mvPlanes[localIndex].PI.transpose() << endl;
+                for (size_t mapPlnIndex = 0; mapPlnIndex < pjtPlanes.size(); mapPlnIndex++) {
+                    cout << "with pjt map Plane " << pjtPlanes[mapPlnIndex][0] << " " << pjtPlanes[mapPlnIndex][1]
+                         << " " << pjtPlanes[mapPlnIndex][2] << endl;
+                }
+                int pause = 1;
             }
         }
         return foundNum;
@@ -2332,6 +2355,40 @@ bool Tracking::NeedNewKeyFrame()
         }
         return false;
     }
+/**
+ * When new KeyFrame is added, update the mapplane's point3d for showing
+ */
+    void Tracking::updateMapPlanePoints(){
+        //check local plane - map plane pairs
+        for(size_t i = 0; i < mCurrentFrame.mvPlanes.size();i++){
+            //If matached map plane exists
+            if(mCurrentFrame.mvpMapPlanes[i]){
+                //project plane points from cur to map
+                int srcPtNum = mCurrentFrame.mvPlanes[i].planePts.size();
+                if(srcPtNum>0){
+                    Eigen::MatrixXd srcPts(4,srcPtNum);
+                    Eigen::Matrix4d Tcw;
+                    Eigen::MatrixXd srcPtsPjt(4,srcPtNum);
+                    Tcw<<mCurrentFrame.mTcw.at<float>(0,0),mCurrentFrame.mTcw.at<float>(0,1),mCurrentFrame.mTcw.at<float>(0,2),mCurrentFrame.mTcw.at<float>(0,3)
+                            ,mCurrentFrame.mTcw.at<float>(1,0),mCurrentFrame.mTcw.at<float>(1,1),mCurrentFrame.mTcw.at<float>(1,2),mCurrentFrame.mTcw.at<float>(1,3)
+                            ,mCurrentFrame.mTcw.at<float>(2,0),mCurrentFrame.mTcw.at<float>(2,1),mCurrentFrame.mTcw.at<float>(2,2),mCurrentFrame.mTcw.at<float>(2,3)
+                            ,mCurrentFrame.mTcw.at<float>(3,0),mCurrentFrame.mTcw.at<float>(3,1),mCurrentFrame.mTcw.at<float>(3,2),mCurrentFrame.mTcw.at<float>(3,3);
+                    for (int j = 0; j < srcPtNum; j++) {
+                        srcPts(0, j) = mCurrentFrame.mvPlanes[i].planePts[j].pt3d.x;
+                        srcPts(1, j) = mCurrentFrame.mvPlanes[i].planePts[j].pt3d.y;
+                        srcPts(2, j) = mCurrentFrame.mvPlanes[i].planePts[j].pt3d.z;
+                        srcPts(3, j) = 1;
+                    }
+                    srcPtsPjt= Tcw.inverse() * srcPts;
+                    cout<<srcPtsPjt<<endl<<endl;
+                    for(int j = 0; j < srcPtNum;j++){
+                        mCurrentFrame.mvpMapPlanes[i]->planePts.push_back(cv::Point3d(srcPtsPjt(0,j),srcPtsPjt(1,j),srcPtsPjt(2,j)));
+                    }
+                    cout<<"map plane "<<mCurrentFrame.mvpMapPlanes[i]->mnId<<" add "<<srcPtNum<<" plane pt3d for showing "<<endl;
+                }
+            }
+        }
+    }
 
 /**
  * Added Module function
@@ -2456,6 +2513,7 @@ void Tracking::CreateNewKeyFrame()
         ///Added Module
         //Add new map plane
         createNewMapPlane();
+        updateMapPlanePoints();
         ///End-----
 
         if(!vDepthIdx.empty())

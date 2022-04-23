@@ -166,41 +166,99 @@ cv::Mat FrameDrawer::DrawFrame()
 //            }
 //        }
     }
-    //draw plan points
-    int planeNum = mvPlanePoints.size();
-    if (planeNum > 0) {
-        for (int i = 0; i < planeNum; i++) {
-            for (int pi = 0; pi < mvPlanePoints[i].size(); pi++) {
-                switch (i) {
+    ///Added module --- draw plan points
+//    int planeNum = mvPlanePoints.size();
+//    if (planeNum > 0) {
+//        for (int i = 0; i < planeNum; i++) {
+//            for (int pi = 0; pi < mvPlanePoints[i].size(); pi++) {
+//                switch (i) {
+//                    case 0:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
+//                        break;
+//                    case 1:///Because point feature is also green. change green plane to yellow
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
+//                        break;
+//                    case 2:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
+//                        break;
+//                    case 3:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
+//                        break;
+//                    case 4:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 0, 127), -1);
+//                        break;
+//                    case 5:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
+//                        break;
+//                    case 6:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 127, 0), -1);
+//                        break;
+//                    case 7:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 127, 127), -1);
+//                        break;
+//                    case 8:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
+//                        break;
+//                    default:
+//                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);
+//                        break;
+//                }
+//            }
+//        }
+//    }
+
+    int planeNum = mvPlanePts.size();
+    if(planeNum > 0){
+        for(int i = 0 ;i<planeNum;i++){
+            for (int pi = 0; pi < mvPlanePts[i].point2Ds.size(); pi++) {
+                switch (mvPlanePts[i].PlaneMapID) {//BGR
+                    case -1:
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(255, 0, 0), -1);
+                        break;
                     case 0:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 0), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(127, 0, 0), -1);
                         break;
                     case 1:///Because point feature is also green. change green plane to yellow
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 255), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(0, 255, 255), -1);
                         break;
                     case 2:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 0, 255), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(0, 0, 255), -1);
                         break;
                     case 3:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 0), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(255, 255, 0), -1);
                         break;
                     case 4:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 0, 127), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(127, 0, 127), -1);
                         break;
                     case 5:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 0, 255), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(255, 0, 255), -1);
                         break;
                     case 6:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(127, 127, 0), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(127, 127, 0), -1);
                         break;
                     case 7:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 127, 127), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(0, 127, 127), -1);
                         break;
                     case 8:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(0, 255, 0), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(0, 255, 0), -1);
+                        break;
+                    case 9: //brown 42, 42, 165
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(42, 42, 165), -1);
+                        break;
+                    case 10: //burlywood(135, 184, 222)
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(135, 184, 222), -1);
+                        break;
+                    case 11: //blueviolet(226, 43, 138
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(226, 43, 138), -1);
+                        break;
+                    case 12: //lightslategray(153, 136, 119)
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(153, 136, 119), -1);
+                        break;
+                    case 13: //peru(63, 133, 205);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(63, 133, 205), -1);
                         break;
                     default:
-                        cv::circle(im, mvPlanePoints[i][pi], 2, cv::Scalar(255, 255, 255), -1);
+                        cv::circle(im, mvPlanePts[i].point2Ds[pi], 2, cv::Scalar(255, 255, 255), -1);
                         break;
                 }
             }
@@ -262,24 +320,11 @@ void FrameDrawer::Update(Tracking *pTracker) {
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
     ///Added Module
-//    if (pTracker->mCurrentFrame.mLaserPoints.size()>0)
-//    {
-//        mvPjcLsrPts = pTracker->mCurrentFrame.mPjcLaserPts;
-//        //cout<<"mvPjcLsrPts "<<mvPjcLsrPts.size()<<endl;
-//    }
     if(pTracker->mCurrentFrame.mPjcRGBDPts.size()>0)
     {
         mvPlanePoints = pTracker->mCurrentFrame.mPjcRGBDPts;
-//        cout<<" "<<pTracker->mCurrentFrame.mPjcRGBDPts[0][1].x<<" "<<pTracker->mCurrentFrame.mPjcRGBDPts[0][1].y<<endl;
-//        cout<<" "<<mvPlanePoints[0][1].x<<" "<<mvPlanePoints[0][1].y<<endl;
-//        cout<<"pass "<<mvPlanePoints.size()<<" to frameDraer"<<endl;
+        mvPlanePts = pTracker->mCurrentFrame.mPjcPlanePts;
     }
-//    if (pTracker->mCurrentFrame.mLaserPtsUndis.size()>0)
-//    {
-//        mvPjcLsrPtsUndis = pTracker->mCurrentFrame.mPjcLaserPtsUndis;
-//        //cout<<"mvPjcLsrPtsUndis "<<mvPjcLsrPts.size()<<endl;
-//    }
-
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {
         mvIniKeys=pTracker->mInitialFrame.mvKeys;

@@ -86,9 +86,10 @@ void MapDrawer::DrawMapPoints()
     glPointSize(mPointSize);
     glBegin(GL_POINTS);
     for (size_t i = 0, iend = vpMPls.size(); i < iend; i++) {
-        switch (i) {
+        //Set colour by mnID
+        switch (vpMPls[i]->mnId) {
             case 0: //cv 255,0,0
-                glColor3ub(0,0.0,255);
+                glColor3ub(0,0.0,127);
                 break;
             case 1: //0,255,255
                 glColor3ub(255,255,0.0);
@@ -113,6 +114,21 @@ void MapDrawer::DrawMapPoints()
                 break;
             case 8: //0, 255, 0
                 glColor3ub(0,255,0);
+                break;
+            case 9: //brown 42, 42, 165
+                glColor3ub(165,42,42);
+                break;
+            case 10: //burlywood(135, 184, 222)
+                glColor3ub(222,184,135);
+                break;
+            case 11: //blueviolet(226, 43, 138
+                glColor3ub(138,43,226);
+                break;
+            case 12: //lightslategray(153, 136, 119)
+                glColor3ub(119,136,153);
+                break;
+            case 13: //peru(63, 133, 205);
+                glColor3ub(205,133,63);
                 break;
             default://255, 255, 255
                 glColor3ub(255,255,255);

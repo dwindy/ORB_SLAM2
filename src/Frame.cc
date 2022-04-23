@@ -1213,12 +1213,12 @@ namespace ORB_SLAM2
          *  change to form AX+BY+CZ = -D
          *  And make sure (-D)>0 to adjust the Norm direction?
          */
-//        if (foundPlane.D > 0) {
-//            foundPlane.A = -foundPlane.A;
-//            foundPlane.B = -foundPlane.B;
-//            foundPlane.C = -foundPlane.C;
-//            foundPlane.D = -foundPlane.D;
-//        }
+        if (foundPlane.D < 0) {
+            foundPlane.A = -foundPlane.A;
+            foundPlane.B = -foundPlane.B;
+            foundPlane.C = -foundPlane.C;
+            foundPlane.D = -foundPlane.D;
+        }
         double sumX = 0, sumY = 0, sumZ = 0;
         for (size_t i = 0; i < inliers->indices.size(); i++) {
             double x = cloud->points[inliers->indices[i]].x;
@@ -1312,8 +1312,8 @@ namespace ORB_SLAM2
             this->C = -this->C;
             this->D = -this->D;
         }
-        PI[0] = this->A * -this->D;
-        PI[1] = this->B * -this->D;
-        PI[2] = this->C * -this->D;
+        PI[0] = this->A * this->D;
+        PI[1] = this->B * this->D;
+        PI[2] = this->C * this->D;
     }
 } //namespace ORB_SLAM

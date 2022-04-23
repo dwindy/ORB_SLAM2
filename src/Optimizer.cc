@@ -467,7 +467,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 }
             }
         }
-        cout << "add " << pointVertexNum << " point Vertex with AVG weight " << pointWeightSum / pointVertexNum;
+        //cout << "add " << pointVertexNum << " point Vertex with AVG weight " << pointWeightSum / pointVertexNum;
 
         if (nInitialCorrespondences < 3)
             return 0;
@@ -513,7 +513,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 }
             }
         }
-        cout << "add " << planeVertexNum << " plane Vertex with AVG Weight " << planeWeightSum / planeVertexNum << endl;
+        //cout << "add " << planeVertexNum << " plane Vertex with AVG Weight " << planeWeightSum / planeVertexNum << endl;
 
         ///run optimizer
         ///Step 5 start optimization, 4 times, filter outlier

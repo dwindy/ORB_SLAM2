@@ -183,6 +183,7 @@ namespace ORB_SLAM2
         void FixMapPlanePointsDepth(Map *map, float threshold);
         void FixPlaneSinglePointDepth(Map *map, MapPoint *mapPoint, float threshold);
         void createNewMapPlane();
+        void updateMapPlanePoints();
         bool CheckWithMapPlane(Map *mpMap, MapPoint *mp, double disThreshold);
 
         // In case of performing only localization, this flag is true when there are no matches to
