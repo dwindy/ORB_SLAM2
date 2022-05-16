@@ -384,6 +384,12 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
  * the plane feature is represented as unaryEdge
  */
     int Optimizer::JointOptimization(Frame *pFrame) {
+        //record errors of point and plane point
+        ofstream errorRecorder;
+        errorRecorder.open("errorRecord.txt", ios::app);
+        float pointErrors_before = 0, pointErrors_after = 0, planePtErrors_before = 0, planePtErrors_after = 0;
+        float x_before = 0, y_before = 0, z_before = 0,x_after = 0,y_after = 0,z_after = 0;
+        int pointNum = 0, planePtNum = 0;
         ///Step 1 declar g2o optimizer, blocksolver_6_3, Pose 6 dimension, LandMark 3 dimension
         g2o::SparseOptimizer optimizer;
         g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
@@ -421,7 +427,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             //while adding edge, we dont want the mappoint be modified
             unique_lock<mutex> lock(MapPoint::mGlobalMutex);
             //traverse all mappoint
-            for (size_t i = 0; i < N; i++) {
+            for (int i = 0; i < N; i++) {
                 MapPoint *pMP = pFrame->mvpMapPoints[i];
                 if (pMP) {
                     // Monocular observation
@@ -463,6 +469,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                         ///Added module --- record point vertex sum error
                         e->computeError();
                         pointErrorSum += abs(e->chi2());
+                        pointNum++;
+                        pointErrors_before += abs(e->chi2());
                     }
                 }
             }
@@ -487,7 +495,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             //while adding edge, we dont want the mappoint be modified
             unique_lock<mutex> lock(MapPoint::mGlobalMutex);
             //traverse all matchPlnaes
-            for (size_t i = 0; i < planeNum; i++) {
+            for (int i = 0; i < planeNum; i++) {
                 //if associated Map Plane True
                 if (pFrame->mvpMapPlanes[i]) {
                     //Set plane Vertex
@@ -510,6 +518,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                     vpIndexEdgePlane.push_back(i);//index of valid Plane
                     newEdge->computeError();// record plane vertex error
                     planeErrorSum += abs(newEdge->chi2());
+                    planePtNum++;
+                    planePtErrors_before+=abs(newEdge->chi2());
+                    x_before += newEdge->error()[0];
+                    y_before += newEdge->error()[1];
+                    z_before += newEdge->error()[2];
                 }
             }
         }
@@ -567,6 +580,19 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 break;
         }
 
+        for(size_t i =0;i<vpEdgesStereo.size();i++){
+            pointErrors_after += abs(vpEdgesStereo[i]->chi2());
+        }
+        for(size_t i =0;i<vpEdgesPlane.size();i++){
+            planePtErrors_after += abs(vpEdgesPlane[i]->chi2());
+            x_after += vpEdgesPlane[i]->error()[0];
+            y_after += vpEdgesPlane[i]->error()[1];
+            z_after += vpEdgesPlane[i]->error()[2];
+        }
+        errorRecorder << pointErrors_before << " " << pointErrors_after << " " << pointNum << " "
+                      << planePtErrors_before << " " << planePtErrors_after << " " << planePtNum<<" "
+                      <<x_before<<" "<<y_before<<" "<<z_before<<" "<<x_after<<" "<<y_after<<" "<<z_after<<endl;
+        errorRecorder.close();
         /// Recover optimized pose and return number of inliers
         g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
         g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
@@ -1282,6 +1308,12 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 */
     void Optimizer::JointLocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
     {
+        //record point errors
+        ofstream errorRecorder;
+        errorRecorder.open("errorRecordBundle.txt", ios::app);
+        float pointErrors_before = 0, pointErrors_after = 0, planePtErrors_before = 0, planePtErrors_after = 0;
+        int pointNum = 0, planePtNum = 0;
+
         // Local KeyFrames: First Breath Search from Current Keyframe
         list<KeyFrame*> lLocalKeyFrames;
 
@@ -1505,6 +1537,16 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                         vpEdgesStereo.push_back(e);
                         vpEdgeKFStereo.push_back(pKFi);
                         vpMapPointEdgeStereo.push_back(pMP);
+                        //record errors
+                        e->computeError();
+                        if(dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id))->fixed()==true){
+                            planePtNum++;
+                            planePtErrors_before+=abs(e->chi2());
+                        }
+                        else{
+                            pointNum++;
+                            pointErrors_before+=abs(e->chi2());
+                        }
                     }
                 }
             }
@@ -1642,6 +1684,19 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
             pMP->UpdateNormalAndDepth();
         }
+
+        //record errors;
+        for (size_t i = 0; i < vpEdgesStereo.size(); i++) {
+            vpEdgesStereo[i]->computeError();
+            if (dynamic_cast<g2o::OptimizableGraph::Vertex *>(vpEdgesStereo[i]->vertex(0))->fixed() == true) {
+                planePtErrors_after += abs(vpEdgesStereo[i]->chi2());
+            } else {
+                pointErrors_after += abs(vpEdgesStereo[i]->chi2());
+            }
+        }
+        errorRecorder << pointErrors_before << " " << pointErrors_after << " " << pointNum << " "
+                      << planePtErrors_before << " " << planePtErrors_after << " " << planePtNum << endl;
+        errorRecorder.close();
     }
 
 

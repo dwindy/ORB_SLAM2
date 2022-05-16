@@ -2356,6 +2356,7 @@ bool Tracking::NeedNewKeyFrame()
         return false;
     }
 /**
+ * For showing
  * When new KeyFrame is added, update the mapplane's point3d for showing
  */
     void Tracking::updateMapPlanePoints(){
@@ -2380,11 +2381,11 @@ bool Tracking::NeedNewKeyFrame()
                         srcPts(3, j) = 1;
                     }
                     srcPtsPjt= Tcw.inverse() * srcPts;
-                    cout<<srcPtsPjt<<endl<<endl;
+                    //cout<<srcPtsPjt<<endl<<endl;
                     for(int j = 0; j < srcPtNum;j++){
                         mCurrentFrame.mvpMapPlanes[i]->planePts.push_back(cv::Point3d(srcPtsPjt(0,j),srcPtsPjt(1,j),srcPtsPjt(2,j)));
                     }
-                    cout<<"map plane "<<mCurrentFrame.mvpMapPlanes[i]->mnId<<" add "<<srcPtNum<<" plane pt3d for showing "<<endl;
+                    //cout<<"map plane "<<mCurrentFrame.mvpMapPlanes[i]->mnId<<" add "<<srcPtNum<<" plane pt3d for showing "<<endl;
                 }
             }
         }
