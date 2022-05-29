@@ -39,16 +39,9 @@
 
 ///added module
 #include <math.h>
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl-1.8/pcl/segmentation/region_growing.h>
-#include <pcl-1.8/pcl/search/search.h>
-#include <pcl-1.8/pcl/search/kdtree.h>
-#include <pcl-1.8/pcl/features/normal_3d.h>
-//#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
-#include <pcl-1.8/pcl/ModelCoefficients.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
+//#include <pcl/sample_consensus/method_types.h>
+//#include <pcl/sample_consensus/model_types.h>
+//#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/registration/icp.h>
 ///Added module
 #include "tic_toc.h"
@@ -548,14 +541,15 @@ void Tracking::Track()
     //* Step 1 初始化
     if(mState==NOT_INITIALIZED)
     {
-//        ///Added module
-//        //-----add a lidar init()
-//        if(mLiDARState==NOT_INITIALIZED)
-//        {
-//            LiDARInit();
-//        }
-//        if(mLiDARState!=OK)
-//            return;
+        ///Added module
+        //-----add a lidar init()
+        if(mLiDARState==NOT_INITIALIZED)
+        {
+            LiDARInit();
+        }
+        if(mLiDARState!=OK)
+            return;
+        ///------------
         if(mSensor==System::STEREO || mSensor==System::RGBD)
             StereoInitialization();
         else
@@ -923,6 +917,7 @@ void Tracking::Track()
 
 /**
  * LiDAR Mode Init first, then Camera Mode Init
+ * Because we need depth infor for Mono Feature Points
  */
 void Tracking::LiDARInit()
 {
@@ -954,7 +949,6 @@ void Tracking::LiDARInit()
     } else {
         //Try to initital
         ///Step 2.1 get LiDAR feature from last frame, set up KdTree for it
-
         pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
         pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
         cornerPointsLessSharp->clear();
@@ -969,14 +963,14 @@ void Tracking::LiDARInit()
             cornerPointsLessSharp->points[i].z = mInitialFrame.mLaserLessCorner_cam[i].pt3d.z;
             cornerPointsLessSharp->points[i].intensity = mInitialFrame.mLaserLessCorner_cam[i].intensity;
         }
-        cout<<"cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
+        cout<<"cornerPointsLessSharp init "<<cornerPointsLessSharp->size()<<endl;
         for (size_t i = 0; i < lastSurfNum; i++) {
             surfPointsLessFlat->points[i].x = mInitialFrame.mLaserLessFlat_cam[i].pt3d.x;
             surfPointsLessFlat->points[i].y = mInitialFrame.mLaserLessFlat_cam[i].pt3d.y;
             surfPointsLessFlat->points[i].z = mInitialFrame.mLaserLessFlat_cam[i].pt3d.z;
             surfPointsLessFlat->points[i].intensity = mInitialFrame.mLaserLessFlat_cam[i].intensity;
         }
-        cout<<"surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
+        cout<<"surfPointsLessFlat init "<<surfPointsLessFlat->size()<<endl;
 //        pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeCornerLast(new pcl::KdTreeFLANN<pcl::PointXYZI>());
 //        pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeSurfLast(new pcl::KdTreeFLANN<pcl::PointXYZI>());
         pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
@@ -1007,6 +1001,7 @@ void Tracking::LiDARInit()
         }
         cout<<"surfPointsFlat "<<surfPointsFlat->size()<<endl;
 
+        //for test/
         pcl::PointXYZI pointSel;
         std::vector<int> pointSearchInd;
         std::vector<float> pointSearchSqDis;

@@ -283,7 +283,7 @@ cv::Mat System::TrackMonucular(const cv::Mat &im, const double &timestamp, const
     //获取相机的位姿
     //cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
     ///added module
-    cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp,lasers,laserTimes);
+    cv::Mat Tcw = mpTracker->GrabImageMonocular(im, timestamp, lasers, laserTimes);
 
     //获取完后更新状态
     unique_lock<mutex> lock2(mMutexState);

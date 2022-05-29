@@ -391,7 +391,14 @@ namespace ORB_SLAM2
         int count = cloudSize;
         PointType point;
         std::vector<pcl::PointCloud<PointType>> laserCloudScans(N_SCANS);
+        ///Added---test alingment issue
+        for(int i = 0; i < N_SCANS;i++)
+            laserCloudScans[i].resize(4000);
+        std::vector<int> eachScanIndexs;
+        for(int i = 0; i < N_SCANS;i++)
+            eachScanIndexs.push_back(0);
         // 遍历每一个点
+        cout<<"cloudSize "<<cloudSize<<endl;
         for (int i = 0; i < cloudSize; i++)
         {
             point.x = laserCloudIn.points[i].x;
@@ -475,8 +482,18 @@ namespace ORB_SLAM2
             float relTime = (ori - startOri) / (endOri - startOri);
             // 整数部分是scan的索引，小数部分是相对起始时刻的时间
             point.intensity = scanID + scanPeriod * relTime;
+            ///Added
+            int index = eachScanIndexs[scanID];
+            laserCloudScans[scanID].points[index] = point;
+            eachScanIndexs[scanID]++;
             // 根据scan的idx送入各自数组
-            laserCloudScans[scanID].push_back(point);
+            //laserCloudScans[scanID].push_back(point);
+        }
+        ///Added
+        for(int i=0;i<N_SCANS;i++){
+            cout<<"reset laserCloudScans["<<i<<"] from "<<laserCloudScans[i].size();
+            laserCloudScans[i].resize(eachScanIndexs[i]);
+            cout<<" to "<<laserCloudScans[i].size()<<endl;
         }
         // cloudSize是有效的点云的数目
         cloudSize = count;

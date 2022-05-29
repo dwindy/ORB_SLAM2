@@ -38,10 +38,10 @@
 //#include <pcl-1.8/pcl/search/kdtree.h>
 //#include <pcl-1.8/pcl/features/normal_3d.h>
 //#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl-1.8/pcl/point_cloud.h>
+#include <pcl-1.8/pcl/point_types.h>
+#include <pcl-1.8/pcl/filters/voxel_grid.h>
+#include <pcl-1.8/pcl/kdtree/kdtree_flann.h>
 typedef pcl::PointXYZI PointType;
 
 namespace ORB_SLAM2

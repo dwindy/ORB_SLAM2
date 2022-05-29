@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         ///Added module
         //Load scans of this frame
         vector<vector<double>> laserPoints;
-        //1000000 is the KITTI readme file suggested number
+        //1000000 is the KITTI readme file uses number
         for(int i = 0; i<1000000; i++)
         {
             vector<double> point = {0,0,0,0};
