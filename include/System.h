@@ -83,7 +83,7 @@ namespace ORB_SLAM2
         cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp);
         ///Added module
         //Input image, image time, laser, laser time, laser start time, laser end time
-        cv::Mat TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, vector<double> &laserTimes);
+        cv::Mat TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
 
         // This stops local mapping thread (map building) and performs only camera tracking.
         void ActivateLocalizationMode();

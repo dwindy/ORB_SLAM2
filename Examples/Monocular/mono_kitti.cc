@@ -34,7 +34,9 @@ using namespace std;
 void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
-void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends);
+void LoadLaserscansRaw(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends);
+
+void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, const int frameNum);
 
 void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoints);
 
@@ -58,7 +60,8 @@ int main(int argc, char **argv)
     vector<double> vLaserTimestamps;
     vector<double> vLaserStartTimes;
     vector<double> vLaserEndTimes;
-    LoadLaserscans(string(argv[4]), vstrScanFilenames, vLaserTimestamps, vLaserStartTimes, vLaserEndTimes);
+    //LoadLaserscansRaw(string(argv[4]), vstrScanFilenames, vLaserTimestamps, vLaserStartTimes, vLaserEndTimes);
+    LoadLaserscans(string(argv[4]), vstrScanFilenames, vTimestamps.size());
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
@@ -88,7 +91,8 @@ int main(int argc, char **argv)
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #else
-        std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
+        //std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
+        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #endif
 
         ///Added module
@@ -101,19 +105,19 @@ int main(int argc, char **argv)
             laserPoints.push_back(point);
         }
         readLaserPoints(vstrScanFilenames[ni], laserPoints);
-        //store scan Middle time, start time and end time
-        vector<double> laserTimes = {vLaserTimestamps[ni], vLaserStartTimes[ni], vLaserEndTimes[ni]};
-
+//        //store scan Middle time, start time and end time
+//        vector<double> laserTimes = {vLaserTimestamps[ni], vLaserStartTimes[ni], vLaserEndTimes[ni]};
 
         //SLAM.TrackMonocular(im,tframe);
         ///added module
         //Pass the image and lasers to the SLAM system
-        SLAM.TrackMonucular(im, tframe, laserPoints, laserTimes);
+        SLAM.TrackMonucular(im, tframe, laserPoints);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 #else
-        std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
+        //std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 #endif
 
         double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
@@ -150,12 +154,12 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
+//check the input folder, got all timestamps and all image filenames
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
 {
     ifstream fTimes;
-    //string strPathTimeFile = strPathToSequence + "/times.txt";
-    string strPathTimeFile = strPathToSequence + "/timestamp_processed.txt";
+    string strPathTimeFile = strPathToSequence + "/times.txt";
+    //string strPathTimeFile = strPathToSequence + "/timestamp_processed.txt"; why i did this?
     fTimes.open(strPathTimeFile.c_str());
     while(!fTimes.eof())
     {
@@ -171,8 +175,8 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
         }
     }
 
-    //string strPrefixLeft = strPathToSequence + "/image_0/";
-    string strPrefixLeft = strPathToSequence + "/data/";
+    string strPrefixLeft = strPathToSequence + "/image_0/";
+    //string strPrefixLeft = strPathToSequence + "/data/"; //why i did this?
 
     const int nTimes = vTimestamps.size();
     vstrImageFilenames.resize(nTimes);
@@ -180,21 +184,21 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
     for(int i=0; i<nTimes; i++)
     {
         stringstream ss;
-        //ss << setfill('0') << setw(6) << i;
-        ss << setfill('0') << setw(10) << i;
+        ss << setfill('0') << setw(6) << i;
+        //ss << setfill('0') << setw(10) << i; //why i did this?
         vstrImageFilenames[i] = strPrefixLeft + ss.str() + ".png";
     }
 }
 
 /**
- * @brief Load Laser Scans
+ * @brief Load Raw Laser Scans
  * @param [in] strPathToSequence : the data folder address
  * @param [in,out] vstrLaserscanFilenames : the string vector contains each Scan File name
  * @param [in,out] vTimestamps : the double vector contains timestamps of each Scan file
  * @param [in,out] vTimestarts : the double vector contains start time of each Scan
  * @param [in,out] vTimeends : the double vector contains end time of each Scan
  */
-void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends)
+void LoadLaserscansRaw(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends)
 {
     //load scan times
     ifstream fTimes;
@@ -268,6 +272,28 @@ void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLasersc
 }
 
 /**
+ * @brief Load Laser Scans, since this is sync data, we dont need undistor and store individual lidar timestamps
+ * @param [in] strPathToSequence : the data folder address
+ * @param [in,out] vstrLaserscanFilenames : the string vector contains each Scan File name
+ */
+void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, const int nTimes)
+{
+    //load Laser Scan file names
+    //string strPrefixLeft = strPathToSequence + "/image_0/";
+    string strPrefixLeft = strPathToSequence + "/velodyne/";
+
+    vstrLaserscanFilenames.resize(nTimes);
+    for(int i=0; i<nTimes; i++)
+    {
+        stringstream ss;
+        ss << setfill('0') << setw(6) << i;
+        //ss << setfill('0') << setw(10) << i; //why i set 10?
+        vstrLaserscanFilenames[i] = strPrefixLeft + ss.str() + ".bin";
+    }
+}
+
+
+/**
  * @brief Load laserpoint by given filename.
  * @param [in] vstrScanFilename : filename of laser scans
  * @param [in,out] laserPoints : laser points
@@ -299,7 +325,4 @@ void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoint
     fclose(fstream);
     //reset laserpoint vector size
     laserPoints.resize(num);
-
-    ///Step2
-
 }

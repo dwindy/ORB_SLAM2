@@ -87,8 +87,7 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     ///added module
-    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-          const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
           cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
@@ -150,7 +149,7 @@ public:
     //vector<std::vector<double>> mLaserPt_cam;
     vector<PtLsr> mLaserPt_cam;
     //vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
-    vector<double> mLaserTimes; //{middle time, start, end}
+    //vector<double> mLaserTimes; //{middle time, start, end}
     //vector<cv::Point> mPjcLaserPts;
     //vector<cv::KeyPoint> mPjcLaserPtsUndis;
     //vector<vector<cv::Point>> planNorms;

@@ -216,12 +216,11 @@ namespace ORB_SLAM2
  * @param[int]thDepth //区分远近点的深度阈值
  */
     Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-                 const vector<double> &laserTimes,
                  ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
                  const float &bf, const float &thDepth)
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
-              mTimeStamp(timeStamp), mLaserPoints(lasers), mLaserTimes(laserTimes), mK(K.clone()),
+              mTimeStamp(timeStamp), mLaserPoints(lasers), mK(K.clone()),
               mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         //Step 1 帧ID增加
@@ -295,13 +294,13 @@ namespace ORB_SLAM2
     }
 
     void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
-        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
+        cv::Mat P_rect_00 = cv::Mat::zeros(cv::Size(4, 3), CV_64F);
         P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
         P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
         P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
         P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
         P_rect_00.at<double>(2, 2) = 1;
-        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
+        cv::Mat R_rect_00 = cv::Mat::eye(cv::Size(4, 4), CV_64F);
         int ptNum = mLaserPt_cam.size();
         cv::Mat X(4, 1, CV_64F);//3D LiDAR point
         cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
@@ -323,7 +322,7 @@ namespace ORB_SLAM2
             mLaserPt_cam[pi].index2d = counter;
             counter++;
         }
-        cout << "Lidar points " << mLaserPt_cam.size() << " in image frame " << counter << endl;
+        cout << "Lidar points " << mLaserPt_cam.size() <<", "<< counter<<" in image frame " <<endl;
     }
     /**
      * Project LiDAR point from LiDAR coordination to Cam coordination

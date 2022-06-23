@@ -39,17 +39,6 @@
 
 ///added module
 #include <math.h>
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl-1.8/pcl/segmentation/region_growing.h>
-#include <pcl-1.8/pcl/search/search.h>
-#include <pcl-1.8/pcl/search/kdtree.h>
-#include <pcl-1.8/pcl/features/normal_3d.h>
-//#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
-#include <pcl-1.8/pcl/ModelCoefficients.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/registration/icp.h>
 
 using namespace std;
 
@@ -292,10 +281,9 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
  * @param im : passed image frame
  * @param timestamp : image frame time
  * @param lasers : passed laser points
- * @param laserTimes : laser middle time, start time and end time
  * @return Tcw
  */
-cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes)
+cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers)
 {
     //mImGray 是tracking class 的成员
     mImGray = im;
@@ -319,12 +307,12 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp,
     if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
         //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, laserTimes, mpIniORBextractor, mpORBVocabulary, mK, mTcamlid,
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBVocabulary, mK, mTcamlid,
                               mDistCoef, mbf, mThDepth);
     else
         //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, laserTimes, mpORBextractorLeft, mpORBVocabulary, mK, mTcamlid,
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBVocabulary, mK, mTcamlid,
                               mDistCoef, mbf, mThDepth);
 
     Track();
@@ -512,7 +500,7 @@ void Tracking::Track()
 {
     ///added module
     ///project raw 3D LiDAR point to 2D image frame
-    //ProjectLiDARtoImage();
+    ProjectLiDARtoImage();
     ///todo Should think about the low frequency of LiDAR plane extraction
 
     //Track包含估计运动和跟踪局部地图两个部分
