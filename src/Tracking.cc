@@ -39,10 +39,7 @@
 
 ///added module
 #include <math.h>
-//#include <pcl/sample_consensus/method_types.h>
-//#include <pcl/sample_consensus/model_types.h>
-//#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/registration/icp.h>
+
 ///Added module
 #include "tic_toc.h"
 #include "lidarFactor.hpp"
@@ -52,7 +49,7 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, //系统实例?
+Tracking::Tracking(System *pSys, //系统实例
                    ORBVocabulary* pVoc, //BOW字典
                    FrameDrawer *pFrameDrawer,
                    MapDrawer *pMapDrawer,
@@ -126,6 +123,7 @@ Tracking::Tracking(System *pSys, //系统实例?
     Tcl.at<double>(1,3) = fSettings["Tcl.2"];
     Tcl.at<double>(2,3) = fSettings["Tcl.3"];
     Tcl.copyTo(mTcamlid);
+
     //init T^world_cur
 //    q_w_curr = Eigen::Quaterniond (1, 0, 0, 0);
 //    t_w_curr = Eigen::Vector3d (0, 0, 0);
@@ -206,8 +204,157 @@ Tracking::Tracking(System *pSys, //系统实例?
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
-
 }
+
+//Tracking::Tracking(
+//            System *pSys,                       //系统实例
+//            ORBVocabulary* pVoc,                //BOW字典
+//            FrameDrawer *pFrameDrawer,          //帧绘制器
+//            MapDrawer *pMapDrawer,              //地图点绘制器
+//            Map *pMap,                          //地图句柄
+//            KeyFrameDatabase* pKFDB,            //关键帧产生的词袋数据库
+//            const string &strSettingPath,       //配置文件路径
+//            const int sensor):                  //传感器类型
+//            mState(NO_IMAGES_YET),                              //当前系统还没有准备好
+//            mSensor(sensor),
+//            mbOnlyTracking(false),                              //处于SLAM模式
+//            mbVO(false),                                        //当处于纯跟踪模式的时候，这个变量表示了当前跟踪状态的好坏
+//            mpORBVocabulary(pVoc),
+//            mpKeyFrameDB(pKFDB),
+//            mpInitializer(static_cast<Initializer*>(NULL)),     //暂时给地图初始化器设置为空指针
+//            mpSystem(pSys),
+//            mpViewer(NULL),                                     //注意可视化的查看器是可选的，因为ORB-SLAM2最后是被编译成为一个库，所以对方人拿过来用的时候也应该有权力说我不要可视化界面（何况可视化界面也要占用不少的CPU资源）
+//            mpFrameDrawer(pFrameDrawer),
+//            mpMapDrawer(pMapDrawer),
+//            mpMap(pMap),
+//            mnLastRelocFrameId(0)                               //恢复为0,没有进行这个过程的时候的默认值
+//    {
+//        // Load camera parameters from settings file
+//        // Step 1 从配置文件中加载相机参数
+//        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+//        float fx = fSettings["Camera.fx"];
+//        float fy = fSettings["Camera.fy"];
+//        float cx = fSettings["Camera.cx"];
+//        float cy = fSettings["Camera.cy"];
+//
+//        //     |fx  0   cx|
+//        // K = |0   fy  cy|
+//        //     |0   0   1 |
+//        //构造相机内参矩阵
+//        cv::Mat K = cv::Mat::eye(3,3,CV_32F);
+//        K.at<float>(0,0) = fx;
+//        K.at<float>(1,1) = fy;
+//        K.at<float>(0,2) = cx;
+//        K.at<float>(1,2) = cy;
+//        K.copyTo(mK);
+//
+//        // 图像矫正系数
+//        // [k1 k2 p1 p2 k3]
+//        cv::Mat DistCoef(4,1,CV_32F);
+//        DistCoef.at<float>(0) = fSettings["Camera.k1"];
+//        DistCoef.at<float>(1) = fSettings["Camera.k2"];
+//        DistCoef.at<float>(2) = fSettings["Camera.p1"];
+//        DistCoef.at<float>(3) = fSettings["Camera.p2"];
+//        const float k3 = fSettings["Camera.k3"];
+//        //有些相机的畸变系数中会没有k3项
+//        if(k3!=0)
+//        {
+//            DistCoef.resize(5);
+//            DistCoef.at<float>(4) = k3;
+//        }
+//        DistCoef.copyTo(mDistCoef);
+//
+//        // 双目摄像头baseline * fx 50
+//        mbf = fSettings["Camera.bf"];
+//
+//        float fps = fSettings["Camera.fps"];
+//        if(fps==0)
+//            fps=30;
+//
+//        // Max/Min Frames to insert keyframes and to check relocalisation
+//        mMinFrames = 0;
+//        mMaxFrames = fps;
+//
+//        //输出
+//        cout << endl << "Camera Parameters: " << endl;
+//        cout << "- fx: " << fx << endl;
+//        cout << "- fy: " << fy << endl;
+//        cout << "- cx: " << cx << endl;
+//        cout << "- cy: " << cy << endl;
+//        cout << "- k1: " << DistCoef.at<float>(0) << endl;
+//        cout << "- k2: " << DistCoef.at<float>(1) << endl;
+//        if(DistCoef.rows==5)
+//            cout << "- k3: " << DistCoef.at<float>(4) << endl;
+//        cout << "- p1: " << DistCoef.at<float>(2) << endl;
+//        cout << "- p2: " << DistCoef.at<float>(3) << endl;
+//        cout << "- fps: " << fps << endl;
+//
+//        // 1:RGB 0:BGR
+//        int nRGB = fSettings["Camera.RGB"];
+//        mbRGB = nRGB;
+//
+//        if(mbRGB)
+//            cout << "- color order: RGB (ignored if grayscale)" << endl;
+//        else
+//            cout << "- color order: BGR (ignored if grayscale)" << endl;
+//
+//        // Load ORB parameters
+//
+//        // Step 2 加载ORB特征点有关的参数,并新建特征点提取器
+//
+//        // 每一帧提取的特征点数 1000
+//        int nFeatures = fSettings["ORBextractor.nFeatures"];
+//        // 图像建立金字塔时的变化尺度 1.2
+//        float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
+//        // 尺度金字塔的层数 8
+//        int nLevels = fSettings["ORBextractor.nLevels"];
+//        // 提取fast特征点的默认阈值 20
+//        int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
+//        // 如果默认阈值提取不出足够fast特征点，则使用最小阈值 8
+//        int fMinThFAST = fSettings["ORBextractor.minThFAST"];
+//
+//        // tracking过程都会用到mpORBextractorLeft作为特征点提取器
+//        mpORBextractorLeft = new ORBextractor(
+//                nFeatures,      //参数的含义还是看上面的注释吧
+//                fScaleFactor,
+//                nLevels,
+//                fIniThFAST,
+//                fMinThFAST);
+//
+//        // 如果是双目，tracking过程中还会用用到mpORBextractorRight作为右目特征点提取器
+//        if(sensor==System::STEREO)
+//            mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+//
+//        // 在单目初始化的时候，会用mpIniORBextractor来作为特征点提取器
+//        if(sensor==System::MONOCULAR)
+//            mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+//
+//        cout << endl  << "ORB Extractor Parameters: " << endl;
+//        cout << "- Number of Features: " << nFeatures << endl;
+//        cout << "- Scale Levels: " << nLevels << endl;
+//        cout << "- Scale Factor: " << fScaleFactor << endl;
+//        cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
+//        cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+//
+//        if(sensor==System::STEREO || sensor==System::RGBD)
+//        {
+//            // 判断一个3D点远/近的阈值 mbf * 35 / fx
+//            //ThDepth其实就是表示基线长度的多少倍
+//            mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
+//            cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+//        }
+//
+//        if(sensor==System::RGBD)
+//        {
+//            // 深度相机disparity转化为depth时的因子
+//            mDepthMapFactor = fSettings["DepthMapFactor"];
+//            if(fabs(mDepthMapFactor)<1e-5)
+//                mDepthMapFactor=1;
+//            else
+//                mDepthMapFactor = 1.0f/mDepthMapFactor;
+//        }
+//
+//    }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
 {
@@ -306,7 +453,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
  * @param laserTimes : laser middle time, start time and end time
  * @return Tcw
  */
-cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes)
+cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers)
 {
     //mImGray 是tracking class 的成员
     mImGray = im;
@@ -330,12 +477,12 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp,
     if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
         //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, laserTimes, mpIniORBextractor, mpORBVocabulary, mK, mTcamlid,
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBVocabulary, mK, mTcamlid,
                               mDistCoef, mbf, mThDepth);
     else
         //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, laserTimes, mpORBextractorLeft, mpORBVocabulary, mK, mTcamlid,
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBVocabulary, mK, mTcamlid,
                               mDistCoef, mbf, mThDepth);
 
     Track();
@@ -542,13 +689,13 @@ void Tracking::Track()
     if(mState==NOT_INITIALIZED)
     {
         ///Added module
-        //-----add a lidar init()
-        if(mLiDARState==NOT_INITIALIZED)
-        {
-            LiDARInit();
-        }
-        if(mLiDARState!=OK)
-            return;
+//        //-----add a lidar init()
+//        if(mLiDARState==NOT_INITIALIZED)
+//        {
+//            LiDARInit();
+//        }
+//        if(mLiDARState!=OK)
+//            return;
         ///------------
         if(mSensor==System::STEREO || mSensor==System::RGBD)
             StereoInitialization();
@@ -873,52 +1020,53 @@ void Tracking::Track()
 }//Tracking
 
 // undistort lidar point
-    void Tracking::TransformToStart(PointType const *const pi, PointType *const po)
-    {
-        //interpolation ratio
-        double s;
-        // 由于kitti数据集上的lidar已经做过了运动补偿，因此这里就不做具体补偿了
-        if (DISTORTION)
-            s = (pi->intensity - int(pi->intensity)) / SCAN_PERIOD;
-        else
-            s = 1.0;    // s = 1s说明全部补偿到点云结束的时刻
-        //s = 1;
-        // 所有点的操作方式都是一致的，相当于从结束时刻补偿到起始时刻
-        // 这里相当于是一个匀速模型的假设
-        Eigen::Quaterniond q_point_last = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
-        Eigen::Vector3d t_point_last = s * t_last_curr;
-        Eigen::Vector3d point(pi->x, pi->y, pi->z);
-        Eigen::Vector3d un_point = q_point_last * point + t_point_last;
-
-        po->x = un_point.x();
-        po->y = un_point.y();
-        po->z = un_point.z();
-        po->intensity = pi->intensity;
-    }
+//    void Tracking::TransformToStart(PointType const *const pi, PointType *const po)
+//    {
+//        //interpolation ratio
+//        double s;
+//        // 由于kitti数据集上的lidar已经做过了运动补偿，因此这里就不做具体补偿了
+//        if (DISTORTION)
+//            s = (pi->intensity - int(pi->intensity)) / SCAN_PERIOD;
+//        else
+//            s = 1.0;    // s = 1s说明全部补偿到点云结束的时刻
+//        //s = 1;
+//        // 所有点的操作方式都是一致的，相当于从结束时刻补偿到起始时刻
+//        // 这里相当于是一个匀速模型的假设
+//        Eigen::Quaterniond q_point_last = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
+//        Eigen::Vector3d t_point_last = s * t_last_curr;
+//        Eigen::Vector3d point(pi->x, pi->y, pi->z);
+//        Eigen::Vector3d un_point = q_point_last * point + t_point_last;
+//
+//        po->x = un_point.x();
+//        po->y = un_point.y();
+//        po->z = un_point.z();
+//        po->intensity = pi->intensity;
+//    }
 
 // transform all lidar points to the start of the next frame
 
-    void Tracking::TransformToEnd(PointType const *const pi, PointType *const po)
-    {
-        // undistort point first
-        pcl::PointXYZI un_point_tmp;
-        TransformToStart(pi, &un_point_tmp);
-
-        Eigen::Vector3d un_point(un_point_tmp.x, un_point_tmp.y, un_point_tmp.z);
-        Eigen::Vector3d point_end = q_last_curr.inverse() * (un_point - t_last_curr);
-
-        po->x = point_end.x();
-        po->y = point_end.y();
-        po->z = point_end.z();
-
-        //Remove distortion time info
-        po->intensity = int(pi->intensity);
-    }
+//    void Tracking::TransformToEnd(PointType const *const pi, PointType *const po)
+//    {
+//        // undistort point first
+//        pcl::PointXYZI un_point_tmp;
+//        TransformToStart(pi, &un_point_tmp);
+//
+//        Eigen::Vector3d un_point(un_point_tmp.x, un_point_tmp.y, un_point_tmp.z);
+//        Eigen::Vector3d point_end = q_last_curr.inverse() * (un_point - t_last_curr);
+//
+//        po->x = point_end.x();
+//        po->y = point_end.y();
+//        po->z = point_end.z();
+//
+//        //Remove distortion time info
+//        po->intensity = int(pi->intensity);
+//    }
 
 /**
  * LiDAR Mode Init first, then Camera Mode Init
  * Because we need depth infor for Mono Feature Points
  */
+ /*
 void Tracking::LiDARInit()
 {
     //Step 1 mpInitializer不存在时，创建一个实例
@@ -1014,10 +1162,12 @@ void Tracking::LiDARInit()
 //                 cornerPointsSharp, surfPointsFlat);
     }
 }
+*/
 
 ///**
 // * Should be switch to G2O in the future
 // */
+/*
     bool Tracking::cereLiDAR(pcl::PointCloud<PointType>::Ptr laserCloudCornerLast,
                             pcl::PointCloud<PointType>::Ptr laserCloudSurfLast,
                             pcl::PointCloud<PointType>::Ptr cornerPointsSharp,
@@ -1297,6 +1447,8 @@ void Tracking::LiDARInit()
         cout<<q_w_curr.toRotationMatrix()<<endl;
         return true;
     }
+    */
+
 
 void Tracking::StereoInitialization()
 {
@@ -1387,75 +1539,75 @@ void Tracking::MonocularInitialization()
     }
     else
     {
-        //Try to initital LiDAR first
-        ///Step 2.1 get LiDAR feature from last frame, set up KdTree for it
-        int KDtreeThreshold = 1000;
-        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
-        cornerPointsLessSharp->clear();
-        surfPointsLessFlat->clear();
-        int lastCornerNum = mInitialFrame.mLaserLessCorner_cam.size();
-        int lastSurfNum = mInitialFrame.mLaserLessFlat_cam.size();
-        cornerPointsLessSharp->resize(lastCornerNum);
-        surfPointsLessFlat->resize(lastSurfNum);
-        for (size_t i = 0; i < lastCornerNum; i++) {
-            cornerPointsLessSharp->points[i].x = mInitialFrame.mLaserLessCorner_cam[i].pt3d.x;
-            cornerPointsLessSharp->points[i].y = mInitialFrame.mLaserLessCorner_cam[i].pt3d.y;
-            cornerPointsLessSharp->points[i].z = mInitialFrame.mLaserLessCorner_cam[i].pt3d.z;
-            cornerPointsLessSharp->points[i].intensity = mInitialFrame.mLaserLessCorner_cam[i].intensity;
-        }
-        cout<<"init cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
-        for (size_t i = 0; i < lastSurfNum; i++) {
-            surfPointsLessFlat->points[i].x = mInitialFrame.mLaserLessFlat_cam[i].pt3d.x;
-            surfPointsLessFlat->points[i].y = mInitialFrame.mLaserLessFlat_cam[i].pt3d.y;
-            surfPointsLessFlat->points[i].z = mInitialFrame.mLaserLessFlat_cam[i].pt3d.z;
-            surfPointsLessFlat->points[i].intensity = mInitialFrame.mLaserLessFlat_cam[i].intensity;
-        }
-        cout<<"init surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
-
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
-        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
-        ///Step 2.2 get LiDAR feature from current frame
-        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
-        cornerPointsSharp->clear();
-        surfPointsFlat->clear();
-        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
-        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
-        cornerPointsSharp->resize(curCornerNum);
-        surfPointsFlat->resize(curSurfNum);
-        for (size_t i = 0; i < curCornerNum; i++) {
-            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
-            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
-            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
-            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
-        }
-        cout<<"cur cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
-        for (size_t i = 0; i < curSurfNum; i++) {
-            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
-            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
-            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
-            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
-        }
-        cout<<"cur surfPointsFlat "<<surfPointsFlat->size()<<endl;
-
-        cout<<" in Track before cere "<<endl;
-        cout<<"cornerPointsLessSharp : "<<cornerPointsLessSharp->points[0]<<" "<<cornerPointsLessSharp->points[1]<<" "<<cornerPointsLessSharp->points[2]<<endl;
-        cout<<"surfPointsLessFlat : "<<surfPointsLessFlat->points[0]<<" "<<surfPointsLessFlat->points[1]<<" "<<surfPointsLessFlat->points[2]<<endl;
-        cout<<"cornerPointsSharp : "<<cornerPointsSharp->points[0]<<" "<<cornerPointsSharp->points[1]<<" "<<cornerPointsSharp->points[2]<<endl;
-        cout<<"surfPointsFlat : "<<surfPointsFlat->points[0]<<" "<<surfPointsFlat->points[1]<<" "<<surfPointsFlat->points[2]<<endl;
-
-        ///Step 3 time to init!
-        //KDtree put outside
-        bool cereResult = cereLiDAR(cornerPointsLessSharp, surfPointsLessFlat,
-                                    cornerPointsSharp, surfPointsFlat);
-        if (cereResult) {
-            mbLiDARInit = true;
-            mLiDARState = OK;
-        } else
-            mbLiDARInit = false;
+//        //Try to initital LiDAR first
+//        ///Step 2.1 get LiDAR feature from last frame, set up KdTree for it
+//        int KDtreeThreshold = 1000;
+//        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
+//        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
+//        cornerPointsLessSharp->clear();
+//        surfPointsLessFlat->clear();
+//        int lastCornerNum = mInitialFrame.mLaserLessCorner_cam.size();
+//        int lastSurfNum = mInitialFrame.mLaserLessFlat_cam.size();
+//        cornerPointsLessSharp->resize(lastCornerNum);
+//        surfPointsLessFlat->resize(lastSurfNum);
+//        for (size_t i = 0; i < lastCornerNum; i++) {
+//            cornerPointsLessSharp->points[i].x = mInitialFrame.mLaserLessCorner_cam[i].pt3d.x;
+//            cornerPointsLessSharp->points[i].y = mInitialFrame.mLaserLessCorner_cam[i].pt3d.y;
+//            cornerPointsLessSharp->points[i].z = mInitialFrame.mLaserLessCorner_cam[i].pt3d.z;
+//            cornerPointsLessSharp->points[i].intensity = mInitialFrame.mLaserLessCorner_cam[i].intensity;
+//        }
+//        cout<<"init cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
+//        for (size_t i = 0; i < lastSurfNum; i++) {
+//            surfPointsLessFlat->points[i].x = mInitialFrame.mLaserLessFlat_cam[i].pt3d.x;
+//            surfPointsLessFlat->points[i].y = mInitialFrame.mLaserLessFlat_cam[i].pt3d.y;
+//            surfPointsLessFlat->points[i].z = mInitialFrame.mLaserLessFlat_cam[i].pt3d.z;
+//            surfPointsLessFlat->points[i].intensity = mInitialFrame.mLaserLessFlat_cam[i].intensity;
+//        }
+//        cout<<"init surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
+//
+//        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+//        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+//        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
+//        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
+//        ///Step 2.2 get LiDAR feature from current frame
+//        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
+//        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
+//        cornerPointsSharp->clear();
+//        surfPointsFlat->clear();
+//        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
+//        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
+//        cornerPointsSharp->resize(curCornerNum);
+//        surfPointsFlat->resize(curSurfNum);
+//        for (size_t i = 0; i < curCornerNum; i++) {
+//            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
+//            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
+//            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
+//            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
+//        }
+//        cout<<"cur cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
+//        for (size_t i = 0; i < curSurfNum; i++) {
+//            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
+//            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
+//            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
+//            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
+//        }
+//        cout<<"cur surfPointsFlat "<<surfPointsFlat->size()<<endl;
+//
+//        cout<<" in Track before cere "<<endl;
+//        cout<<"cornerPointsLessSharp : "<<cornerPointsLessSharp->points[0]<<" "<<cornerPointsLessSharp->points[1]<<" "<<cornerPointsLessSharp->points[2]<<endl;
+//        cout<<"surfPointsLessFlat : "<<surfPointsLessFlat->points[0]<<" "<<surfPointsLessFlat->points[1]<<" "<<surfPointsLessFlat->points[2]<<endl;
+//        cout<<"cornerPointsSharp : "<<cornerPointsSharp->points[0]<<" "<<cornerPointsSharp->points[1]<<" "<<cornerPointsSharp->points[2]<<endl;
+//        cout<<"surfPointsFlat : "<<surfPointsFlat->points[0]<<" "<<surfPointsFlat->points[1]<<" "<<surfPointsFlat->points[2]<<endl;
+//
+//        ///Step 3 time to init!
+//        //KDtree put outside
+//        bool cereResult = cereLiDAR(cornerPointsLessSharp, surfPointsLessFlat,
+//                                    cornerPointsSharp, surfPointsFlat);
+//        if (cereResult) {
+//            mbLiDARInit = true;
+//            mLiDARState = OK;
+//        } else
+//            mbLiDARInit = false;
 
         // Try to initialize
         //Step 2 如果当前帧的特征点太少 删除初始化器 
@@ -2118,65 +2270,65 @@ bool Tracking::TrackWithMotionModel()
  * should be same function as LiDAR init
  * @return
  */
-bool Tracking::TrackLiDAR(){
-
-        ///Step 1 get LiDAR feature from last frame, set up KdTree for it
-        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
-        cornerPointsLessSharp->clear();
-        surfPointsLessFlat->clear();
-        int lastCornerNum = mLastFrame.mLaserLessCorner_cam.size();
-        int lastSurfNum = mLastFrame.mLaserLessFlat_cam.size();
-        cornerPointsLessSharp->resize(lastCornerNum);
-        surfPointsLessFlat->resize(lastSurfNum);
-        for (size_t i = 0; i < lastCornerNum; i++) {
-            cornerPointsLessSharp->points[i].x = mLastFrame.mLaserLessCorner_cam[i].pt3d.x;
-            cornerPointsLessSharp->points[i].y = mLastFrame.mLaserLessCorner_cam[i].pt3d.y;
-            cornerPointsLessSharp->points[i].z = mLastFrame.mLaserLessCorner_cam[i].pt3d.z;
-            cornerPointsLessSharp->points[i].intensity = mLastFrame.mLaserLessCorner_cam[i].intensity;
-        }
-        cout<<"last cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
-        for (size_t i = 0; i < lastSurfNum; i++) {
-            surfPointsLessFlat->points[i].x = mLastFrame.mLaserLessFlat_cam[i].pt3d.x;
-            surfPointsLessFlat->points[i].y = mLastFrame.mLaserLessFlat_cam[i].pt3d.y;
-            surfPointsLessFlat->points[i].z = mLastFrame.mLaserLessFlat_cam[i].pt3d.z;
-            surfPointsLessFlat->points[i].intensity = mLastFrame.mLaserLessFlat_cam[i].intensity;
-        }
-        cout<<"last surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
-
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
-        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
-        ///Step 2 get LiDAR feature from current frame
-        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
-        cornerPointsSharp->clear();
-        surfPointsFlat->clear();
-        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
-        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
-        cornerPointsSharp->resize(curCornerNum);
-        surfPointsFlat->resize(curSurfNum);
-        for (size_t i = 0; i < curCornerNum; i++) {
-            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
-            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
-            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
-            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
-        }
-        cout<<"cur cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
-        for (size_t i = 0; i < curSurfNum; i++) {
-            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
-            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
-            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
-            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
-        }
-        cout<<"cur surfPointsFlat "<<surfPointsFlat->size()<<endl;
-
-        ///Step 3 time to solve it!
-        //KDtree put outside
-        cereLiDAR(cornerPointsLessSharp, surfPointsLessFlat,
-                  cornerPointsSharp, surfPointsFlat);
-}
+//bool Tracking::TrackLiDAR(){
+//
+//        ///Step 1 get LiDAR feature from last frame, set up KdTree for it
+//        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
+//        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
+//        cornerPointsLessSharp->clear();
+//        surfPointsLessFlat->clear();
+//        int lastCornerNum = mLastFrame.mLaserLessCorner_cam.size();
+//        int lastSurfNum = mLastFrame.mLaserLessFlat_cam.size();
+//        cornerPointsLessSharp->resize(lastCornerNum);
+//        surfPointsLessFlat->resize(lastSurfNum);
+//        for (size_t i = 0; i < lastCornerNum; i++) {
+//            cornerPointsLessSharp->points[i].x = mLastFrame.mLaserLessCorner_cam[i].pt3d.x;
+//            cornerPointsLessSharp->points[i].y = mLastFrame.mLaserLessCorner_cam[i].pt3d.y;
+//            cornerPointsLessSharp->points[i].z = mLastFrame.mLaserLessCorner_cam[i].pt3d.z;
+//            cornerPointsLessSharp->points[i].intensity = mLastFrame.mLaserLessCorner_cam[i].intensity;
+//        }
+//        cout<<"last cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
+//        for (size_t i = 0; i < lastSurfNum; i++) {
+//            surfPointsLessFlat->points[i].x = mLastFrame.mLaserLessFlat_cam[i].pt3d.x;
+//            surfPointsLessFlat->points[i].y = mLastFrame.mLaserLessFlat_cam[i].pt3d.y;
+//            surfPointsLessFlat->points[i].z = mLastFrame.mLaserLessFlat_cam[i].pt3d.z;
+//            surfPointsLessFlat->points[i].intensity = mLastFrame.mLaserLessFlat_cam[i].intensity;
+//        }
+//        cout<<"last surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
+//
+//        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+//        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
+//        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
+//        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
+//        ///Step 2 get LiDAR feature from current frame
+//        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
+//        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
+//        cornerPointsSharp->clear();
+//        surfPointsFlat->clear();
+//        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
+//        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
+//        cornerPointsSharp->resize(curCornerNum);
+//        surfPointsFlat->resize(curSurfNum);
+//        for (size_t i = 0; i < curCornerNum; i++) {
+//            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
+//            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
+//            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
+//            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
+//        }
+//        cout<<"cur cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
+//        for (size_t i = 0; i < curSurfNum; i++) {
+//            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
+//            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
+//            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
+//            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
+//        }
+//        cout<<"cur surfPointsFlat "<<surfPointsFlat->size()<<endl;
+//
+//        ///Step 3 time to solve it!
+//        //KDtree put outside
+//        cereLiDAR(cornerPointsLessSharp, surfPointsLessFlat,
+//                  cornerPointsSharp, surfPointsFlat);
+//}
 
 /**
  * @brief 对local map 的mappoints进行跟踪

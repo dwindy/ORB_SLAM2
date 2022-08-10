@@ -32,16 +32,11 @@
 
 #include <opencv2/opencv.hpp>
 ///Added module
-//#include <pcl-1.8/pcl/point_cloud.h>
-////#include <pcl-1.8/pcl/segmentation/region_growing.h>
-//#include <pcl-1.8/pcl/search/search.h>
-//#include <pcl-1.8/pcl/search/kdtree.h>
-//#include <pcl-1.8/pcl/features/normal_3d.h>
-//#include <pcl_conversions/pcl_conversions.h>
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl-1.8/pcl/point_types.h>
-#include <pcl-1.8/pcl/filters/voxel_grid.h>
-#include <pcl-1.8/pcl/kdtree/kdtree_flann.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
+
 typedef pcl::PointXYZI PointType;
 
 namespace ORB_SLAM2
@@ -99,8 +94,7 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     ///added module
-    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-          const vector<double> &laserTimes, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
           cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.

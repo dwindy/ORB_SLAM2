@@ -43,15 +43,16 @@
 #include <mutex>
 
 ///added module
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl-1.8/pcl/segmentation/region_growing.h>
-#include <pcl-1.8/pcl/search/search.h>
-#include <pcl-1.8/pcl/search/kdtree.h>
-#include <pcl-1.8/pcl/features/normal_3d.h>
-#include <pcl-1.8/pcl/ModelCoefficients.h>
-#include <pcl-1.8/pcl/sample_consensus/method_types.h>
-#include <pcl-1.8/pcl/sample_consensus/model_types.h>
-#include <pcl-1.8/pcl/segmentation/sac_segmentation.h>
+#include <pcl/point_cloud.h>
+#include <pcl/segmentation/region_growing.h>
+#include <pcl/registration/icp.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 
 namespace ORB_SLAM2
 {
@@ -69,13 +70,12 @@ namespace ORB_SLAM2
     public:
         Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
                  KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
-
         // Preprocess the input and call Track(). Extract features and performs stereo matching.
         cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
         cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
-        ///added module
-        cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers, const vector<double> &laserTimes);
+        ///added module ---with Laser
+        cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
         void ProjectLiDARtoImage();
         void ProjectPlanetoImage();
 
@@ -176,12 +176,12 @@ namespace ORB_SLAM2
         // Transformation from current frame to world frame
         double para_q[4];//  {0, 0, 0, 1};
         double para_t[3];//  {0, 0, 0};
-        Eigen::Quaterniond q_w_curr;//(1, 0, 0, 0);
-        Eigen::Vector3d t_w_curr;//(0, 0, 0);
-//        Eigen::Map<Eigen::Quaterniond> q_last_curr;
-//        Eigen::Map<Eigen::Vector3d> t_last_curr;
-        Eigen::Quaterniond q_last_curr;
-        Eigen::Vector3d t_last_curr;
+//        Eigen::Quaterniond q_w_curr;//(1, 0, 0, 0);
+//        Eigen::Vector3d t_w_curr;//(0, 0, 0);
+////        Eigen::Map<Eigen::Quaterniond> q_last_curr;
+////        Eigen::Map<Eigen::Vector3d> t_last_curr;
+//        Eigen::Quaterniond q_last_curr;
+//        Eigen::Vector3d t_last_curr;
         int DISTORTION = 0;
         int SCAN_PERIOD = 0.1;
         double DISTANCE_SQ_THRESHOLD = 25;

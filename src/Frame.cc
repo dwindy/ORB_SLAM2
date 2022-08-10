@@ -208,7 +208,7 @@ namespace ORB_SLAM2
         AssignFeaturesToGrid();
     }
 
-///added module
+///added module --- add some LiDAR feature codes
 /**
  * @brief 单目帧构造函数
  *
@@ -223,12 +223,11 @@ namespace ORB_SLAM2
  * @param[int]thDepth //区分远近点的深度阈值
  */
     Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-                 const vector<double> &laserTimes,
                  ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
                  const float &bf, const float &thDepth)
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
-              mTimeStamp(timeStamp), mLaserPoints(lasers), mLaserTimes(laserTimes), mK(K.clone()),
+              mTimeStamp(timeStamp), mLaserPoints(lasers), mK(K.clone()),
               mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         //Step 1 帧ID增加
@@ -715,7 +714,7 @@ namespace ORB_SLAM2
      * @brief search the image feature with nearby Laser depth
      */
     void Frame::PairLaserVisionFeatures(){
-        int visionFeatureNum = mvKeys.size();
+        int visionFeatureNum = mvKeys.size();//todo mvKeysUn instead?
         for(int i = 0; i < visionFeatureNum; i++){
             double minDis = 99999;
             int lsrIndex = -1;

@@ -258,6 +258,18 @@ void FrameDrawer::Update(Tracking *pTracker) {
     unique_lock<mutex> lock(mMutex);
     pTracker->mImGray.copyTo(mIm);
     mvCurrentKeys = pTracker->mCurrentFrame.mvKeys; //pass tracker->fames.keypoint to framedrawer.keypoints
+    /*....
+     * temporary added for store key points-------------------------------------
+     */
+    ofstream kpWriter;
+    kpWriter.open("keypoint.txt");
+    for(int i = 0; i < mvCurrentKeys.size();i++){
+        kpWriter<<mvCurrentKeys[i].pt.x<<" ";
+        kpWriter<<mvCurrentKeys[i].pt.y<<endl;
+    }
+    kpWriter.close();
+    //--------------------------------------------------------------------------
+
     ///todo when mvCurrentKeys clear?
     N = mvCurrentKeys.size();
     mvbVO = vector<bool>(N, false);
