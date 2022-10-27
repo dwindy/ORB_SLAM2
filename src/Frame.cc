@@ -296,7 +296,7 @@ namespace ORB_SLAM2
 
         ///added module
         //extract LiDAR feature
-        ExtractLiDARFeature();
+        //ExtractLiDARFeature();
         //Project LiDAR point to Cam coordination
         ProjectLiDARtoCam();
         ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
@@ -488,11 +488,11 @@ namespace ORB_SLAM2
             // 根据scan的idx送入各自数组
             //laserCloudScans[scanID].push_back(point);
         }
-        ///Added
+        ///Added---otherwise the size may wrong?
         for(int i=0;i<N_SCANS;i++){
-            cout<<"reset laserCloudScans["<<i<<"] from "<<laserCloudScans[i].size();
+            //cout<<"reset laserCloudScans["<<i<<"] from "<<laserCloudScans[i].size();
             laserCloudScans[i].resize(eachScanIndexs[i]);
-            cout<<" to "<<laserCloudScans[i].size()<<endl;
+            //cout<<" to "<<laserCloudScans[i].size()<<endl;
         }
         // cloudSize是有效的点云的数目
         cloudSize = count;
@@ -730,8 +730,8 @@ namespace ORB_SLAM2
                 }
             }
             if(lsrIndex>=0){
-                cout<<mvKeys[i].pt.x<<" "<<mvKeys[i].pt.y<<" "<<mLaserPt_cam[lsrIndex].pt2d.x<<" "<<mLaserPt_cam[lsrIndex].pt2d.y<<" "
-                <<mLaserPt_cam[lsrIndex].pt3d.x<<" "<<mLaserPt_cam[lsrIndex].pt3d.y<<" "<<mLaserPt_cam[lsrIndex].pt3d.z<<endl;
+//                cout<<"paired keypt and lidar "<<mvKeys[i].pt.x<<" "<<mvKeys[i].pt.y<<" "<<mLaserPt_cam[lsrIndex].pt2d.x<<" "<<mLaserPt_cam[lsrIndex].pt2d.y<<" "
+//                <<mLaserPt_cam[lsrIndex].pt3d.x<<" "<<mLaserPt_cam[lsrIndex].pt3d.y<<" "<<mLaserPt_cam[lsrIndex].pt3d.z<<endl;
             }
         }
     }

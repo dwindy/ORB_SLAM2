@@ -51,6 +51,7 @@ int main(int argc, char **argv)
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
     vector<double> vTimestamps;
+    cout<<"imagepath "<<argv[3]<<endl;
     LoadImages(string(argv[3]), vstrImageFilenames, vTimestamps);
     int nImages = vstrImageFilenames.size();
     cout<<"load image done "<<endl;
@@ -174,7 +175,6 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
             vTimestamps.push_back(t);
         }
     }
-
     string strPrefixLeft = strPathToSequence + "/image_0/";
     //string strPrefixLeft = strPathToSequence + "/data/";
 
