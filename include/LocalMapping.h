@@ -119,7 +119,7 @@ protected:
     bool mbNotStop;
     std::mutex mMutexStop;
 
-    bool mbAcceptKeyFrames;
+    bool mbAcceptKeyFrames;//accept key fram from tracking thread
     std::mutex mMutexAccept;
 };
 

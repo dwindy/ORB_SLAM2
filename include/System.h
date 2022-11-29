@@ -55,7 +55,9 @@ namespace ORB_SLAM2
         enum eSensor{
             MONOCULAR=0,
             STEREO=1,
-            RGBD=2
+            RGBD=2,
+            ///Added Module
+            MonoLiDAR=3
         };
 
     public:

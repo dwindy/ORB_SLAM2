@@ -38,29 +38,7 @@ namespace ORB_SLAM2
     Frame::Frame()
     {}
 
-////Copy Constructor
-//    Frame::Frame(const Frame &frame)
-//            :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
-//             mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
-//             mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
-//             mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),
-//             mvDepth(frame.mvDepth), mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
-//             mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
-//             mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
-//             mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
-//             mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
-//             mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
-//             mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
-//    {
-//        for(int i=0;i<FRAME_GRID_COLS;i++)
-//            for(int j=0; j<FRAME_GRID_ROWS; j++)
-//                mGrid[i][j]=frame.mGrid[i][j];
-//
-//        if(!frame.mTcw.empty())
-//            SetPose(frame.mTcw);
-//    }
-
-    ///added module
+    ///added module--added member copy
     //Copy Constructor
     Frame::Frame(const Frame &frame)
             :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
@@ -75,13 +53,12 @@ namespace ORB_SLAM2
              mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
              mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
              ///added LiDAR modules --- copy new added Members
-             mLaserPt_cam(frame.mLaserPt_cam),mLaserPoints(frame.mLaserPoints)//,mLaserPtsUndis(frame.mLaserPtsUndis),
-             //mLaserTimes(frame.mLaserTimes),mPjcLaserPts(frame.mPjcLaserPts),mPjcLaserPtsUndis(frame.mPjcLaserPtsUndis),
-             //mvPlanes(frame.mvPlanes)
-             ,mCornerPointsSharp(frame.mCornerPointsSharp),mCornerPointsLessSharp(frame.mCornerPointsLessSharp),
+             mLaserPt_cam(frame.mLaserPt_cam),mLaserPoints(frame.mLaserPoints),mLaser16ScansPoints(frame.mLaser16ScansPoints),
+             mCornerPointsSharp(frame.mCornerPointsSharp),mCornerPointsLessSharp(frame.mCornerPointsLessSharp),
              mSurfPointsFlat(frame.mSurfPointsFlat),mSurfPointsLessFlat(frame.mSurfPointsLessFlat),
              mLaserCorner_cam(frame.mLaserCorner_cam),mLaserLessCorner_cam(frame.mLaserLessCorner_cam),
-             mLaserFlat_cam(frame.mLaserFlat_cam),mLaserLessFlat_cam(frame.mLaserLessFlat_cam)
+             mLaserFlat_cam(frame.mLaserFlat_cam),mLaserLessFlat_cam(frame.mLaserLessFlat_cam),
+             mvPlanes(frame.mvPlanes),mvLines(frame.mvLines),mvORBAttributions(frame.mvORBAttributions)
     {
         for(int i=0;i<FRAME_GRID_COLS;i++)
             for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -295,14 +272,17 @@ namespace ORB_SLAM2
         AssignFeaturesToGrid();
 
         ///added module
-        //extract LiDAR feature
-        //ExtractLiDARFeature();
-        //Project LiDAR point to Cam coordination
-        ProjectLiDARtoCam();
+        mvORBAttributions.resize(N);
+        for (int i = 0; i < N; i++) {
+            mvORBAttributions[i].keyPt = &mvKeysUn[i];
+            mvORBAttributions[i].ID = i;
+        }
+        ExtractLiDARFeature();        //extract LiDAR feature
+        ProjectLiDARtoCam();        //Project LiDAR point to Cam coordination
         ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
         ProjectLiDARFeaturetoImg(mK, imGray.cols, imGray.rows);
         ///Pair the LiDAR Features and Img Features
-        PairLaserVisionFeatures();
+        PairLaserVisionFeatures(imGray);
         float wait = 0;
     }
     ///Added module
@@ -346,17 +326,453 @@ namespace ORB_SLAM2
     bool comp (int i,int j) { return (cloudCurvature[i]<cloudCurvature[j]); }
 
 
+
+    /*
+ * dealing with the case that two keylines overlap.
+ * since those two keylines are close,
+ * the merged line should be those two endpoints that far-est to each other.
+ * Still, merge line2 into line1
+ */
+    void mergeSelectedKeyLine(cv::line_descriptor::KeyLine &line1, const cv::line_descriptor::KeyLine &line2) {
+
+        float SX1 = line1.startPointX, SY1 = line1.startPointY, SX2 = line2.startPointX, SY2 = line2.startPointY;
+        float EX1 = line1.endPointX, EY1 = line1.endPointY, EX2 = line2.endPointX, EY2 = line2.endPointY;
+        //to find out the farest points
+        float distanceS1E1 = (SX1 - EX1) * (SX1 - EX1) + (SY1 - EY1) * (SY1 - EY1);
+        float distanceS1S2 = (SX1 - SX2) * (SX1 - SX2) + (SY1 - SY2) * (SY1 - SY2);
+        float distanceS1E2 = (SX1 - EX2) * (SX1 - EX2) + (SY1 - EY2) * (SY1 - EY2);
+        float distanceE1S2 = (EX1 - SX2) * (EX1 - SX2) + (EY1 - SY2) * (EY1 - SY2);
+        float distanceE1E2 = (EX1 - EX2) * (EX1 - EX2) + (EY1 - EY2) * (EY1 - EY2);
+        float distanceS2E2 = (SX2 - EX2) * (SX2 - EX2) + (SY2 - EY2) * (SY2 - EY2);
+        float maxNumber = distanceS1E1;
+        if (maxNumber < distanceS1S2) maxNumber = distanceS1S2;
+        if (maxNumber < distanceS1E2) maxNumber = distanceS1E2;
+        if (maxNumber < distanceE1S2) maxNumber = distanceE1S2;
+        if (maxNumber < distanceE1E2) maxNumber = distanceE1E2;
+        if (maxNumber < distanceS2E2) maxNumber = distanceS2E2;
+        if (maxNumber == distanceS1E1) {
+            line1.startPointX = SX1;
+            line1.startPointY = SY1;
+            line1.endPointX = EX1;
+            line1.endPointY = EY1;
+        }
+        if (maxNumber == distanceS1S2) {
+            line1.startPointX = SX1;
+            line1.startPointY = SY1;
+            line1.endPointX = SX2;
+            line1.endPointY = SY2;
+        }
+        if (maxNumber == distanceS1E2) {
+            line1.startPointX = SX1;
+            line1.startPointY = SY1;
+            line1.endPointX = EX2;
+            line1.endPointY = EY2;
+        }
+        if (maxNumber == distanceE1S2) {
+            line1.startPointX = SX2;//EX1;
+            line1.startPointY = SY2;//EY1;
+            line1.endPointX = EX1;//SX2;
+            line1.endPointY = EY1;//SY2;
+        }
+        if (maxNumber == distanceE1E2) {
+            line1.startPointX = EX1;
+            line1.startPointY = EY1;
+            line1.endPointX = EX2;
+            line1.endPointY = EY2;
+        }
+        if (maxNumber == distanceS2E2) {
+            line1.startPointX = SX2;
+            line1.startPointY = SY2;
+            line1.endPointX = EX2;
+            line1.endPointY = EY2;
+        }
+        //merge them
+        line1.numOfPixels += line2.numOfPixels; //not reliable because overlap
+        //if one angle is negative, +3.14 for it first
+        if (line1.angle < 0 && line2.angle > 0)
+            line1.angle = ((line2.angle - 3.1415926) + line1.angle) / 2;
+        else if (line1.angle > 0 && line2.angle < 0)
+            line1.angle = (line1.angle + (line2.angle + 3.1415926)) / 2;
+        else
+            line1.angle = (line1.angle + line2.angle) / 2;
+        line1.lineLength = sqrt((line1.endPointX - line1.startPointX) * (line1.endPointX - line1.startPointX) +
+                                (line1.endPointY - line1.startPointY) * (line1.endPointY - line1.startPointY));
+        line1.response += line2.response;
+        line1.size = (line1.startPointX - line1.endPointX) * (line1.startPointY - line1.endPointY);
+    }
+
     /**
-     * @brief Under LiDAR coordination, this function extract edge feature and plane feature from LiDAR source
-     * @param[]
+    * merge the primary keylines
+    */
+    void mergeKeyLines(vector<cv::line_descriptor::KeyLine> &keylines, vector<bool> &keylineMergeFlags, cv::Mat im) {
+        ///Search for Keylines to merge
+        const float degreeThres = 0.008722222 * 5;
+        const float distanceThres = 25;
+        const float lineLengthThres = 30;
+        for (int i = 0; i < keylines.size(); i++) {
+            if (keylineMergeFlags[i])//If this key-line has been merged into another
+                continue;
+            //looking for pairs
+            for (int j = 0; j < keylines.size(); j++) {
+                if (!keylineMergeFlags[j] && j != i) { //This key-line shouldn't be merged into another | and j!=i
+                    float degreeSum = abs(keylines[i].angle) + abs(keylines[j].angle);
+                    float degreeDiff = abs(keylines[j].angle - keylines[i].angle);
+                    if ((abs(degreeSum - 3.1415926) < degreeThres) || degreeDiff < degreeThres) {//angle < 5 degrees
+                        float distanceSS = (keylines[i].startPointX - keylines[j].startPointX) *
+                                           (keylines[i].startPointX - keylines[j].startPointX) +
+                                           (keylines[i].startPointY - keylines[j].startPointY) *
+                                           (keylines[i].startPointY - keylines[j].startPointY);
+                        float distanceSE = (keylines[i].startPointX - keylines[j].endPointX) *
+                                           (keylines[i].startPointX - keylines[j].endPointX) +
+                                           (keylines[i].startPointY - keylines[j].endPointY) *
+                                           (keylines[i].startPointY - keylines[j].endPointY);
+                        float distanceES = (keylines[i].endPointX - keylines[j].startPointX) *
+                                           (keylines[i].endPointX - keylines[j].startPointX) +
+                                           (keylines[i].endPointY - keylines[j].startPointY) *
+                                           (keylines[i].endPointY - keylines[j].startPointY);
+                        float distanceEE = (keylines[i].endPointX - keylines[j].endPointX) *
+                                           (keylines[i].endPointX - keylines[j].endPointX) +
+                                           (keylines[i].endPointY - keylines[j].endPointY) *
+                                           (keylines[i].endPointY - keylines[j].endPointY);
+                        float midXi = (keylines[i].startPointX + keylines[i].endPointX) / 2;
+                        float midYi = (keylines[i].startPointY + keylines[i].endPointY) / 2;
+                        float midXj = (keylines[j].startPointX + keylines[j].endPointX) / 2;
+                        float midYj = (keylines[j].startPointY + keylines[j].endPointY) / 2;
+                        float distanceMid = (midXi - midXj) * (midXi - midXj) + (midYi - midYj) * (midYi - midYj);
+                        bool SS = false, SE = false, ES = false, EE = false, Mid = false;
+                        if (distanceSS < distanceThres)SS = true;
+                        if (distanceSE < distanceThres)SE = true;
+                        if (distanceEE < distanceThres)EE = true;
+                        if (distanceES < distanceThres)ES = true;
+                        if (distanceMid < distanceThres)Mid = true;
+                        if (SS || SE || EE || ES || Mid) {//start points or end points or mid-points are close
+                            ///Merge merge merge
+                            mergeSelectedKeyLine(keylines[i], keylines[j]);
+                            keylineMergeFlags[j] = true;
+                        }
+                    }
+                }
+            }
+        }
+        ///Check and reOrder startPoint and endPoint(startPoint closer to Origin)
+        for (int i = 0; i < keylines.size(); i++) {
+            if (keylineMergeFlags[i])
+                continue;
+            if (keylines[i].octave == 0) {
+                double distanceStart = keylines[i].startPointX * keylines[i].startPointX +
+                                       keylines[i].startPointY * keylines[i].startPointY;
+                double distanceEnd = keylines[i].endPointX * keylines[i].endPointX +
+                                     keylines[i].endPointY * keylines[i].endPointY;
+                if(distanceEnd<distanceStart){//If endpoint is closer to origin, swap it
+                    //cout<<"swap start point "<<keylines[i].startPointX<<" "<<keylines[i].startPointY<<" and "<<keylines[i].endPointX<<" "<<keylines[i].endPointY<<endl;
+                    float tempX = keylines[i].startPointX, tempY = keylines[i].startPointY;
+                    keylines[i].startPointX = keylines[i].endPointX, keylines[i].startPointY = keylines[i].endPointY;
+                    keylines[i].endPointX = tempX, keylines[i].endPointY = tempY;
+                    //cout<<"rslt start point "<<keylines[i].startPointX<<" "<<keylines[i].startPointY<<" and "<<keylines[i].endPointX<<" "<<keylines[i].endPointY<<endl;
+                }
+            }
+        }
+    }
+
+    /**
+    * Connect LSDLines with LiDAR point
+    */
+    void Frame::connectLSD2LiDAR(vector<mLine> &mLSDLinesIN, vector<PtLsr> &LiDARPtIN, cv::Mat im_in) {
+        ///Step 1 store keyLines in terms of Ax+By+C = 0, from two endpoints.
+        vector<vector<float>> keyLineABCs;//
+        for (auto &i: mLSDLinesIN) {
+            float x1 = i.LSD.startPointX, y1 = i.LSD.startPointY;
+            float x2 = i.LSD.endPointX, y2 = i.LSD.endPointY;
+            float A = y2 - y1, B = x1 - x2, C = x2 * y1 - x1 * y2;
+            vector<float> thisLine;
+            thisLine.push_back(A), thisLine.push_back(B), thisLine.push_back(C);
+            keyLineABCs.push_back(thisLine);
+            //cout<<"each mLSDLine LiDAR size "<<i.LiDARPtIDs.size()<<endl;
+        }
+        ///Step 2 pair up LSD lines and lidar points
+        //vector<int> lidarPt2LSD(LiDAR2d.size(), -1);
+        for (auto &i: LiDARPtIN) {
+            double x0 = i.pt2d.x, y0 = i.pt2d.y;
+            ///Step 2.1 First, search for 3 nearest lines first
+            float minDistance1 = 2, minDistance2 = 2, minDistance3 = 2;
+            int index1 = -1, index2 = -1, index3 = -1;
+            for (int j = 0; j < mLSDLinesIN.size(); j++) {
+                ///Step 2.1.1 Condition 1 : Lidar 2d point should be inside of LSD's bounding box
+                bool XinBox = false, YinBox = false;
+                float x1 = mLSDLinesIN[j].LSD.startPointX, y1 = mLSDLinesIN[j].LSD.startPointY;
+                float x2 = mLSDLinesIN[j].LSD.endPointX, y2 = mLSDLinesIN[j].LSD.endPointY;
+                if (x1 > x2) {
+                    float tmp = x1;
+                    x1 = x2, x2 = tmp;
+                }
+                if (y1 > y2) {
+                    float tmp = y1;
+                    y1 = y2, y2 = tmp;
+                }
+                XinBox = (x0 > (x1 - 5) && x0 < (x2 + 5)), YinBox = (y0 > (y1 - 5) && y0 < (y2 + 5));
+                if (XinBox && YinBox) {
+                    ///Step 2.1.2 Condition 2: point to line distance --- d = abs(Ax0+By0+C) / abs(sqrt(A^2+B^2))
+                    float A = keyLineABCs[j][0], B = keyLineABCs[j][1], C = keyLineABCs[j][2];
+                    float dis = abs(A * x0 + B * y0 + C) /
+                                sqrt(A * A + B * B);
+                    if (dis < minDistance1) {
+                        minDistance3 = minDistance2, index3 = index2;
+                        minDistance2 = minDistance1, index2 = index1;
+                        minDistance1 = dis, index1 = j;
+                    } else {
+                        if (dis >= minDistance1 && dis < minDistance2) {
+                            minDistance3 = minDistance2, index3 = index2;
+                            minDistance2 = dis, index2 = j;
+                        } else {
+                            if (dis >= minDistance2 && dis < minDistance3) {
+                                minDistance3 = dis, index3 = j;
+                            }
+                        }
+                    }
+                }
+            }
+            //Step 2.2 Check 3 nearest lines
+            if (index1 > -1) {
+                i.LSDlineID = mLSDLinesIN[index1].ID;
+                i.LSDline = &mLSDLinesIN[index1];
+                //LSD line connect to LiDAR
+                int LiDARPtID = i.ptID;
+                mLSDLinesIN[index1].LiDARPtIDs.push_back(i.ptID);
+                //cout<<"mLSDLine "<<index1<<" push back LiDAR ID "<<i.ptID<<endl;
+                //cout<<i.ID<<endl;
+            } else {
+                if (index2 > -1) {
+                    i.LSDlineID = mLSDLinesIN[index2].ID;
+                    i.LSDline = &mLSDLinesIN[index2];
+                    //LSD line connect to LiDAR
+                    int LiDARPtID = i.ptID;
+                    mLSDLinesIN[index2].LiDARPtIDs.push_back(i.ptID);
+                    //cout<<"mLSDLine "<<index2<<" push back LiDAR ID "<<i.ptID<<endl;
+                    //cout<<i.ID<<endl;
+                } else {
+                    if (index3 > -1) {
+                        i.LSDlineID = mLSDLinesIN[index3].ID;
+                        i.LSDline = &mLSDLinesIN[index3];
+                        //float LiDARPtID = float(i.scanID) + float(i.pointID) / 10000;
+                        int LiDARPtID = i.ptID;
+                        mLSDLinesIN[index3].LiDARPtIDs.push_back(i.ptID);
+                        //cout<<"mLSDLine "<<index3<<" push back LiDAR ID "<<i.ptID<<endl;
+                        //cout<<i.ID<<endl;
+                    }
+                }
+            }
+        }
+
+        ///Check
+//cvtColor(im_in, im_in, CV_GRAY2BGR);
+//        for (const auto &i: LiDARPtIN) {
+//            if (i.LSDlineID > -1) {
+//                cv::circle(im_in, cvPoint(i.pt2d.x, i.pt2d.y), 1, cv::Scalar(0, 0, 255), 1);
+//                //cout<<"start "<<i.LSDline->LSD.startPointX<<" "<<i.LSDline->LSD.startPointY<<" ends "<<i.LSDline->LSD.endPointX<<" "<<i.LSDline->LSD.endPointY<<endl;
+//                cv::line(im_in, cvPoint(i.LSDline->LSD.startPointX, i.LSDline->LSD.startPointY),
+//                         cvPoint(i.LSDline->LSD.endPointX, i.LSDline->LSD.endPointY), cv::Scalar(0, 255, 0), 1);
+//                imshow("LSD2LiDAR", im_in);
+//                //waitKey(10);
+//            } else {
+//                cv::circle(im_in, cvPoint(i.pt2d.x, i.pt2d.y), 1, cv::Scalar(102, 255, 255), 1);
+//                imshow("LSD2LiDAR", im_in);
+//                //waitKey(0.1);
+//            }
+//        }
+//        imshow("LSD2LiDAR", im_in);
+//        cv::waitKey(1);
+//        for (int i = 0; i <mLSDLinesIN.size();i++) {
+//            cout << "mLSDLine "<<i<<" contains LiDAR point number " << mLSDLinesIN[i].LiDARPtIDs.size() << endl;
+//        }
+//        int pause = 0;
+    }
+
+    /**
+ * @brief fitting a line for the lsd-lidar intersection
+ * @param lineInputs: input mline members
+ * @param LiDARInputs: all mLiDARPoint
+ * @return
+ */
+    int LineFitting(vector<mLine> &lineInputs, vector<PtLsr> &LiDARInputs, cv::Mat im) {
+//        cv::Mat im_clone = im.clone();
+//        cv::cvtColor(im,im_clone,CV_GRAY2BGR);
+        for (int lineIndex = 0; lineIndex < lineInputs.size(); lineIndex++) {
+            mLine *line = &lineInputs[lineIndex];
+            if (!line->LiDARPtIDs.empty()) {
+                ///Condition 1: check if this line contains LiDAR points from different scans
+                //int scanID1 = -1, scanID2 = -1;
+                int scanCounter = 0;//count scan number
+                map<int, int> index2Scan;//store the pairs of <scanID , index(in another vector)>
+                for (int i = 0; i < line->LiDARPtIDs.size(); i++) {
+                    int index = line->LiDARPtIDs[i];
+                    //int scanID = floor(LiDARInputs[lidarID].intensity);
+                    int scanID = LiDARInputs[index].scanID;
+                    if(index2Scan.find(scanID)==index2Scan.end()){
+                        index2Scan.insert({scanID, scanCounter});
+                        scanCounter++;
+                    }
+//                    if (scanID1 != scanID) {
+//                        index2Scan.insert({scanID, scanCounter});
+//                        scanID1 = scanID;
+//                        scanCounter++;
+//                    }
+                }
+                if (scanCounter < 2)
+                    continue;
+                ///NOTE both two ways of pcl function won't work. point is too less
+                ///So simply manually calculate a line.
+                vector<vector<PtLsr>> allPoints;
+                for (int i = 0; i < scanCounter; i++) {
+                    vector<PtLsr> pointThisScan;
+                    allPoints.push_back(pointThisScan);
+                }
+                cout<<"line "<<lineIndex<<" LiDARpt num "<<line->LiDARPtIDs.size()<<endl;
+                for (int i = 0; i < line->LiDARPtIDs.size(); i++) {
+                    int lidarID = line->LiDARPtIDs[i];
+                    //int scanID = floor(LiDARInputs[lidarID].intensity);
+                    int scanID = LiDARInputs[lidarID].scanID;
+                    int scanIndex = (index2Scan.find(scanID))->second;
+                    allPoints[scanIndex].push_back(LiDARInputs[lidarID]);
+                }
+                vector<cv::Point3d> meanPoints;
+                //TODO mean with weights
+                for (int i = 0; i < allPoints.size(); i++) {
+                    float X_sum = 0, Y_sum = 0, Z_sum = 0;
+                    int clusterSize = allPoints[i].size();
+                    for (int j = 0; j < clusterSize; j++) {
+                        X_sum += allPoints[i][j].pt3d.x;
+                        Y_sum += allPoints[i][j].pt3d.y;
+                        Z_sum += allPoints[i][j].pt3d.z;
+                    }
+                    cv::Point3d newMeanPoint((X_sum / clusterSize), (Y_sum / clusterSize), (Z_sum / clusterSize));
+                    meanPoints.push_back(newMeanPoint);
+                }
+                //3d Line should be the longest connect of any two mean points above
+                float maxDis = 0;
+                int selectedI = -1, selectedJ = -1;
+                for (int i = 0; i < meanPoints.size(); i++) {
+                    for (int j = 0; j < meanPoints.size(); j++) {
+                        if (i == j)
+                            continue;
+                        double distance = 0;
+                        distance = sqrt((meanPoints[i].x - meanPoints[j].x) * (meanPoints[i].x - meanPoints[j].x)
+                                        + (meanPoints[i].y - meanPoints[j].y) * (meanPoints[i].y - meanPoints[j].y)
+                                        + (meanPoints[i].z - meanPoints[j].z) * (meanPoints[i].z - meanPoints[j].z));
+                        if (distance > maxDis) {
+                            maxDis = distance;
+                            selectedI = i;
+                            selectedJ = j;
+                        }
+                    }
+                }
+                line->fit3DLine = true;
+                line->pt3dStart.x = meanPoints[selectedI].x;
+                line->pt3dStart.y = meanPoints[selectedI].y;
+                line->pt3dStart.z = meanPoints[selectedI].z;
+                line->pt3dEnd.x = meanPoints[selectedJ].x;
+                line->pt3dEnd.y = meanPoints[selectedJ].y;
+                line->pt3dEnd.z = meanPoints[selectedJ].z;
+                cout << "line ID " << line->ID << " found a line " << line->pt3dStart.x << " " << line->pt3dStart.y << " "
+                     << line->pt3dStart.z << " to "
+                     << line->pt3dEnd.x << " " << line->pt3dEnd.y << " " << line->pt3dEnd.z;
+                double l = meanPoints[selectedI].x - meanPoints[selectedJ].x,
+                        m = meanPoints[selectedI].y - meanPoints[selectedJ].y,
+                        n = meanPoints[selectedI].z - meanPoints[selectedJ].z;
+                cout<<" vector "<<l<<" "<<m<<" "<<n<<endl;
+                ///equation: (x-x1)/l=(y-y1)/m=(z-z1)/n
+                ///If this line is ground line
+                int groundPtNum = 0, nonGroundPtNum = 0;
+                for (int i = 0; i < allPoints.size(); i++) {
+                    for (int j = 0; j < allPoints[i].size(); j++) {
+                        if (allPoints[i][j].low) {
+                            groundPtNum++;
+                            //cv::circle(im_clone,cv::Point2d(allPoints[i][j].pt2d.x,allPoints[i][j].pt2d.y),3, cv::Scalar(0,0,255),1);
+                        } else {
+                            nonGroundPtNum++;
+                            //cv::circle(im_clone,cv::Point2d(allPoints[i][j].pt2d.x,allPoints[i][j].pt2d.y),3, cv::Scalar(255,0,0),1);
+                        }
+
+                    }
+                }//if 3d line on the ground
+                if (groundPtNum == 0) {
+                    line->nonfloorLine = true;
+                    cout << "ground point number 0, non floor line " << endl;
+                } else {
+                    if (nonGroundPtNum == 0) {
+                        line->nonfloorLine = false;
+                        cout << "non ground point number 0, floor line " << endl;
+                    } else {
+                        float ratio = float(nonGroundPtNum) / float(groundPtNum + nonGroundPtNum);
+                        if (ratio > 0.7) {
+                            line->nonfloorLine = true;
+                            cout << "(nonground pt / total pt) ratio " << ratio << " non floor line " << endl;
+                        }else{
+                            line->nonfloorLine = false;
+                        }
+                    }
+                }
+
+                ///NOTE both two function won't work. point is too less
+                ///So simply manually calculate a line.
+//            ///FUNCTION1 Step 1 fill up the container
+//            pcl::PointCloud<pcl::PointXYZ>::Ptr allPoints(new pcl::PointCloud<pcl::PointXYZ>);
+//            int counter = 0;
+//            for(int idx : line.LiDARPtIDs){
+//                allPoints->points.push_back(pcl::PointXYZ(LiDARInputs[idx].p3DonCam.x,LiDARInputs[idx].p3DonCam.x,LiDARInputs[idx].p3DonCam.x));
+//                counter++;
+//            }
+//            allPoints->resize(counter);
+//            allPoints->width = allPoints->size();
+//            allPoints->height = 1;
+//            allPoints->is_dense=false;
+//            ///Step 2
+//            pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+//            pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+//            pcl::SACSegmentation<pcl::PointXYZ> seg;
+//            seg.setOptimizeCoefficients(true);            //Optional
+//            seg.setMethodType(pcl::SACMODEL_LINE);
+//            seg.setModelType(pcl::SAC_RANSAC);
+//            seg.setDistanceThreshold(0.1);
+//            seg.setInputCloud(allPoints);
+//            seg.segment(*inliers, *coefficients);
+////            if (inliers->indices.empty())
+////                continue;
+//            ///FUNCTION 2 .Step play with PCL functions : RANSAC
+//            pcl::SampleConsensusModelLine<pcl::PointXYZ>::Ptr model_line(new pcl::SampleConsensusModelLine<pcl::PointXYZ>(allPoints));
+//            pcl::RandomSampleConsensus<pcl::PointXYZ> ransac(model_line);
+//            ransac.setDistanceThreshold(0.1);    //内点到模型的最大距离
+//            ransac.computeModel();
+//            ransac.refineModel();
+//            vector<int> inliers2;
+//            ransac.getInliers(inliers2);
+//            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_line(new pcl::PointCloud<pcl::PointXYZ>);
+//            pcl::copyPointCloud<pcl::PointXYZ>(*allPoints, inliers2, *cloud_line);
+////            cout<<"cloud_line RANSAC size : "<<cloud_line->points.size()<<endl;
+            }
+        }
+//        cv::imshow("im_clone",im_clone);
+//        cv::waitKey(1);
+//        return 1;
+    }
+
+
+    /**
+     * @brief Under LiDAR coordination, this function extract edge feature and plane feature from LiDAR source (ALOAM)
      */
     void Frame::ExtractLiDARFeature(){
+        ///Step 0: prepare data container
+        for (int i = 0; i < 16; i++) {
+            pcl::PointCloud<pcl::PointXYZI> newPointCloud;
+            mLaser16ScansPoints.push_back(newPointCloud);
+        }
         ///Step1 : fetch 3d lidar points from mLaserPoints (lidar coordination)
         TicToc t_whole;
         TicToc t_prepare;
-        std::vector<int> scanStartInd(N_SCANS, 0);
-        std::vector<int> scanEndInd(N_SCANS, 0);
-        pcl::PointCloud<pcl::PointXYZ> laserCloudIn;
+//        std::vector<int> scanStartInd(N_SCANS, 0);
+//        std::vector<int> scanEndInd(N_SCANS, 0);
+        std::vector<int> scanStartInd(16, 0);
+        std::vector<int> scanEndInd(16, 0);
+        pcl::PointCloud<pcl::PointXYZ> laserCloudIn;//all 64 scans
         std::vector<int> indices;
         int lsrPtNum = mLaserPoints.size();
         laserCloudIn.resize(lsrPtNum);
@@ -388,16 +804,22 @@ namespace ORB_SLAM2
         //printf("end Ori %f\n", endOri);
         bool halfPassed = false;
         int count = cloudSize;
+        int count16scan = 0;
         PointType point;
         std::vector<pcl::PointCloud<PointType>> laserCloudScans(N_SCANS);
-        ///Added---test alingment issue
-        for(int i = 0; i < N_SCANS;i++)
-            laserCloudScans[i].resize(4000);
-        std::vector<int> eachScanIndexs;
-        for(int i = 0; i < N_SCANS;i++)
-            eachScanIndexs.push_back(0);
+        std::vector<pcl::PointCloud<PointType>> laserCloud16Scans(16);
+        ///Added---for pcl alignment issue
+        //QUESTION? this is because in some case, when system pushback point to vector<pcl::pointcloud<pointtype>> could lead pcl alignment issue.
+        //So init the vector's each pointcloud with same size the resize it.
+//        for(int i = 0; i < N_SCANS;i++)
+//            laserCloudScans[i].resize(4000);
+//        for(int i = 0; i < 16;i++)
+//            laserCloud16Scans[i].resize(4000);
+//        std::vector<int> eachScanIndexs;//eachScan's size since has been resize to 4000.
+//        for(int i = 0; i < N_SCANS;i++)
+//            eachScanIndexs.push_back(0);
         // 遍历每一个点
-        cout<<"cloudSize "<<cloudSize<<endl;
+        cout<<"input cloudSize "<<cloudSize;
         for (int i = 0; i < cloudSize; i++)
         {
             point.x = laserCloudIn.points[i].x;
@@ -481,29 +903,36 @@ namespace ORB_SLAM2
             float relTime = (ori - startOri) / (endOri - startOri);
             // 整数部分是scan的索引，小数部分是相对起始时刻的时间
             point.intensity = scanID + scanPeriod * relTime;
-            ///Added
-            int index = eachScanIndexs[scanID];
-            laserCloudScans[scanID].points[index] = point;
-            eachScanIndexs[scanID]++;
+            ///Added --- for pcl alignment problem
+//            int index = eachScanIndexs[scanID];
+//            laserCloudScans[scanID].points[index] = point;
+//            eachScanIndexs[scanID]++;
             // 根据scan的idx送入各自数组
-            //laserCloudScans[scanID].push_back(point);
+            laserCloudScans[scanID].push_back(point);//comment if met alignment issue
+            if (scanID % 4 == 0) {///added
+                laserCloud16Scans[scanID / 4].push_back(point);
+                mLaser16ScansPoints[scanID / 4].push_back(point);
+                count16scan++;
+            }
         }
-        ///Added---otherwise the size may wrong?
-        for(int i=0;i<N_SCANS;i++){
-            //cout<<"reset laserCloudScans["<<i<<"] from "<<laserCloudScans[i].size();
-            laserCloudScans[i].resize(eachScanIndexs[i]);
-            //cout<<" to "<<laserCloudScans[i].size()<<endl;
-        }
+        ///Added---for pcl alignment problem since the pointCloud size was resize to 4000 above
+//        for(int i=0;i<N_SCANS;i++){
+//            //cout<<"reset laserCloudScans["<<i<<"] from "<<laserCloudScans[i].size();
+//            laserCloudScans[i].resize(eachScanIndexs[i]);
+//            //cout<<" to "<<laserCloudScans[i].size()<<endl;
+//        }
         // cloudSize是有效的点云的数目
         cloudSize = count;
-        printf("points size %d \n", cloudSize);
-
+        int cloudSize16 = laserCloud16Scans.size();
+        printf(" valid points size %d ", cloudSize);
+        printf(" 16 scans point size %d \n",count16scan);
+        // 全部集合到一个点云里面去，但是使用两个数组标记起始和结果，这里分别+5和-6是为了计算曲率方便
+        ///Added--- 16 instead of 64
         pcl::PointCloud<PointType>::Ptr laserCloud(new pcl::PointCloud<PointType>());
-        // 全部集合到一个点云里面去，但是使用两个数组标记其实和结果，这里分别+5和-6是为了计算曲率方便
-        for (int i = 0; i < N_SCANS; i++)
-        {
+        for (int i = 0; i < 16; i++) {//N_SCANS
             scanStartInd[i] = laserCloud->size() + 5; //most left 5 and right 6 didn't count curve value
-            *laserCloud += laserCloudScans[i];
+            //*laserCloud += laserCloudScans[i];
+            *laserCloud += laserCloud16Scans[i];
             scanEndInd[i] = laserCloud->size() - 6;
         }
 
@@ -530,7 +959,7 @@ namespace ORB_SLAM2
 
         float t_q_sort = 0;
         // 遍历每个scan
-        for (int i = 0; i < N_SCANS; i++)
+        for (int i = 0; i < 16; i++)//N_SCANS
         {
             // 没有有效的点了，就continue
             if( scanEndInd[i] - scanStartInd[i] < 6) //this scan soo small
@@ -686,55 +1115,551 @@ namespace ORB_SLAM2
         //printf("sort q time %f \n", t_q_sort);
         //printf("seperate points time %f \n", t_pts.toc());
 
-        ///Check if laserCloudIn contains mCornerPointSharpe
-        //for(int i =0; i <laserCloudIn.size();i++){
-        //    cout<<laserCloudIn[i].pt3d.x<<" "<<laserCloudIn[i].pt3d.y<<" "<<laserCloudIn[i].pt3d.z<<endl;
-        //}
-        //cout<<"---------------------------------------------------------"<<endl;
         ///Step 3 : pass features to frame member
         mCornerPointsSharp.resize(cornerPointsSharp.size());
         mCornerPointsSharp=cornerPointsSharp;
-//        for(int i = 0; i <mCornerPointsSharp.size();i++)
-//        {
-//            cout<<mCornerPointsSharp.points[i]<<endl;
-//        }
         mCornerPointsLessSharp.resize(cornerPointsLessSharp.size());
         mCornerPointsLessSharp=cornerPointsLessSharp;
         mSurfPointsFlat.resize(surfPointsFlat.size());
         mSurfPointsFlat=surfPointsFlat;
         mSurfPointsLessFlat.resize(surfPointsLessFlat.size());
         mSurfPointsLessFlat=surfPointsLessFlat;
-        printf("Corner Pt: %d, Less Corner : %d, Flat Pt: %d, Less Flat Pt : %d \n", mCornerPointsSharp.size(),mCornerPointsLessSharp.size(),mSurfPointsFlat.size(),mSurfPointsLessFlat.size());
+        printf("Corner Pt: %lu, Less Corner : %lu, Flat Pt: %lu, Less Flat Pt : %lu \n", mCornerPointsSharp.size(),mCornerPointsLessSharp.size(),mSurfPointsFlat.size(),mSurfPointsLessFlat.size());
         int pause = 1;
     }
 
+    ///added module
+    void Frame::PlaneFitting() {
+        ///Step 1 store all lidar point into container
+        int actualNum = 0;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr allPoints(new pcl::PointCloud<pcl::PointXYZ>);
+        allPoints->resize(mLaserPt_cam.size());
+        for (int i = 0; i < mLaserPt_cam.size(); i++) {
+            if (mLaserPt_cam[i].low) {
+                allPoints->points[actualNum].x = float(mLaserPt_cam[i].pt3d.x);
+                allPoints->points[actualNum].y = float(mLaserPt_cam[i].pt3d.y);
+                allPoints->points[actualNum].z = float(mLaserPt_cam[i].pt3d.z);
+                actualNum++;
+            }
+        }
+        allPoints->resize(actualNum);
+        cout<<"lower ground point number "<<actualNum<<endl;
+        ///Step 2 DownSampling and calc norm
+        //NOTE lose the index after down-sample
+        pcl::PointCloud<pcl::PointXYZ>::Ptr downSampledPts(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::VoxelGrid<pcl::PointXYZ> sor;
+        sor.setInputCloud(allPoints);
+        sor.setLeafSize(0.05f, 0.05f, 1.0f); //KITTI x forward, y left, z up; Camera ref x->right, y->down, z->front
+        sor.filter(*downSampledPts);
+        cout << " downsample left points " << downSampledPts->points.size() << endl;
+        pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+        normal_estimator.setSearchMethod(tree);
+        normal_estimator.setInputCloud(downSampledPts);
+        normal_estimator.setKSearch(200);
+        normal_estimator.compute(*normals);
+        ///step 3 region growing
+        pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+        reg.setMinClusterSize(500);
+        reg.setMaxClusterSize(10000);
+        reg.setSearchMethod(tree);
+        reg.setNumberOfNeighbours(100);//too little will cause run time error
+        reg.setInputCloud(downSampledPts);
+        reg.setInputNormals(normals);
+        reg.setSmoothnessThreshold(5.0 / 180.0 * M_PI);
+        reg.setCurvatureThreshold(5.0);
+        //extract each cluster
+        //clock_t startTime = clock();
+        std::vector<pcl::PointIndices> clusters;
+        reg.extract(clusters);
+        //clock_t endTime = clock();
+        //double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
+        //cout << "Region Growing " << timeUsed << " sec ";
+        ///step 4  RANSAC plane fitting
+        for (int ci = 0; ci < clusters.size(); ci++) {
+            pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
+            thisCloud->points.resize(clusters[ci].indices.size());
+            thisCloud->height = 1;
+            thisCloud->width = clusters[ci].indices.size();
+            //cout<<" | cluster contains"<<clusters[ci].indices.size();
+            for (int index = 0; index < clusters[ci].indices.size(); index++) {
+                thisCloud->points[index].x = downSampledPts->points[clusters[ci].indices[index]].x;
+                thisCloud->points[index].y = downSampledPts->points[clusters[ci].indices[index]].y;
+                thisCloud->points[index].z = downSampledPts->points[clusters[ci].indices[index]].z;
+                //cout<<"cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
+            }
+            mPlane foundPlane;
+            //startTime = clock();
+            pcl::PointIndices inliersOUT;
+            int inPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
+            //endTime = clock();
+            //double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
+            //cout << " RANSAC plane " << timeUsed << " sec. Inliners num: " << inPlaneNum;
+            if (inPlaneNum > 0) {
+                int planeID = this->mvPlanes.size();
+                foundPlane.PlaneId = planeID;
+                this->mvPlanes.push_back(foundPlane);
+                cout<<foundPlane.A<<" "<<foundPlane.B<<" "<<foundPlane.C<<" "<<foundPlane.D<<endl;
+            }
+        }
+        ///Step 5 connect all LiDAR points with Found Plane (from down-sampled cluster)
+        int PlaneLiDARNum2 = 0;
+        for(auto &eachPT:mLaserPt_cam){
+            if(eachPT.low){//save half-time
+                for(int j=0;j< mvPlanes.size();j++){
+                    float A = mvPlanes[j].A, B = mvPlanes[j].B, C = mvPlanes[j].C, D = mvPlanes[j].D;
+                    float distance = (abs(eachPT.pt3d.x * A + eachPT.pt3d.y * B + eachPT.pt3d.z * C + D)) /
+                                     (sqrt(A * A + B * B + C * C));
+                    if (distance < 0.10) {
+                        eachPT.planeID = j;
+//                        eachPT.A = A, eachPT.B = B, eachPT.C = C, eachPT.D = D;
+                        PlaneLiDARNum2++;
+                    }
+                }
+            }
+        }
+    }
+
+    //AX+BY+CZ+D=0;
+    int Frame::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, mPlane &foundPlane, pcl::PointIndices &inliersOutput)
+    {
+        //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = inputCloud.makeShared();
+        pcl::ModelCoefficients::Ptr  coefficients(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        //create the segmentation objects
+        pcl::SACSegmentation<pcl::PointXYZ> seg;
+        //Optional
+        seg.setOptimizeCoefficients(true);
+        //Mandatory
+        seg.setMethodType(pcl::SACMODEL_PLANE);
+        seg.setModelType(pcl::SAC_RANSAC);
+        seg.setDistanceThreshold(0.05);
+
+        seg.setInputCloud(cloud);
+        seg.segment(*inliers, *coefficients);
+        if(inliers->indices.size()==0)
+            return 0;
+        inliersOutput = *inliers;
+        foundPlane.A = coefficients->values[0];foundPlane.B = coefficients->values[1];
+        foundPlane.C = coefficients->values[2];foundPlane.D = coefficients->values[3];
+        for(int i = 0; i < inliers->indices.size();i++)
+        {
+            double x = cloud->points[inliers->indices[i]].x;
+            double y = cloud->points[inliers->indices[i]].y;
+            double z = cloud->points[inliers->indices[i]].z;
+            //foundPlane.points3D.push_back(cv::Point3d(x,y,z));
+            //cout<<"inliner push back "<<x<<" "<<y<<" "<<z<<endl;
+        }
+        return inliers->indices.size();
+    }
+
+
+/**
+ * Connect ORB point with LiDAR plane Point.
+ * The idea is get depth information from LiDAR plane point
+ * @param LiDARPoints
+ * @param ORBFeatures
+ * @param extractedPlanes
+ * @param threshold
+ * @param im
+ */
+    void Frame::connectORB2Plane(vector<PtLsr> &LiDARPoints, std::vector<cv::KeyPoint> &ORBFeatures, vector<ORB_SLAM2::mPlane> &extractedPlanes, double threshold, cv::Mat im) {
+        double thresholdSquare = threshold * threshold;
+        for (int i = 0; i < ORBFeatures.size();i++) {
+            double minDistance = 1000;
+            double distance = 10000;
+            int minLiDARindex = -1;
+            double lix, liy;
+//            cv::circle(im, cv::Point(ORBFeatures[i].pt.x, ORBFeatures[i].pt.y), 3, cv::Scalar(0, 0, 255), 1);
+//            imshow("function connectORB2Plane : on plane ORB", im);
+//            waitKey(1);
+            for (int j = 0; j < LiDARPoints.size(); j++) {
+                if (LiDARPoints[j].planeID > -1) {
+                    distance = (LiDARPoints[j].pt2d.x - ORBFeatures[i].pt.x) * (LiDARPoints[j].pt2d.x - ORBFeatures[i].pt.x)
+                               +
+                               (LiDARPoints[j].pt2d.y - ORBFeatures[i].pt.y) * (LiDARPoints[j].pt2d.y - ORBFeatures[i].pt.y);
+                    if (distance < thresholdSquare) {
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            minLiDARindex = j ;
+                        }
+                    }
+                }
+            }
+            if (minLiDARindex > -1) {
+                ///Option 1 : depth from nearest LiDAR Plane point directly
+                mvORBAttributions[i].floorPlaneID = LiDARPoints[minLiDARindex].planeID;
+                mvORBAttributions[i].depth = LiDARPoints[minLiDARindex].pt3d.z;
+                mvORBAttributions[i].depthSource = 1;
+                double X = (ORBFeatures[i].pt.x - cx) * LiDARPoints[minLiDARindex].pt3d.z / fx,
+                        Y = (ORBFeatures[i].pt.y - cy) * LiDARPoints[minLiDARindex].pt3d.z / fy;
+                mvORBAttributions[i].p3d_est.x = X, mvORBAttributions[i].p3d_est.y = Y, mvORBAttributions[i].p3d_est.z = LiDARPoints[minLiDARindex].pt3d.z;
+                //cout<<"option 1 "<<endl;
+                //cout<<ORBFeature.p3d_est.x<<" "<<ORBFeature.p3d_est.y<<" "<<ORBFeature.p3d_est.z<<endl;
+                lix = LiDARPoints[minLiDARindex].pt2d.x, liy = LiDARPoints[minLiDARindex].pt2d.y;//draw line to the nearest LiDAR Point
+                if (mvORBAttributions[i].floorPlaneID > -1)
+                    cv::line(im, cv::Point(ORBFeatures[i].pt.x, ORBFeatures[i].pt.y), cv::Point(lix, liy),
+                             cv::Scalar(0, 255, 255));
+                ///Option 2 : depth from large plane
+                mvORBAttributions[i].floorPlaneID = LiDARPoints[minLiDARindex].planeID;
+                ///Given Ax+BY+CZ+D=0 and u=fx*X/Z+cx, v = fy*Y/Z + cy
+                ///Z = -D / (A*(u-cx)/fx + B*(v-cy)/fy + C)
+                double A = extractedPlanes[mvORBAttributions[i].floorPlaneID].A, B = extractedPlanes[mvORBAttributions[i].floorPlaneID].B, C = extractedPlanes[mvORBAttributions[i].floorPlaneID].C, D = extractedPlanes[mvORBAttributions[i].floorPlaneID].D;
+                double u = ORBFeatures[i].pt.x, v = ORBFeatures[i].pt.y;
+                //cout<<"option 2 "<<endl;
+                //cout<<"u "<<u<<" v "<<v<<" A "<<A<<" B "<<B<<" C "<<C<<" D "<<D<<" fx "<<fx<<" fy "<<fy<<" cx "<<cx<<" cy "<<cy<<" ---------------------------------------------------------------------"<<endl;
+                double Z = -D / (A*(u-cx)/fx + B*(v-cy)/fy + C); //from Ax+By+Cz + D =0;
+                mvORBAttributions[i].depth = Z;
+                mvORBAttributions[i].depthSource = 1;
+                X = (u - cx) * Z / fx, Y = (v - cy) * Z / fy;
+                mvORBAttributions[i].p3d_est.x = X, mvORBAttributions[i].p3d_est.y = Y, mvORBAttributions[i].p3d_est.z = Z;
+                //cout<<ORBFeature.p3d_est.x<<" "<<ORBFeature.p3d_est.y<<" "<<ORBFeature.p3d_est.z<<endl;
+            }
+        }
+        //draw
+//        cv::Mat im_clone = im.clone();
+//        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
+//        //show floor lidar points
+//        for(int i=0;i<LiDARPoints.size();i++){
+//            if(LiDARPoints[i].planeID>-1){
+//                cv::circle(im_clone, cv::Point(LiDARPoints[i].pt2d.x,LiDARPoints[i].pt2d.y),1,cv::Scalar(0,255,255),1);
+//            }
+//        }
+//        imshow("function connectORB2Plane : on plane ORB", im_clone);
+//        cv::waitKey(1);
+//        for (int i = 0; i < mvORBAttributions.size(); i++) {
+//            if (mvORBAttributions[i].floorPlaneID > -1) {
+//                cv::circle(im_clone, cv::Point(ORBFeatures[i].pt.x, ORBFeatures[i].pt.y), 3, cv::Scalar(0, 255, 0), 1);
+//                cv::rectangle(im_clone, cv::Point(ORBFeatures[i].pt.x - 5, ORBFeatures[i].pt.y - 10),
+//                              cv::Point(ORBFeatures[i].pt.x + 5, ORBFeatures[i].pt.y + 10), cv::Scalar(0, 255, 255));
+//            } else {
+//                cv::circle(im_clone, cv::Point(ORBFeatures[i].pt.x, ORBFeatures[i].pt.y), 3, cv::Scalar(0, 0, 255), 1);
+//            }
+//        }
+//        imshow("function connectORB2Plane : on plane ORB", im_clone);
+//        cv::waitKey(1);
+//        int pause = 0;
+    }
+
+    /**
+ * Connect ORBFeature to LSD lines
+ * find 3 nearest LSD lines, check the point to endpoints distance
+ * distance to 2 endpoints should ~= line length
+ */
+    void Frame::connectORB2LSD(vector<mLine> &mLSDLinesIN, vector<cv::KeyPoint> &ORBin, cv::Mat im) {
+        ///Step 0 transfer lines to ABC type
+        vector<vector<float>> keyLineABCs;//store key-lines in terms of Ax+By+C = 0;
+        for (auto &i: mLSDLinesIN) {
+            float x1 = i.LSD.startPointX, y1 = i.LSD.startPointY;
+            float x2 = i.LSD.endPointX, y2 = i.LSD.endPointY;
+            float A = y2 - y1, B = x1 - x2, C = x2 * y1 - x1 * y2;
+            vector<float> thisLine;
+            thisLine.push_back(A);
+            thisLine.push_back(B);
+            thisLine.push_back(C);
+            keyLineABCs.push_back(thisLine);
+        }
+        ///Step 1 pair up ORB key-points with 3 LSD lines
+        vector<int> keyPt2LSD(ORBin.size(), -1);
+        for (int i = 0; i < ORBin.size(); i++) {
+            double x0 = ORBin[i].pt.x, y0 = ORBin[i].pt.y;
+            float minDistance1 = 5, minDistance2 = 5, minDistance3 = 5;
+            //imgKeyPoint[i].index2line = -1;
+            int index1 = -1, index2 = -1, index3 = -1;
+            for (int j = 0; j < mLSDLinesIN.size(); j++) {
+                ///Step 1.1 search for 3 lines
+                ///point to line --- d = abs(Ax0+By0+C) / abs(sqrt(A^2+B^2))
+                float A = keyLineABCs[j][0], B = keyLineABCs[j][1], C = keyLineABCs[j][2];
+                float dis = abs(A * x0 + B * y0 + C) /
+                            sqrt(A * A + B * B);
+                if (dis < minDistance1) {
+                    minDistance3 = minDistance2;
+                    index3 = index2;
+                    minDistance2 = minDistance1;
+                    index2 = index1;
+                    minDistance1 = dis;
+                    index1 = j;
+                } else {
+                    if (dis >= minDistance1 && dis < minDistance2) {
+                        minDistance3 = minDistance2;
+                        index3 = index2;
+                        minDistance2 = dis;
+                        index2 = j;
+                    } else {
+                        if (dis >= minDistance2 && dis < minDistance3) {
+                            minDistance3 = dis;
+                            index3 = j;
+                        }
+                    }
+                }
+            }
+            ///Step 1.2 select nearest line from above 3 candidates
+            float disToLineThres = 3; //? not in use current because above 3 line is qualified already
+            float disTo2EndsThres = 1;
+            if (index1 > -1) {
+                //cout<<"point "<<x0<<","<<y0<<" close to "<<keyLineABCs[index][0]<<","<<keyLineABCs[index][1]<<","<<keyLineABCs[index][2]<<endl;
+                ///Candidate 1 --- distance to each endpoints and sum up
+                float x1 = mLSDLinesIN[index1].LSD.startPointX, y1 = mLSDLinesIN[index1].LSD.startPointY;
+                float x2 = mLSDLinesIN[index1].LSD.endPointX, y2 = mLSDLinesIN[index1].LSD.endPointY;
+                float disToStart = sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
+                float disToEnd = sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2));
+                float disTo2EndPoints = disToStart + disToEnd;
+                if (disToStart <= disToLineThres || disToEnd <= disToLineThres || disTo2EndPoints <= disTo2EndsThres) {
+                    //cout<<"mvORBAttributions size "<<mvORBAttributions.size()<<endl;
+                    mvORBAttributions[i].LSDlineID = mLSDLinesIN[index1].ID;
+                    mvORBAttributions[i].LSDline = &mLSDLinesIN[index1];
+                } else {
+                    if (index2 > -1) {
+                        ///Candidate 2 --- distance to each endpoints and sum up
+                        x1 = mLSDLinesIN[index2].LSD.startPointX, y1 = mLSDLinesIN[index2].LSD.startPointY;
+                        x2 = mLSDLinesIN[index2].LSD.endPointX, y2 = mLSDLinesIN[index2].LSD.endPointY;
+                        disToStart = sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
+                        disToEnd = sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2));
+                        disTo2EndPoints = disToStart + disToEnd;
+                        if (disToStart <= disToLineThres || disToEnd <= disToLineThres ||
+                            disTo2EndPoints <= disTo2EndsThres) {
+                            //cout<<"mvORBAttributions size "<<mvORBAttributions.size()<<endl;
+                            mvORBAttributions[i].LSDlineID = mLSDLinesIN[index2].ID;
+                            mvORBAttributions[i].LSDline = &mLSDLinesIN[index2];
+                        }
+                    } else {
+                        if (index3 > -1) {
+                            ///Candidate 2 --- distance to each endpoints and sum up
+                            x1 = mLSDLinesIN[index3].LSD.startPointX, y1 = mLSDLinesIN[index3].LSD.startPointY;
+                            x2 = mLSDLinesIN[index3].LSD.endPointX, y2 = mLSDLinesIN[index3].LSD.endPointY;
+                            disToStart = sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
+                            disToEnd = sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2));
+                            disTo2EndPoints = disToStart + disToEnd;
+                            if (disToStart <= disToLineThres || disToEnd <= disToLineThres ||
+                                disTo2EndPoints <= disTo2EndsThres) {
+                                //cout<<"mvORBAttributions size "<<mvORBAttributions.size()<<endl;
+                                mvORBAttributions[i].LSDlineID = mLSDLinesIN[index3].ID;
+                                mvORBAttributions[i].LSDline = &mLSDLinesIN[index3];
+                            }
+                        }
+                    }
+                }
+            }
+//        if(i.LSDlineID>-1){
+//            cout<<"ORB "<<i.keyPt.x<<" "<<i.keyPt.y<<" to lsd "<<i.LSDline->LSD.startPointX<<" "<<i.LSDline->LSD.startPointY
+//            <<" to "<<i.LSDline->LSD.endPointX<<" "<<i.LSDline->LSD.endPointY<<endl;
+//        }
+        }
+        ///Check
+//        cv::Mat im_clone = im.clone();
+//        cv::cvtColor(im,im_clone,CV_GRAY2BGR);
+//        for (int i = 0; i < ORBin.size(); i++) {
+//            if (mvORBAttributions[i].LSDlineID > 0) {
+//                cv::circle(im_clone, cv::Point(ORBin[i].pt.x, ORBin[i].pt.y), 2, cv::Scalar(0, 255, 255));
+////            cout<<i.LSDline.LSD.startPointX<<" "<<i.LSDline.LSD.startPointY<<" "
+////            <<i.LSDline.LSD.endPointX<<" "<<i.LSDline.LSD.endPointY<<endl;
+//
+//                cv::line(im_clone, cv::Point(mvORBAttributions[i].LSDline->LSD.startPointX,
+//                                       mvORBAttributions[i].LSDline->LSD.startPointY),
+//                         cv::Point(mvORBAttributions[i].LSDline->LSD.endPointX,
+//                                   mvORBAttributions[i].LSDline->LSD.endPointY), cv::Scalar(102, 102, 255), 2);
+////            imshow("ORB2LSD", im);
+////            waitKey(1);
+//            }
+//        }
+//        imshow("ORB to LSD", im_clone);
+//        cv::waitKey(1);
+//        int pause = 0;
+    }
+
+    void Frame::ORBdepthFromLine(vector<mLine> &lineInputs, vector<mORBAttribution> &ORBinputs, cv::Mat im) {
+        for (int i =0;i<ORBinputs.size();i++) {
+            if (ORBinputs[i].depthSource != 1 && ORBinputs[i].LSDlineID > -1) {
+                mLine * thisLine = &lineInputs[mvORBAttributions[i].LSDlineID];
+                if (thisLine->fit3DLine) {
+                    cout << "ORB point " << mvORBAttributions[i].ID <<" "<<mvORBAttributions[i].keyPt->pt.x<<" "<<mvORBAttributions[i].keyPt->pt.y
+                    <<" close to LSD line " << mvORBAttributions[i].LSDlineID
+                    <<mvLines[mvORBAttributions[i].LSDlineID].LSD.startPointX<<" "<<mvLines[mvORBAttributions[i].LSDlineID].LSD.startPointY
+                    <<mvLines[mvORBAttributions[i].LSDlineID].LSD.endPointX<<" "<<mvLines[mvORBAttributions[i].LSDlineID].LSD.endPointY;
+                    cout << " which has fit 3d line " << endl;
+                    if (thisLine->nonfloorLine) {
+                        ///Complicate formula below
+                        ///Given X=(u-Cx)*Z/fx | Y=(v-Cy)*Z/fy | Z=(Fx*X)/(u-Cx)
+                        ///Given (X-x1)/l=(Y-y1)/m=(Z-z1)/n
+                        ///We have:
+                        ///X=(Cx*x1*n-u*x1*n+u*z1*l-Cx*z1*l)/(fx*l-u*n+Cx*n)
+                        ///Y=(Cy*y1*n-v*y1*n+v*z1*m-Cy*z1*m)/(fy*m+Cy*n-v*n)
+                        ///Z=(fx*X)/(u-Cx)
+
+                        ///Step1 get the (X-x1)/l=(Y-y1)/m=(Z-z1)/n
+                        double u = ORBinputs[i].keyPt->pt.x, v = ORBinputs[i].keyPt->pt.y;
+                        double l = (thisLine->pt3dStart.x - thisLine->pt3dEnd.x),
+                                m = (thisLine->pt3dStart.y - thisLine->pt3dEnd.y),
+                                n = (thisLine->pt3dStart.z - thisLine->pt3dEnd.z);
+                        double x1 = thisLine->pt3dStart.x, y1 = thisLine->pt3dStart.y, z1 = thisLine->pt3dStart.z;
+                        double X = (cx * x1 * n - u * x1 * n + u * z1 * l - cx * z1 * l) / (fx * l - u * n + cx * n);
+                        double Y = (cy * y1 * n - v * y1 * n + v * z1 * m - cy * z1 * m) / (fy * m + cy * n - v * n);
+                        double Z = (fx * X) / (u - cx);
+                        mvORBAttributions[i].depth = Z;
+                        mvORBAttributions[i].p3d_est.x = X, mvORBAttributions[i].p3d_est.y = Y, mvORBAttributions[i].p3d_est.z = Z;
+                        mvORBAttributions[i].depthSource = 2;
+                        cout << "ORBkeypt " <<  mvKeysUn[i].pt.x << " " <<  mvKeysUn[i].pt.y << " get 3D "
+                             << mvORBAttributions[i].p3d_est.x << " " << mvORBAttributions[i].p3d_est.y << " " << mvORBAttributions[i].p3d_est.z
+                             << " from 3d line "
+//                             << mvORBAttributions[i].LSDline->pt3dStart.x << " " << mvORBAttributions[i].LSDline->pt3dStart.y << " "<< mvORBAttributions[i].LSDline->pt3dStart.z
+//                             << " | "<<mvORBAttributions[i].LSDline->pt3dEnd.x << " " << mvORBAttributions[i].LSDline->pt3dEnd.y << " "<< mvORBAttributions[i].LSDline->pt3dEnd.z
+//                             << endl;//note why this sometime error?
+                        << thisLine->pt3dStart.x << " " << thisLine->pt3dStart.y << " "<< thisLine->pt3dStart.z
+                        << " | "<<thisLine->pt3dEnd.x << " " << thisLine->pt3dEnd.y << " "<< thisLine->pt3dEnd.z
+                        << endl;
+//                ///Function 2 . point position ratio in 2d line, the ratio is the same with 3d line
+//                ///Note that LSD start point end point is not the 3d LiDAR line start point end point.
+//                double ratioX2d = (ORBpoint.keyPt.x - ORBpoint.LSDline.LSD.startPointX) / abs(ORBpoint.LSDline.LSD.startPointX-ORBpoint.LSDline.LSD.endPointX);
+                    }
+                }
+            }
+        }
+        //check
+
+    }
+
+    /**
+     * get depth from nearby LiDAR point. only for those that away from Other LiDAR features
+     * @param lineInputs
+     * @param ORBinputs
+     * @param im
+     */
+    void Frame::ORBdepthFromPoint(vector<PtLsr> &LiDARInputs, vector<mORBAttribution> &ORBinputs, double threshold,
+                                  cv::Mat im) {
+        double thresholdSquare = threshold * threshold;
+        for (int i = 0; i < ORBinputs.size(); i++) {
+            if (ORBinputs[i].depthSource > 0)
+                continue;
+            double minDistance = 999;
+            int minID = -1;
+            for (auto liPT: LiDARInputs) {
+                double distance = (liPT.pt2d.x - mvKeysUn[i].pt.x) * (liPT.pt2d.x - mvKeysUn[i].pt.x)
+                                  + (liPT.pt2d.y - mvKeysUn[i].pt.y) * (liPT.pt2d.y - mvKeysUn[i].pt.y);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    minID = liPT.ptID;
+                }
+            }
+            if (minDistance < thresholdSquare) {
+                ORBinputs[i].depthSource = 3;
+                ORBinputs[i].depth = LiDARInputs[minID].pt3d.z;
+                ORBinputs[i].p3d_est.x = (mvKeysUn[i].pt.x - cx) * ORBinputs[i].depth / fx;
+                ORBinputs[i].p3d_est.y = (mvKeysUn[i].pt.y - cy) * ORBinputs[i].depth / fy;
+                ORBinputs[i].p3d_est.z = ORBinputs[i].depth;
+                ORBinputs[i].LiDARPtID = minID;
+                ORBinputs[i].LiDARPt = &LiDARInputs[minID];
+                //cout<<pt.keyPt<<" id "<<pt.ID<<" min distance "<<minDistance<<endl;
+            }
+        }
+//        cv::Mat im_clone = im.clone();
+//        cv::cvtColor(im,im_clone,CV_GRAY2BGR);
+//        for (int i = 0; i < ORBinputs.size(); i++) {
+//            if (ORBinputs[i].depthSource != 3)
+//                continue;
+//            cv::circle(im_clone,cv::Point(ORBinputs[i].keyPt->pt.x,ORBinputs[i].keyPt->pt.y),1,cv::Scalar(0,255,0));
+//            cv::line(im_clone,cv::Point(ORBinputs[i].keyPt->pt.x,ORBinputs[i].keyPt->pt.y),
+//                     cv::Point(ORBinputs[i].LiDARPt->pt2d.x,ORBinputs[i].LiDARPt->pt2d.y),cv::Scalar(255,0,0) );
+//        }
+//        cv::imshow("ORB depth from LiDAR Point ", im_clone);
+//        cv::waitKey(0);
+//        int pause = 1;
+    }
 
     ///Added module
     /**
      * @brief search the image feature with nearby Laser depth
      */
-    void Frame::PairLaserVisionFeatures(){
-        int visionFeatureNum = mvKeys.size();//todo mvKeysUn instead?
-        for(int i = 0; i < visionFeatureNum; i++){
-            double minDis = 99999;
-            int lsrIndex = -1;
-            for(int j = 0; j < mLaserPt_cam.size();j++){
-                if(abs(mvKeys[i].pt.x - mLaserPt_cam[j].pt2d.x)<10 && abs(mvKeys[i].pt.y - mLaserPt_cam[j].pt2d.y)<10)
-                {
-                    float disSQR = (mvKeys[i].pt.x - mLaserPt_cam[j].pt2d.x) * (mvKeys[i].pt.x - mLaserPt_cam[j].pt2d.x) +
-                            (mvKeys[i].pt.y - mLaserPt_cam[j].pt2d.y) * (mvKeys[i].pt.y - mLaserPt_cam[j].pt2d.y);
-                    if(disSQR < minDis && disSQR <100){
-                        minDis = disSQR;
-                        lsrIndex = j;
-                    }
-                }
+    void Frame::PairLaserVisionFeatures(const cv::Mat &im){
+        ///Step 1 Search for LiDAR Plane
+        PlaneFitting();
+        ///Step 2 Search for LSD and LiDAR line
+        cv::Ptr<cv::line_descriptor::BinaryDescriptor> bd = cv::line_descriptor::BinaryDescriptor::createBinaryDescriptor();
+        vector<cv::line_descriptor::KeyLine> priKeylines;
+        cv::Mat mask = cv::Mat::ones(im.size(), CV_8UC1);
+        bd->detect(im, priKeylines, mask);
+        /* compute descriptors */
+        cv::Mat descriptors;
+        bd->compute(im, priKeylines, descriptors);
+        /* merge primary keylines*/
+        std::vector<bool> keylineMergeFlags(priKeylines.size(), false);
+        mergeKeyLines(priKeylines, keylineMergeFlags, im.clone());
+        /* select the lines with enough length */
+        vector<cv::line_descriptor::KeyLine> selectedKeyLines;
+        int lineCounter = 0;
+        const float lineLengthThres = 30;
+        for (int i = 0; i < priKeylines.size(); i++) {
+            if (keylineMergeFlags[i])
+                continue;
+            if (priKeylines[i].lineLength > lineLengthThres) {
+                selectedKeyLines.push_back(priKeylines[i]);
+                //Store to mLines
+                mLine newLine(lineCounter, priKeylines[i]);
+                mvLines.push_back(newLine);
+                lineCounter++;
             }
-            if(lsrIndex>=0){
-//                cout<<"paired keypt and lidar "<<mvKeys[i].pt.x<<" "<<mvKeys[i].pt.y<<" "<<mLaserPt_cam[lsrIndex].pt2d.x<<" "<<mLaserPt_cam[lsrIndex].pt2d.y<<" "
-//                <<mLaserPt_cam[lsrIndex].pt3d.x<<" "<<mLaserPt_cam[lsrIndex].pt3d.y<<" "<<mLaserPt_cam[lsrIndex].pt3d.z<<endl;
+        }
+        //for check
+//        cv::Mat im_clone = im.clone();
+//        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
+//        for(int i=0;i<mvLines.size();i++){
+//            cv::line(im_clone,cv::Point(mvLines[i].LSD.startPointX,mvLines[i].LSD.startPointY),cv::Point(mvLines[i].LSD.endPointX,mvLines[i].LSD.endPointY),cv::Scalar(204,204,0));
+//        }
+//        cv::imshow("check",im_clone);
+//        cv::waitKey(1);
+        ///Step 4.2 LSD and LiDAR
+        connectLSD2LiDAR(mvLines, mLaserPt_cam,im.clone());
+        LineFitting(mvLines, mLaserPt_cam, im.clone());
+        ///Step 5 pair ORB with LiDAR Plane
+        ///Pair ORB and LSD to Plane features
+        connectORB2Plane(mLaserPt_cam, mvKeysUn, mvPlanes, 15, im.clone());
+        int counter = 0;
+        for (int i = 0; i < mvORBAttributions.size(); i++) {
+            if (mvORBAttributions[i].floorPlaneID > -1) {
+                //cout<<"lidar "<<LiDARPoints[i].p3DonLiDAR.x<<" "<<LiDARPoints[i].p3DonLiDAR.y<<" "<<LiDARPoints[i].p3DonLiDAR.z
+                //<<" cam "<<LiDARPoints[i].p3DonCam.x<<" "<<LiDARPoints[i].p3DonCam.y<<" "<<LiDARPoints[i].p3DonCam.z<<endl;
+                counter++;
+            }
+        }
+        cout << counter << " ORBS points on plane" << endl;
+        ///Step 5.2 connect feature point and feature line
+        connectORB2LSD(mvLines, mvKeysUn, im.clone());
+        ///! NOTE there is a big issue that ORB member's line is not the same with mline vector.
+        /// there are not the same address !!!!!!
+        ORBdepthFromLine(mvLines, mvORBAttributions, im.clone());
+        ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 3, im.clone());
+        //show
+//        cv::Mat im_clone=im.clone();
+//        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
+//        for(int i=0;i<mvORBAttributions.size();i++){
+//            if (mvORBAttributions[i].depthSource == 1) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt->pt.x,mvORBAttributions[i].keyPt->pt.y),1,cv::Scalar(0,255,0));
+//            }
+//            if (mvORBAttributions[i].depthSource == 2) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt->pt.x,mvORBAttributions[i].keyPt->pt.y),4,cv::Scalar(0,0,255),1);
+//
+//            }
+//            if (mvORBAttributions[i].depthSource == 3) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt->pt.x,mvORBAttributions[i].keyPt->pt.y),1,cv::Scalar(255,255,0));
+//            }
+//        }
+//        for(int i=0;i<mLaserPt_cam.size();i++){
+//            cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(0,255,255));
+//        }
+//        cv::imshow("fusioned features", im_clone);
+//        cv::waitKey(0);
+        ///Step 6 check if est depth larger than 25 meter
+        for(int i=0;i<mvORBAttributions.size();i++){
+            if(mvORBAttributions[i].depthSource>-1){
+                if(mvORBAttributions[i].depth>25){
+                    mvORBAttributions[i].depthSource = -1;
+                    mvORBAttributions[i].depth = -1;
+                    mvORBAttributions[i].p3d_est=cv::Point3d(0,0,0);
+                }
             }
         }
     }
+
 
     ///Added module
     /**
@@ -831,17 +1756,8 @@ namespace ORB_SLAM2
             mLaserCorner_cam[pi].index2d = counter;
             counter++;
         }
-//        //Test
-//        X.at<double>(0, 0) = 3;
-//        X.at<double>(1, 0) = 1;
-//        X.at<double>(2, 0) = 5;
-//        Y = P_rect_00 * R_rect_00 * X;
-//        cv::Point pt;
-//        pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//        pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//        cout<<"(3,1,5) -> "<<pt.x<<" "<<pt.y<<endl;
-        //cout <<"Lidar corner points total : " << mCornerPointsSharp.size() << " in image frame : " << counter;
-        cout <<"Lidar corner points "<<counter<<"/"<<mLaserCorner_cam.size();
+
+        cout <<"Lidar in-frame corner points "<<counter<<"/"<<mLaserCorner_cam.size();
         ///Step 2. Project Less Corner Point First
         ptNum = mLaserLessCorner_cam.size();
         counter = 0;
@@ -863,7 +1779,7 @@ namespace ORB_SLAM2
             counter++;
         }
         //cout <<" Lidar less corner points total : " << mCornerPointsLessSharp.size() << " in image frame : " << counter;
-        cout <<"Lidar less corner points "<<counter<<"/"<<mLaserLessCorner_cam.size();
+        cout <<"Lidar in-frame less corner points "<<counter<<"/"<<mLaserLessCorner_cam.size();
         ///Step 3. Project Flat Point First
         ptNum = mLaserFlat_cam.size();
         counter = 0;
@@ -885,7 +1801,7 @@ namespace ORB_SLAM2
             counter++;
         }
         //cout <<" Lidar surface points total : " << mSurfPointsFlat.size() << " in image frame : " << counter;
-        cout <<"Lidar surface points "<<counter<<"/"<<mLaserFlat_cam.size();
+        cout <<"Lidar in-frame surface points "<<counter<<"/"<<mLaserFlat_cam.size();
         ///Step 4. Project Less Flat Point First
         ptNum = mLaserLessFlat_cam.size();
         counter = 0;
@@ -907,7 +1823,7 @@ namespace ORB_SLAM2
             counter++;
         }
         //cout <<" Lidar less surface points total : " << mSurfPointsLessFlat.size() << " in image frame : " << counter <<endl;
-        cout <<"Lidar less surface points "<<counter<<"/"<<mLaserLessFlat_cam.size();
+        cout <<"Lidar in-frame less surface points "<<counter<<"/"<<mLaserLessFlat_cam.size();
     }
 
     ///Added module
@@ -915,25 +1831,24 @@ namespace ORB_SLAM2
      * @brief Project LiDAR Points and Features (PCL pointset) to Camera coordination system
      */
     void Frame::ProjectLiDARtoCam() {
+        double maxX = 50.0, maxY = 50.0, minZ = 20.0;
         ///Step1 Project common LiDAR points
-        int lsrPtNum = mLaserPoints.size();
-        if (lsrPtNum > 0) {
-            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
-            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
-            int counter = 0;
-            for (int li = 0; li < lsrPtNum; li++) {
+        //int lsrPtNum = mLaser16ScansPoints.size();
+        int IDCounter = 0;
+        for (int i = 0; i < mLaser16ScansPoints.size(); i++) {
+            for (int j = 0; j < mLaser16ScansPoints[i].points.size(); j++) {
+                cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
+                cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
                 //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
                 //X front, Y left, Z up
-                //Todo Test a valid threshold?
-                double maxX = 25.0, maxY = 25.0, minZ = 1.8;
-                if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
-                    || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
-                    || mLaserPoints[li][2] > 10 || mLaserPoints[li][2] < -minZ) {
+                if (mLaser16ScansPoints[i].points[j].x > maxX || mLaser16ScansPoints[i].points[j].x < 0.0
+                    || mLaser16ScansPoints[i].points[j].y > maxY || mLaser16ScansPoints[i].points[j].y < -maxY
+                    || mLaser16ScansPoints[i].points[j].z > minZ || mLaser16ScansPoints[i].points[j].z  < -minZ) {
                     continue;
                 }
-                P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
-                P_lidar.at<double>(1, 0) = mLaserPoints[li][1];
-                P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
+                P_lidar.at<double>(0, 0) = mLaser16ScansPoints[i].points[j].x;
+                P_lidar.at<double>(1, 0) = mLaser16ScansPoints[i].points[j].y;
+                P_lidar.at<double>(2, 0) = mLaser16ScansPoints[i].points[j].z;
                 P_lidar.at<double>(3, 0) = 1;
                 P_cam = mTcamlid * P_lidar;
                 cv::Point3d newP;
@@ -942,13 +1857,19 @@ namespace ORB_SLAM2
                 newP.z = P_cam.at<double>(2, 0);
                 PtLsr newPtLsr;
                 newPtLsr.pt3d = newP;
-                newPtLsr.index3d = counter;
-                newPtLsr.intensity = mLaserPoints[li][3];
-                counter++;
+                newPtLsr.intensity =  mLaser16ScansPoints[i].points[j].intensity;
+                newPtLsr.scanID = i;
+                newPtLsr.pointID = j;
+                newPtLsr.low = false;
+                newPtLsr.planeID = -1;
+                newPtLsr.ptID = IDCounter;
+                if (mLaser16ScansPoints[i].points[j].z < -1.6)
+                    newPtLsr.low = true;
+                IDCounter++;
                 mLaserPt_cam.push_back(newPtLsr);
             }
         }
-        ///Step2 Project LiDAR feature points
+        ///Step 2 Project LiDAR feature points
         //int lsrCornerNum = mLsrKeyCorner.size();
         int lsrCornerNum = mCornerPointsSharp.points.size();
         if (lsrCornerNum > 0) {
@@ -1214,6 +2135,9 @@ namespace ORB_SLAM2
         UpdatePoseMatrices();
     }
 
+    /*
+     * update mRcw, mRwc, mtcw, mOw
+     */
     void Frame::UpdatePoseMatrices()
     {
         mRcw = mTcw.rowRange(0,3).colRange(0,3);
@@ -1223,23 +2147,24 @@ namespace ORB_SLAM2
     }
 
 /**
- * @brief 地图点是否在事业内
- * 计算该地图点的世界坐标
+ * @brief 地图点是否在视野内
+ * 0 计算该地图点的世界坐标
  * 1 该点在当前相机的深度>0
  * 2 投影到像素平面，要在范围内
  * 3 mappoint到相机中心的距离，是否在尺度变化的距离内
  * 4 当前视角和平均观测方向的夹角的余弦值，要大于阈值
- * 地图点到光心的距离来预测一个尺度（仿造特征点金字塔层级）
- * 记录一些参数
+ * 5 地图点到光心的距离来预测一个尺度（仿造特征点金字塔层级）
+ * 6 记录一些参数
  * @param[in] pMP 当前地图点
  * @param[in] viewingCosLimit 余弦阈值
  * @return true false
 */
     bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     {
+        //mbTrackInView decide if a mappoint is going to be projected into some frame
         pMP->mbTrackInView = false;
 
-        //*Step 获得地图点世界坐标
+        ///*Step0 获得地图点世界坐标
         // 3D in absolute coordinates
         cv::Mat P = pMP->GetWorldPos();
 
@@ -1249,12 +2174,12 @@ namespace ORB_SLAM2
         const float &PcY= Pc.at<float>(1);
         const float &PcZ = Pc.at<float>(2);
 
-        //*Step 1 深度判断
+        ///*Step 1 深度判断 (局部地图点来自于局部关键帧，它有一些可能在当前视角的背面。
         // Check positive depth
         if(PcZ<0.0f)
             return false;
 
-        //*Step 2 成像平面内判断
+        ///*Step 2 成像平面内判断
         // Project in image and check it is not outside
         const float invz = 1.0f/PcZ;
         const float u=fx*PcX*invz+cx;
@@ -1265,28 +2190,30 @@ namespace ORB_SLAM2
         if(v<mnMinY || v>mnMaxY)
             return false;
 
-        //*Step 3 地图点到相机中心的距离 在尺度变化内
+        ///*Step 3 地图点到相机中心的距离 在尺度变化内
         // Check distance is in the scale invariance region of the MapPoint
         const float maxDistance = pMP->GetMaxDistanceInvariance();
         const float minDistance = pMP->GetMinDistanceInvariance();
         //mOW 当前相机光心在世界坐标系下的坐标
-        const cv::Mat PO = P-mOw;
+        const cv::Mat PO = P-mOw;//a vector (from camera centre) points to P
         const float dist = cv::norm(PO);
 
         if(dist<minDistance || dist>maxDistance)
             return false;
 
-        //*Step 4 相机视角 和 地图点平均观测方向 的夹角的余弦
+        ///*Step 4 相机视角 和 地图点平均观测方向 的夹角的余弦
         // Check viewing angle
-        //在updatenormanddepth中更新
-        cv::Mat Pn = pMP->GetNormal();
+        //在UpdateNormAndDepth中更新
+        cv::Mat Pn = pMP->GetNormal();//the average direction of this mappoint(a mappoint could be observed by may keyframes)
 
-        const float viewCos = PO.dot(Pn)/dist;
+        //the cos of current view vector and normal observe vector.
+        const float viewCos = PO.dot(Pn)/dist; //cos = a.dot(b)/(|a||b|)
+        //question is the formula above right?
 
         if(viewCos<viewingCosLimit)
             return false;
 
-        //*Step 根据地图点到光心的距离预测一个尺度
+        ///*Step 根据地图点到光心的距离预测一个尺度
         // Predict scale in the image
         const int nPredictedLevel = pMP->PredictScale(dist,this);
 
@@ -1400,6 +2327,7 @@ namespace ORB_SLAM2
  */
     void Frame::UndistortKeyPoints()
     {
+
         //mDistCoef存储了opencv指定格式的去畸变参数(k1,k2,p1,p2,k3)
         //第一个参数为0一般意味着没有畸变
         if(mDistCoef.at<float>(0)==0.0)
@@ -1441,6 +2369,7 @@ namespace ORB_SLAM2
             kp.pt.y=mat.at<float>(i,1);
             mvKeysUn[i]=kp;
         }
+
     }
 
     void Frame::ComputeImageBounds(const cv::Mat &imLeft)

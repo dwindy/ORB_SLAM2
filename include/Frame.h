@@ -32,10 +32,20 @@
 
 #include <opencv2/opencv.hpp>
 ///Added module
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/segmentation/region_growing.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include "pcl/sample_consensus/sac_model_line.h"
+#include <pcl/sample_consensus/ransac.h>
+#include "opencv2/line_descriptor/descriptor.hpp"
 
 typedef pcl::PointXYZI PointType;
 
@@ -48,34 +58,98 @@ class MapPoint;
 class KeyFrame;
 
 ///added module
+    struct mLine {
+        int ID;
+        cv::line_descriptor::KeyLine LSD;
+        bool nonfloorLine;
+        bool fit3DLine;
+        std::vector<int> LiDARPtIDs;
+        cv::Point3d pt3dStart;
+        cv::Point3d pt3dEnd;
+
+        mLine() {
+            ID = -1;
+            fit3DLine = false;
+            nonfloorLine = false;
+            pt3dStart = cv::Point3d(0, 0, 0);
+            pt3dEnd = cv::Point3d(0, 0, 0);
+        };
+
+        mLine(int IDin, cv::line_descriptor::KeyLine LSDin) :
+                ID(IDin), LSD(LSDin), fit3DLine(false), nonfloorLine(false), pt3dStart(cv::Point3d(0, 0, 0)),
+                pt3dEnd(cv::Point3d(0, 0, 0)) {};
+    };
+
     class PtLsr {
     public:
+        int ptID;
         cv::Point2d pt2d;
         cv::Point3d pt3d;
         int index2d;
         int index3d;
         float intensity;
+        int scanID;// i-th scan
+        int pointID;// j-th point
+        bool low;
+        int planeID;
+        int LSDlineID;
+        mLine *LSDline;
+
+        PtLsr() {
+            ptID = -1;
+            scanID = -1;
+            pointID = -1;
+            low = false;
+            LSDlineID = -1;
+            planeID = -1;
+        }
     };
 
-    class Plane {
+    class mPlane {
     public:
         double A, B, C, D;
         double phi, theta, dis;
         int count;
         int PlaneId;//Id in frame
         int planeIdGlobal;//In in map/global
-        Plane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) { PlaneId = -1; }
-        Plane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
-        Plane() { PlaneId = -1; }
+        mPlane(double Ain, double Bin, double Cin, double Din) : A(Ain), B(Bin), C(Cin), D(Din) { PlaneId = -1; }
 
-        cv::Point3d centreP;
-//        vector<cv::Point3d> pointList;
-//        vector<cv::Point2d> pointList2D;
-        vector<PtLsr> points3D;
-        vector<int> keyPointList; //todo store keypoint in this plane
-        vector<int> mindices;     //todo indexs of keypoint in image
-        std::vector<MapPoint *> vpMapPointMatches; //todo pointer to Map point that contained in this plane
+        mPlane(double phiin, double thetain, double disin) : phi(phiin), theta(thetain), dis(disin) { PlaneId = -1; }
+
+        mPlane() {
+            PlaneId = -1;
+            A = -1;
+            B = -1;
+            C = -1;
+            phi = -1;
+            theta = -1;
+            dis = -1;
+        }
+
+        vector<PtLsr> vPointsLiDAR;
+        vector<int> vIndexKeyPt; //TODO index of ORB keyPt in the plane
     };
+
+    struct mORBAttribution{
+        int ID;
+        cv::KeyPoint * keyPt;
+        int depthSource;//1 for plane 2 for line
+        float depth;//current using closest PT3d. but should use intersection depth in the future
+        int LSDlineID;
+        mLine *LSDline;
+        int floorPlaneID;
+        mPlane *Plane;
+        int LiDARPtID;
+        PtLsr * LiDARPt;
+        cv::Point3d p3d_est;
+        cv::Point3d p3d_tri;//p3d from triangulation comes from ORBSLAM2
+        cv::Point3d p3d_tri_scaled;//p3d_tri after scaled with LiDAR
+        mORBAttribution() : ID(-1), keyPt(nullptr), depthSource(-1), depth(-1),
+                            LSDlineID(-1), LSDline(nullptr), floorPlaneID(-1), Plane(nullptr), LiDARPtID(-1),LiDARPt(nullptr),
+                            p3d_est(NULL), p3d_tri(NULL), p3d_tri_scaled(NULL) {};
+    };
+
+
 
 class Frame
 {
@@ -107,6 +181,7 @@ public:
     void SetPose(cv::Mat Tcw);
 
     // Computes rotation, translation and camera center matrices from the camera pose.
+    // Computes mRcw, mRwc, mtcw, mOw from mTcw
     void UpdatePoseMatrices();
 
     // Returns the camera center.
@@ -150,30 +225,34 @@ public:
 
     ///added module
     cv::Mat mTcamlid;
+    void PlaneFitting();
+    int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, mPlane &foundPlane, pcl::PointIndices &inliersOutput);
     void ProjectLiDARtoCam();
     void ProjectLiDARtoImg(cv::Mat, int cols, int rows);
     void ExtractLiDARFeature();
     void ProjectLiDARFeaturetoImg(cv::Mat, int cols, int rows);
-    void PairLaserVisionFeatures();
+    void PairLaserVisionFeatures(const cv::Mat &im);
+    void connectLSD2LiDAR(vector<mLine> &mLSDLinesIN, vector<PtLsr> &LiDARPtIN, cv::Mat im);
+    void connectORB2Plane(vector<PtLsr> &LiDARPoints, std::vector<cv::KeyPoint> &ORBFeatures, vector<ORB_SLAM2::mPlane> &extractedPlanes, double threshold, cv::Mat im);
+    void connectORB2LSD(vector<mLine> &mLSDLinesIN, vector<cv::KeyPoint> &ORBin, cv::Mat im);
+    void ORBdepthFromLine(vector<mLine> &lineInputs, vector<mORBAttribution> &ORBinputs, cv::Mat im);
+    void ORBdepthFromPoint( vector<PtLsr> &LiDARInputs,  vector<mORBAttribution> &ORBinputs, double threshold, cv::Mat im);
     vector<std::vector<double>> mLaserPoints; //Raw LiDAR point under LiDAR coordination System
-    pcl::PointCloud<PointType> mCornerPointsSharp;
-    pcl::PointCloud<PointType> mCornerPointsLessSharp;
-    pcl::PointCloud<PointType> mSurfPointsFlat;
-    pcl::PointCloud<PointType> mSurfPointsLessFlat;
-    //vector<std::vector<double>> mLaserPt_cam;
+    vector<pcl::PointCloud<pcl::PointXYZI>> mLaser16ScansPoints; //Raw LiDAR point under LiDAR coordination System
+    pcl::PointCloud<PointType> mCornerPointsSharp; //LiDAR feature under LiDAR system
+    pcl::PointCloud<PointType> mCornerPointsLessSharp;//LiDAR feature under LiDAR system
+    pcl::PointCloud<PointType> mSurfPointsFlat;//LiDAR feature under LiDAR system
+    pcl::PointCloud<PointType> mSurfPointsLessFlat;//LiDAR feature under LiDAR system
     vector<PtLsr> mLaserPt_cam;//Projected LiDAR under Camera Coordination System
     vector<PtLsr> mLaserCorner_cam;//Projected LiDAR Corner point under Camera Coordination System
-    vector<PtLsr> mLaserLessCorner_cam;
-    vector<PtLsr> mLaserFlat_cam;
-    vector<PtLsr> mLaserLessFlat_cam;
-    //vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
+    vector<PtLsr> mLaserLessCorner_cam;//Projected LiDAR less Corner point under Camera Coordination System
+    vector<PtLsr> mLaserFlat_cam;//Projected LiDAR flat  point under Camera Coordination System
+    vector<PtLsr> mLaserLessFlat_cam;//Projected LiDAR less flat point under Camera Coordination System
     vector<double> mLaserTimes; //{middle time, start, end}
-    //vector<cv::Point> mPjcLaserPts;
-    //vector<cv::KeyPoint> mPjcLaserPtsUndis;
-//    vector<PtLsr> mLsrKeyCorner;
-//    vector<PtLsr> mLsrKeyLessCorner;
-//    vector<PtLsr> mLsrKeyFlat;
-//    vector<PtLsr> mLsrKeyLessFlat;
+    vector<ORB_SLAM2::mPlane> mvPlanes;
+    vector<mLine> mvLines;
+    vector<mORBAttribution> mvORBAttributions; //size init at undistortion function
+
 
 
     // Calibration matrix and OpenCV distortion parameters.
@@ -273,7 +352,7 @@ private:
     cv::Mat mRcw;
     cv::Mat mtcw;
     cv::Mat mRwc;
-    cv::Mat mOw; //==mtwc
+    cv::Mat mOw; //==mtwc. Camera centre in World
 };
 
 }// namespace ORB_SLAM

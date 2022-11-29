@@ -90,7 +90,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-#ifdef COMPILEDWITHC11
+#ifdef COMPILEDWITHC14
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #else
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
         //Pass both the image and lasers to the SLAM system
         SLAM.TrackMonucular(im, tframe, laserPoints);
 
-#ifdef COMPILEDWITHC11
+#ifdef COMPILEDWITHC14
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 #else
         std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();

@@ -87,7 +87,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
     //取出与当前关键帧相连的所有关键帧，这些相连关键帧都是局部连接，在闭环检测的时候将被剔除
     //相连关键帧定义见 KeyFrame::UpdateConnections()
     //? 在哪些地方会调用来着?
-    set<KeyFrame*> spConnectedKeyFrames = pKF->GetConnectedKeyFrames();
+    set<KeyFrame*> spConnectedKeyFrames = pKF->GetConnectedKeyFrames();//get from mConnectedKeyFrameWeights.first
     list<KeyFrame*> lKFsSharingWords;
 
     //*Step 1 找出和当前帧具有公共单词的所有关键帧，不包括与当前帧相连（共视）的关键帧
@@ -98,15 +98,16 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
 
         //words是检测图像是否匹配的关键，遍历该pKF的每一个word
         //mBowVec内部存储的是std::map<WordId,WordValue>
+        //wordID is the word ID in leaf, wordValue is the weight
         for(DBoW2::BowVector::const_iterator vit=pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit != vend; vit++)
         {
             //包含当前单词的所有关键帧
-            list<KeyFrame*> &lKFs =   mvInvertedFile[vit->first];
+            list<KeyFrame*> &lKFs = mvInvertedFile[vit->first];
 
             for(list<KeyFrame*>::iterator lit=lKFs.begin(), lend= lKFs.end(); lit!=lend; lit++)
             {
                 KeyFrame* pKFi=*lit;
-                //如果还没设置loopQuery标记，"初始化"一下
+                //如果还没设置loopQuery标记，"初始化"一下,仅第一次进来需要设置
                 if(pKFi->mnLoopQuery!=pKF->mnId)
                 {
                     pKFi->mnLoopWords=0;
@@ -143,7 +144,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
 
     int nscores=0;
 
-    //*Step 3 共词数>0.8最大共词数 且 词袋相似度得分大于minscore
+    //*Step 3 共词数>0.8最大共词数 且 词袋相似度得分大于minScore
     // Compute similarity score. Retain the matches whose score is higher than minScore
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
     {
@@ -180,7 +181,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
         for(vector<KeyFrame*>::iterator vit=vpNeighs.begin(), vend=vpNeighs.end(); vit!=vend; vit++)
         {
             KeyFrame* pKF2 = *vit;
-            //共视关键帧 也要 是闭环候选帧，并且共词数过阈值
+            //候选关键帧的 共视关键帧 也要是 闭环候选帧，并且共词数过阈值
             if(pKF2->mnLoopQuery==pKF->mnId && pKF2->mnLoopWords>minCommonWords)
             {
                 accScore+=pKF2->mLoopScore;
@@ -226,6 +227,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     list<KeyFrame*> lKFsSharingWords;
 
     // Search all keyframes that share a word with current frame
+    ///*Step1 找出和当前帧具有公共单词的所有关键帧
     {
         unique_lock<mutex> lock(mMutex);
 
@@ -240,13 +242,14 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
             {
                 //copy了这个关键帧
                 KeyFrame* pKFi=*lit;
-                //relocquery相当于一个标记，用来重定位当前帧F
+                //relocquery相当于一个标记，用来告之该关键帧用于重定位F帧，防止重复添加
                 if(pKFi->mnRelocQuery!=F->mnId)
                 {
                     pKFi->mnRelocWords=0;
                     pKFi->mnRelocQuery=F->mnId;
                     lKFsSharingWords.push_back(pKFi);
                 }
+                //如果pKFi已经用户重定位F帧，则不需要重置上述成员，直接计数器+1
                 pKFi->mnRelocWords++;
             }
         }
@@ -254,7 +257,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     if(lKFsSharingWords.empty())
         return vector<KeyFrame*>();
 
-    //*Step2 所有重定位候选关键帧中 与 当前帧F 有最大共有词的帧 得到一个 最小共有词的阈值
+    ///*Step2 所有重定位候选关键帧中 与 当前帧F 有最大共有词的帧 得到一个 最小共有词的阈值
     // Only compare against those keyframes that share enough words
     int maxCommonWords=0;
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
@@ -268,8 +271,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     list<pair<float,KeyFrame*> > lScoreAndMatch;
 
     int nscores=0;
-
-    //*Step3 挑选满足 最小共有词阈值 的帧放入lScoreAndMatch
+    ///*Step3 挑选满足 最小共有词阈值 的帧放入lScoreAndMatch
     // Compute similarity score.
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
     {
@@ -288,9 +290,9 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     if(lScoreAndMatch.empty())
         return vector<KeyFrame*>();
 
-    list<pair<float,KeyFrame*> > lAccScoreAndMatch;
+    list<pair<float,KeyFrame*> > lAccScoreAndMatch; //list accumulate Score and Match
     float bestAccScore = 0;
-    //* Step4 以每个候选帧及其共视最多的10帧为一组，计算每组跟当前帧的共视得分。
+    ///* Step4 以每个候选帧及其共视最多的10帧为一组，计算每组跟当前帧的共视得分。
     // Lets now accumulate score by covisibility
     for(list<pair<float,KeyFrame*> >::iterator it=lScoreAndMatch.begin(), itend=lScoreAndMatch.end(); it!=itend; it++)
     {
@@ -304,6 +306,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
         for(vector<KeyFrame*>::iterator vit=vpNeighs.begin(), vend=vpNeighs.end(); vit!=vend; vit++)
         {
             KeyFrame* pKF2 = *vit;
+            //只有这个共视帧属于候选关键帧，才有意义
             if(pKF2->mnRelocQuery!=F->mnId)
                 continue;
 
@@ -325,8 +328,8 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     //*Step 5 共视帧组累加分 大于阈值的 拿到组内最佳分
     // Return all those keyframes with a score higher than 0.75*bestScore
     float minScoreToRetain = 0.75f*bestAccScore;
-    set<KeyFrame*> spAlreadyAddedKF;
-    vector<KeyFrame*> vpRelocCandidates;
+    set<KeyFrame*> spAlreadyAddedKF;//just for record if one KeyFrame has been added
+    vector<KeyFrame*> vpRelocCandidates;//return for use
     vpRelocCandidates.reserve(lAccScoreAndMatch.size());
     for(list<pair<float,KeyFrame*> >::iterator it=lAccScoreAndMatch.begin(), itend=lAccScoreAndMatch.end(); it!=itend; it++)
     {
@@ -335,7 +338,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
         {
             KeyFrame* pKFi = it->second;
             if(!spAlreadyAddedKF.count(pKFi))
-            {
+            {   //用组内最佳帧
                 vpRelocCandidates.push_back(pKFi);
                 spAlreadyAddedKF.insert(pKFi);
             }

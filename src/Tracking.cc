@@ -682,25 +682,17 @@ void Tracking::Track()
     mLastProcessedState=mState;
 
     // Get Map Mutex -> Map cannot be changed
-    //上锁，保证地图不发生变化
+    //上锁，保证地图不发生变化(localMapping and loopClosure)
     unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
 
     //* Step 1 初始化
     if(mState==NOT_INITIALIZED)
     {
-        ///Added module
-//        //-----add a lidar init()
-//        if(mLiDARState==NOT_INITIALIZED)
-//        {
-//            LiDARInit();
-//        }
-//        if(mLiDARState!=OK)
-//            return;
-        ///------------
         if(mSensor==System::STEREO || mSensor==System::RGBD)
             StereoInitialization();
         else
-            MonocularInitialization();
+            //MonocularInitialization();
+            MonoLiDARInitialization();
         //更新绘制器中存储的最新状态
         mpFrameDrawer->Update(this);
         //这个状态量mState在上面的初始化函数中更新
@@ -729,7 +721,7 @@ void Tracking::Track()
                 //* Step 2.2 用参考关键帧来恢复位姿 <- 运动模型为空，说明初始化刚开始，或者已经丢失 || 当前帧 紧跟在 重定位帧之后
                 if(mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
                 {
-                    //系统刚初始化，没有速度，肯定进来这里
+                    //系统刚初始化or没有速度/系统刚刚relocal 2帧之内
                     //用最近的关键帧来跟踪当前普通帧
                     //通过BoW在参考帧中找到当前帧的特征点匹配
                     //优化每个特征点的3D点在当前帧的重投影误差来得到位姿
@@ -740,17 +732,21 @@ void Tracking::Track()
                     //用最近的普通帧来跟踪当前普通帧
                     //恒速模型获得初始位姿
                     //投影匹配
-                    //优化特征点对应的3D点获得位姿
+                    //优化特征点对应的3D点获得位姿,No Bow
                     bOK = TrackWithMotionModel();
                     //如果失败了，回去用参考关键帧
                     if(!bOK)
                         bOK = TrackReferenceKeyFrame();
-                    ///Added Module
-
                 }
             }
-            else
+            else//mState==LOST
             {
+                //计算当前帧的Bow找到共词关键帧(DetectRelocalizationCandidates
+                //遍历上述候选，用Bow匹配找到足够多的匹配
+                //inline足够, EPnP
+                //BA PoseOptimization
+                //如果inline少，通过投影的方式对之前未匹配的点进行匹配，再优化求解(SearchByProjection
+                //匹配结果再BA PoseOptimization
                 bOK = Relocalization();
             }
         }
@@ -774,7 +770,7 @@ void Tracking::Track()
                     if(!mVelocity.empty())
                     {
                         bOK = TrackWithMotionModel();
-                        //? 是不是要加上
+                        //question 是不是要启用
                         // if(!bOK)
                         // bOK = TrackReferenceKeyFrame();
                     }
@@ -824,8 +820,8 @@ void Tracking::Track()
                         mCurrentFrame.mvbOutlier = vbOutMM;
 
                         //如果当前匹配的mappoint很少，增加当前可是地图点的观测次数
-                        //?必然True
-                        //?是不是重复增加了观测次数？后面tracklocalmap函数包含这些动作
+                        //question? 必然True
+                        //question? 是不是重复增加了观测次数？后面tracklocalmap函数包含这些动作
                         if(mbVO)
                         {
                             for(int i =0; i<mCurrentFrame.N; i++)
@@ -856,6 +852,12 @@ void Tracking::Track()
         if(!mbOnlyTracking)
         {
             if(bOK)
+                //post-process following above three track functions: trackReference trackMotion, reLocalization.
+                //search level 1 co-visible keyframes by currentFrame's mapPoints.
+                //search level 2 co-visible, parent, child keyframes of level 1 keyframes
+                //extract mappoint from above keyframes, as temporary local map, removing the out of view points.
+                //project the rest to local frame, match by SearchByProjection
+                //BA, PoseOptimization
                 bOK = TrackLocalMap();
         }
         else
@@ -877,64 +879,23 @@ void Tracking::Track()
         mpFrameDrawer->Update(this);
 
         //只有跟踪成功的时候才考虑生成关键帧
-        // If tracking were good, check if we insert a keyframe
+        //If tracking were good, check if we insert a keyframe
         if(bOK)
         {
             //*Step 5 更新恒速运动模型
             // Update motion model
-            if(!mLastFrame.mTcw.empty())
-            {
+            if (!mLastFrame.mTcw.empty()) {
                 cv::Mat LastTwc = cv::Mat::eye(4, 4, CV_32F);
                 mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0, 3).colRange(0, 3));
                 mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
                 //Velocity = Tcl = Tcw * Twl
                 mVelocity = mCurrentFrame.mTcw * LastTwc;
-                //cout << mCurrentFrame.mnId << " velocity " << mCurrentFrame.mTcw << endl;
-                ///save keypoints
-                fstream writer; string fileName = "data//keypoint//"+std::to_string(mCurrentFrame.mnId)+".txt";
-                writer.open(fileName, std::ios::out);
-                for (int ki = 0; ki < mCurrentFrame.mvpMapPoints.size(); ki++) {
-                    if (mCurrentFrame.mvpMapPoints[ki]) {
-                        writer << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(0, 0) << " "
-                               << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(1, 0) << " "
-                               << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(2, 0) << " "
-                               << mCurrentFrame.mvpMapPoints[ki]->mnId<<endl;
-                    }
-                }
-                writer.close();
-                ///save velocity
-//                fstream writer;
-//                string fileName = "data//velocity//" + std::to_string(mCurrentFrame.mnId) + ".txt";
-//                cout << "file name " << fileName << endl;
-//                writer.open(fileName, std::ios::out);
-//                writer << mVelocity.at<float>(0, 0) << " " << mVelocity.at<float>(0, 1) << " "
-//                       << mVelocity.at<float>(0, 2) << " " << mVelocity.at<float>(0, 3) << endl;
-//                writer << mVelocity.at<float>(1, 0) << " " << mVelocity.at<float>(1, 1) << " "
-//                       << mVelocity.at<float>(1, 2) << " " << mVelocity.at<float>(1, 3) << endl;
-//                writer << mVelocity.at<float>(2, 0) << " " << mVelocity.at<float>(2, 1) << " "
-//                       << mVelocity.at<float>(2, 2) << " " << mVelocity.at<float>(2, 3) << endl;
-//                writer << mVelocity.at<float>(3, 0) << " " << mVelocity.at<float>(3, 1) << " "
-//                       << mVelocity.at<float>(3, 2) << " " << mVelocity.at<float>(3, 3) << endl;
-//                writer.close();
-//                ///added module
-//                ///undis LiDAR point with motion from vision
-//                UndisLiDAR();
-//                ///extract plane segement
-//                RegionGrowing(mCurrentFrame,true);
-////                //todo --- lidar VO
-////                ///project plane
-//                ProjectPlanetoImage();
-////                ///update plane infor
-//                mpFrameDrawer->UpdateLiDAR(this);
-////                //todo associate the ORB feature with LiDAR points
-            }
-            else
-            //否则速度为空
+            } else            //否则速度为空
                 mVelocity = cv::Mat();
             //更新显示的位姿
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
-            //*Step 6 清楚观测不到的地图点
+            //*Step 6 清除观测不到的地图点
             // Clean VO matches
             for(int i=0; i<mCurrentFrame.N; i++)
             {
@@ -947,7 +908,7 @@ void Tracking::Track()
                     }
             }
 
-            //*Step 7 清楚恒速模型中 updatelastframe中临时添加的mappoints（仅双目和rgbd）
+            //*Step 7 清除恒速模型中 upDateLastFrame中临时添加的mapPoints（仅stereo和rgbd）
             // Delete temporal MapPoints
             for(list<MapPoint*>::iterator lit = mlpTemporalPoints.begin(), lend =  mlpTemporalPoints.end(); lit!=lend; lit++)
             {
@@ -956,7 +917,7 @@ void Tracking::Track()
             }
             mlpTemporalPoints.clear();
 
-            //*Step 8 检测并插入关键帧，对于双目和rgbd会产生新的地图点
+            //*Step 8 检测并插入关键帧，对于stereo和rgbd会产生新的地图点
             // Check if we need to insert a new keyframe
             if(NeedNewKeyFrame())
                 CreateNewKeyFrame();
@@ -973,7 +934,7 @@ void Tracking::Track()
             }
         }
 
-        ///added Need to check if safe or not
+        ///added module - Need to check if safe or not
         //*Step 4 更新显示线城的信息 比如图像 特征点 地图点
         // Update drawer
         mpFrameDrawer->Update(this);
@@ -1019,48 +980,6 @@ void Tracking::Track()
 
 }//Tracking
 
-// undistort lidar point
-//    void Tracking::TransformToStart(PointType const *const pi, PointType *const po)
-//    {
-//        //interpolation ratio
-//        double s;
-//        // 由于kitti数据集上的lidar已经做过了运动补偿，因此这里就不做具体补偿了
-//        if (DISTORTION)
-//            s = (pi->intensity - int(pi->intensity)) / SCAN_PERIOD;
-//        else
-//            s = 1.0;    // s = 1s说明全部补偿到点云结束的时刻
-//        //s = 1;
-//        // 所有点的操作方式都是一致的，相当于从结束时刻补偿到起始时刻
-//        // 这里相当于是一个匀速模型的假设
-//        Eigen::Quaterniond q_point_last = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
-//        Eigen::Vector3d t_point_last = s * t_last_curr;
-//        Eigen::Vector3d point(pi->x, pi->y, pi->z);
-//        Eigen::Vector3d un_point = q_point_last * point + t_point_last;
-//
-//        po->x = un_point.x();
-//        po->y = un_point.y();
-//        po->z = un_point.z();
-//        po->intensity = pi->intensity;
-//    }
-
-// transform all lidar points to the start of the next frame
-
-//    void Tracking::TransformToEnd(PointType const *const pi, PointType *const po)
-//    {
-//        // undistort point first
-//        pcl::PointXYZI un_point_tmp;
-//        TransformToStart(pi, &un_point_tmp);
-//
-//        Eigen::Vector3d un_point(un_point_tmp.x, un_point_tmp.y, un_point_tmp.z);
-//        Eigen::Vector3d point_end = q_last_curr.inverse() * (un_point - t_last_curr);
-//
-//        po->x = point_end.x();
-//        po->y = point_end.y();
-//        po->z = point_end.z();
-//
-//        //Remove distortion time info
-//        po->intensity = int(pi->intensity);
-//    }
 
 /**
  * LiDAR Mode Init first, then Camera Mode Init
@@ -1505,6 +1424,181 @@ void Tracking::StereoInitialization()
 }
 
 /**
+ * @brief Monocular plus LiDAR initialization function
+ */
+    void Tracking::MonoLiDARInitialization(){
+        //Step 1 mpInitializer不存在时，创建一个实例
+        if(!mpInitializer)
+        {
+            // Set Reference Frame
+            if(mCurrentFrame.mvKeys.size()>100)
+            {
+                //把当前帧赋给初始化帧
+                mInitialFrame = Frame(mCurrentFrame);
+                //把当前帧赋给上一帧
+                mLastFrame = Frame(mCurrentFrame);
+                //记录上一帧的特征点
+                mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
+                for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
+                    mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
+
+                //This will never work
+                if(mpInitializer)
+                    delete mpInitializer;
+
+                mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
+
+                //初始化匹配结果 -1
+                fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+
+                //函数返回，下次进来执行else部分
+                return;
+            }
+        }
+        else
+        {
+            // Try to initialize
+            //Step 2 如果当前帧的特征点太少 删除初始化器
+            if((int)mCurrentFrame.mvKeys.size()<=100)
+            {
+                delete mpInitializer;
+                mpInitializer = static_cast<Initializer*>(NULL);
+                fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+                ///Added lidar module
+                mbLiDARInit = false;
+                ///-----
+                mLiDARState = NOT_INITIALIZED;
+                return;
+            }
+
+            // Find correspondences
+            // Step 3 当真帧和初始帧匹配
+            ORBmatcher matcher(0.9,                                        //最佳和次佳特征点评分的比值阈值，越大则最佳次佳的区分度越小
+                               true);                                      //检查特征点的方向
+            int nmatches = matcher.SearchForInitialization(mInitialFrame,  //初始帧
+                                                           mCurrentFrame,  //当前帧
+                                                           mvbPrevMatched, //初始帧的特征点
+                                                           mvIniMatches,   //保存匹配关系，size = IniFrame keypt number
+                                                           100);           //搜索框大小
+
+            // Check if there are enough correspondences
+            // Step 4 是否找到足够的匹配
+            if(nmatches<100)
+            {
+                delete mpInitializer;
+                mpInitializer = static_cast<Initializer*>(NULL);
+                return;
+            }
+
+            cv::Mat Rcw; // Current Camera Rotation
+            cv::Mat tcw; // Current Camera Translation
+            vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
+
+            // Step 5 满足初始化条件，计算F H矩阵，得到帧间运动 初始化mapPoints
+            if (mpInitializer->Initialize(mCurrentFrame,   //当前帧
+                                          mvIniMatches,    //当前帧和参考帧的特征点匹配关系
+                                          Rcw, tcw,        //初始化得到的世界相对相机的位姿
+                                          mvIniP3D,        //三角化得到的空间点
+                                          vbTriangulated)) //一个table，记录mvIniMatches里哪些点被三角化了。
+            {
+                for (size_t i = 0, iend = mvIniMatches.size(); i < iend; i++)
+                {
+                    //Step 6 删除有匹配关系但无法进行三角化的点
+                    if(mvIniMatches[i]>=0 && !vbTriangulated[i])
+                    {
+                        mvIniMatches[i]=-1;
+                        nmatches--;
+                    }
+                }
+
+                /**
+                * Store keypoints used for initialization
+                */
+                ofstream outer1, outer2,outer3;
+                string fileName1 = to_string(mInitialFrame.mnId), fileName2 = to_string(mCurrentFrame.mnId);
+                cout<<endl<<"init by frame "<<fileName1<<" "<<fileName2<<endl;
+                outer1.open(fileName1 + ".txt",ios::out);
+                outer2.open(fileName2 + ".txt",ios::out);
+                outer3.open("mvIniP3D.txt",ios::out);
+                for (int i = 0; i < mvIniMatches.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if(curIndex>=0){
+                        //cout<<"mvIniMatches ["<<i<<"] = "<<mvIniMatches[i]<<endl;
+                        outer1 << i << " " << mInitialFrame.mvKeys[i].pt.x << " " << mInitialFrame.mvKeys[i].pt.y << endl;
+                        outer2 << curIndex << " " << mCurrentFrame.mvKeys[curIndex].pt.x << " " << mCurrentFrame.mvKeys[curIndex].pt.y << endl;
+                        outer3 << mvIniP3D[i].x<<" "<< mvIniP3D[i].y<<" "<< mvIniP3D[i].z<<endl;
+                    }
+                }
+                outer1.close();
+                outer2.close();
+                outer3.close();
+
+                ///Added Module ------ After triangulated 3d map points. now LiDAR information get involves
+                ///Step Fusion 1 --- if a point, in initial frame, successfully triangulated, and has depth from LiDAR
+                cout<<"mInitialFrame.mvORBAttributions.size() "<<mInitialFrame.mvORBAttributions.size()<<" mvIniMatches.size "<<mvIniMatches.size()<<endl;
+                vector<vector<double>> ratiosXYZ;
+                ///Step Fusion 1.1 store ratios over each axis
+                for(int i = 0; i < mInitialFrame.mvORBAttributions.size();i++){
+                    //has depth from LiDAR
+                    if(mInitialFrame.mvORBAttributions[i].depthSource>-1){
+                        vector<double> thisRatio;
+                        thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.x/mvIniP3D[i].x);
+                        thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.y/mvIniP3D[i].y);
+                        thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.z/mvIniP3D[i].z);
+                        ratiosXYZ.push_back(thisRatio);
+                    }
+                }
+                size_t ratiosNum = ratiosXYZ.size();
+                ///Step Fusion 1.2 select ratios with small variance
+                double meanXratio=0,meanYratio=0,meanZratio=0;
+                int validRatioNum = 0;
+                for(int i=0;i<ratiosNum;i++){
+                    double variance = -1, mean = 0;
+                    mean = (ratiosXYZ[i][0]+ratiosXYZ[i][1]+ratiosXYZ[i][2])/3;
+                    variance = sqrt((ratiosXYZ[i][0] - mean) * (ratiosXYZ[i][0] - mean)
+                                    + (ratiosXYZ[i][1] - mean) * (ratiosXYZ[i][1] - mean)
+                                    + (ratiosXYZ[i][2] - mean) * (ratiosXYZ[i][2] - mean));
+                    if (variance < 0.005) {//remove candidate with large ratio variance
+                        meanXratio += ratiosXYZ[i][0];
+                        meanYratio += ratiosXYZ[i][1];
+                        meanZratio += ratiosXYZ[i][2];
+                        validRatioNum++;
+                    }
+                }
+                //get the mean ratio over each axis
+                meanXratio = meanXratio/validRatioNum;
+                meanYratio = meanYratio/validRatioNum;
+                meanZratio = meanZratio/validRatioNum;
+                cout<<"meanXratio "<<meanXratio<<" meanYratio "<<meanYratio<<" meanZratio "<<meanZratio<<endl;
+                ///Step Fusion 1.3 Apply ratio to ini3dpoints
+                for (auto &eachP3d: mvIniP3D) {
+                    eachP3d.x = eachP3d.x * meanXratio;
+                    eachP3d.y = eachP3d.y * meanXratio;
+                    eachP3d.z = eachP3d.z * meanXratio;
+                }
+
+                ///Step Fusion 2 run a BA ( at here or in track?)
+
+                // Set Frame Poses
+                // Step 7 初始化的第一帧作为世界坐标系，所以第一帧pose为I
+                mInitialFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
+                cv::Mat Tcw = cv::Mat::eye(4,4,CV_32F);
+                Rcw.copyTo(Tcw.rowRange(0,3).colRange(0,3));
+                tcw.copyTo(Tcw.rowRange(0,3).col(3));
+                mCurrentFrame.SetPose(Tcw);
+
+                ///Added module-----
+                //There should be a ratio between mono and lidar
+                cout<<"Tcw "<<endl<<Tcw.inv()<<endl;
+                //------------------
+
+                // Step 8 创建初始化地图点MapPoints
+                CreateInitialMapMonocular();
+            }
+        }
+    }
+
+/**
  * @brief 单目相机初始化成功后用三角化的点生成Mappoints地图点
  */
 void Tracking::MonocularInitialization()
@@ -1592,6 +1686,28 @@ void Tracking::MonocularInitialization()
                 }
             }
 
+            /**
+            * Store keypoints used for initialization
+            */
+            ofstream outer1, outer2,outer3;
+            string fileName1 = to_string(mInitialFrame.mnId), fileName2 = to_string(mCurrentFrame.mnId);
+            cout<<endl<<"init by frame "<<fileName1<<" "<<fileName2<<endl;
+            outer1.open(fileName1 + ".txt",ios::out);
+            outer2.open(fileName2 + ".txt",ios::out);
+            outer3.open("mvIniP3D.txt",ios::out);
+            for (int i = 0; i < mvIniMatches.size(); i++) {
+                int curIndex = mvIniMatches[i];
+                if(curIndex>=0){
+                    //cout<<"mvIniMatches ["<<i<<"] = "<<mvIniMatches[i]<<endl;
+                    outer1 << i << " " << mInitialFrame.mvKeys[i].pt.x << " " << mInitialFrame.mvKeys[i].pt.y << endl;
+                    outer2 << curIndex << " " << mCurrentFrame.mvKeys[curIndex].pt.x << " " << mCurrentFrame.mvKeys[curIndex].pt.y << endl;
+                    outer3 << mvIniP3D[i].x<<" "<< mvIniP3D[i].y<<" "<< mvIniP3D[i].z<<endl;
+                }
+            }
+            outer1.close();
+            outer2.close();
+            outer3.close();
+
             // Set Frame Poses
             // Step 7 初始化的第一帧作为世界坐标系，所以第一帧pose为I
             mInitialFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
@@ -1610,6 +1726,7 @@ void Tracking::MonocularInitialization()
         }
     }
 }
+
 
 /**
  * given a origin point, a ray, a plane norn and plane point
@@ -1636,176 +1753,6 @@ void Tracking::MonocularInitialization()
         return intersectP;
     }
 
-/**
- * find keypoint's nearby projected lidar point
- * retreve depth by fitting the nearby lidar point into a plane
- * ray of keypoint intersect with plane provides the depth.
- */
-    void Tracking::AssociateLiDARInit(float pixelThres) {
-        ///Step Traverse Mappoint, find closest 2d lidar Points (and related 3D lidar pts)
-        for (size_t i = 0; i < mvIniMatches.size(); i++) {
-            if (mvIniMatches[i] > -1) {
-                cv::Point2d p2d = mCurrentFrame.mvKeysUn[mvIniMatches[i]].pt;
-                vector<PtLsr> nearbyLsrPt;
-                float maxZ = -999, minZ = 999;
-                for (int j = 0; j < mCurrentFrame.mLaserPt_cam.size(); j++) {
-                    if (mCurrentFrame.mLaserPt_cam[j].index2d >= 0) {
-                        float disX = abs(p2d.x - mCurrentFrame.mLaserPt_cam[j].pt2d.x);
-                        float disY = abs(p2d.y - mCurrentFrame.mLaserPt_cam[j].pt2d.y);
-                        if (disX < pixelThres && disY < pixelThres && sqrt(disX * disX + disY * disY) < pixelThres) {
-                            nearbyLsrPt.push_back(mCurrentFrame.mLaserPt_cam[j]);
-                            if (maxZ < mCurrentFrame.mLaserPt_cam[j].pt3d.z)
-                                maxZ = mCurrentFrame.mLaserPt_cam[j].pt3d.z;
-                            if (minZ > mCurrentFrame.mLaserPt_cam[j].pt3d.z)
-                                minZ = mCurrentFrame.mLaserPt_cam[j].pt3d.z;
-                        }
-                    }
-                }
-                ///group by Z depth. step 0.3m
-                if (nearbyLsrPt.size() > 0) {
-                    float stepZ = 0.3;
-                    //cout<<"maxZ "<<maxZ <<" minZ "<<minZ<<endl;
-                    float length = maxZ - minZ;
-                    int groupNum = floor(length / stepZ + 1);
-                    //cout<<"hist group num "<<groupNum<<endl;
-                    vector<vector<PtLsr>> hist;
-                    for (int g = 0; g < groupNum; g++) {
-                        vector<PtLsr> thisHist;
-                        hist.push_back(thisHist);
-                    }
-                    //cout << "step test" << endl;
-                    for (int j = 0; j < nearbyLsrPt.size(); j++) {
-                        //cout << "z - minZ : " << (nearbyLsrPt[j].pt3d.z + 0.00001 - minZ);
-                        int index = floor((nearbyLsrPt[j].pt3d.z + 0.00001 - minZ) / stepZ);
-                        //cout << " index: " << index << " | ";
-                        hist[index].push_back(nearbyLsrPt[j]);//error?
-                    }
-                    //cout<<endl;
-                    ///find group with min average distance
-                    int minHistIndex = 0;
-                    float mindis = 9999;
-                    for (int g = 0; g < groupNum; g++) {
-                        float disSum = 0;
-                        for (int k = 0; k < hist[g].size(); k++) {
-                            float dis = sqrt((p2d.x - hist[g][k].pt2d.x) * (p2d.x - hist[g][k].pt2d.x) +
-                                             (p2d.y - hist[g][k].pt2d.y) * (p2d.y - hist[g][k].pt2d.y));
-                            disSum += dis;
-                        }
-                        float disAvg = disSum / hist[g].size();
-                        if (disAvg < mindis) {
-                            minHistIndex = g;
-                            mindis = mindis;
-                        }
-                    }
-                    //cout<<"closest group "<<minHistIndex<<endl;
-                    ///fit a plane with that group
-                    if(hist[minHistIndex].size()>5)
-                    {
-                        ofstream writer;
-                        string filename = "data//nearby//" + std::to_string(i) + ".txt";
-                        cout<<filename<<endl;
-                        writer.open(filename, ios::out);
-                        writer << p2d.x << " " << p2d.y << " " << -999 << endl;
-                        for (int j = 0; j < nearbyLsrPt.size(); j++) {
-                            writer << nearbyLsrPt[j].pt3d.x << " " << nearbyLsrPt[j].pt3d.y << " " << nearbyLsrPt[j].pt3d.z
-                                   << endl;
-                        }
-
-                        pcl::PointCloud<pcl::PointXYZ>::Ptr nearbyPoints2(new pcl::PointCloud<pcl::PointXYZ>);
-                        nearbyPoints2->resize(hist[minHistIndex].size());
-                        for(int pi =0; pi<hist[minHistIndex].size(); pi++)
-                        {
-                            nearbyPoints2->points[pi].x = hist[minHistIndex][pi].pt3d.x;
-                            nearbyPoints2->points[pi].y = hist[minHistIndex][pi].pt3d.y;
-                            nearbyPoints2->points[pi].z = hist[minHistIndex][pi].pt3d.z;
-                        }
-                        pcl::PointIndices inliersOutput;
-                        Plane foundPlane;//not fill
-                        int inPlaneNum = RANSACPlane(nearbyPoints2, foundPlane, inliersOutput);
-                        //cout<<"inplane num "<<inPlaneNum;
-                        ///Distance is the ray intersect with plane
-                        ///Pt_img -> Pt_cam
-                        vector<float> ray_dir;
-                        cv::Mat Pt = cv::Mat::ones(3,1,CV_32F);
-                        Pt.at<float>(0,0) = p2d.x;
-                        Pt.at<float>(1,0) = p2d.y;
-                        cv::Mat P_cam0 = mK.inv()*Pt;
-                        ray_dir.push_back(P_cam0.at<float>(0,0));
-                        ray_dir.push_back(P_cam0.at<float>(1,0));
-                        ray_dir.push_back(P_cam0.at<float>(2,0));
-                        vector<float> origin;
-                        origin.push_back(0);
-                        origin.push_back(0);
-                        origin.push_back(0);
-                        vector<float> planeN;
-                        planeN.push_back(foundPlane.A);
-                        planeN.push_back(foundPlane.B);
-                        planeN.push_back(foundPlane.C);
-                        vector<float> planeP;
-                        planeP.push_back(nearbyPoints2->points[0].x);
-                        planeP.push_back(nearbyPoints2->points[0].x);
-                        planeP.push_back(nearbyPoints2->points[0].x);
-                        vector<float> intersectP;
-                        intersectP = RayPlaneDis(ray_dir, origin, planeN, planeP);
-                        writer<<intersectP[0]<<" "<<intersectP[1]<<" "<<intersectP[2]<<endl;
-                        writer.close();
-                    }
-                }
-                //depth from Cur Frame
-                //cout<<"init frame pt index "<<i;
-//                int curLsrPtNum = mCurrentFrame.mLaserPt_cam.size();
-//                pcl::PointCloud<pcl::PointXYZ>::Ptr nearbyPoints2(new pcl::PointCloud<pcl::PointXYZ>);
-//                nearbyPoints2->resize(curLsrPtNum);
-//                int index2 = mvIniMatches[i];
-//                //cout<<" cur frame pt index2 "<<index2;
-//                cv::KeyPoint kp2 = mCurrentFrame.mvKeysUn[index2];
-//                int actualNum2 = 0;
-//                for (int pi = 0; pi < curLidPtNum; pi++) {
-//                    float distance = sqrt(
-//                            (kp2.pt.x - mCurrentFrame.mPjcLaserPts[pi].x) *
-//                            (kp2.pt.x - mCurrentFrame.mPjcLaserPts[pi].x)
-//                            +
-//                            (kp2.pt.y - mCurrentFrame.mPjcLaserPts[pi].y) *
-//                            (kp2.pt.y - mCurrentFrame.mPjcLaserPts[pi].y));
-//                    if (distance < pixelThres) {
-//                        nearbyPoints2->points[actualNum2].x = mCurrentFrame.mLaserPt_cam[pi][0];
-//                        nearbyPoints2->points[actualNum2].y = mCurrentFrame.mLaserPt_cam[pi][1];
-//                        nearbyPoints2->points[actualNum2].z = mCurrentFrame.mLaserPt_cam[pi][2];
-//                        actualNum2++;
-//                    }
-//                }
-//                nearbyPoints2->resize(actualNum2);
-                //cout<<" nearby laser num "<<actualNum2;
-//                ///fit a plane with nearby lidar points
-//                if (actualNum2 > 5) {
-//                    pcl::PointIndices inliersOUT;
-//                    Plane foundPlane;
-//                    int inPlaneNum = RANSACPlane(nearbyPoints2, foundPlane, inliersOUT);
-//                    //cout<<"inplane num "<<inPlaneNum;
-//                    //todo distance is the ray intersect with plane
-//                    vector<float> ray_dir;
-//                    ray_dir.push_back(mvIniP3D[i].x);
-//                    ray_dir.push_back(mvIniP3D[i].y);
-//                    ray_dir.push_back(mvIniP3D[i].z);
-//                    vector<float> origin;
-//                    origin.push_back(0);
-//                    origin.push_back(0);
-//                    origin.push_back(0);
-//                    vector<float> planeN;
-//                    planeN.push_back(foundPlane.A);
-//                    planeN.push_back(foundPlane.B);
-//                    planeN.push_back(foundPlane.C);
-//                    vector<float> planeP;
-//                    planeP.push_back(foundPlane.pointList[0].x);
-//                    planeP.push_back(foundPlane.pointList[0].y);
-//                    planeP.push_back(foundPlane.pointList[0].z);
-//                    float depth2 = RayPlaneDis(ray_dir, origin, planeN, planeP);
-//                    cout << " " << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
-//                }
-            }
-        }
-    }
-
 void Tracking::CreateInitialMapMonocular()
 {
     // Create KeyFrames
@@ -1820,34 +1767,6 @@ void Tracking::CreateInitialMapMonocular()
     // Insert KFs in the map
     mpMap->AddKeyFrame(pKFini);
     mpMap->AddKeyFrame(pKFcur);
-
-//    ///added module
-//    //LiDAR ICP on the init - cur frame
-//    ///extract plane segement
-//    RegionGrowing(mInitialFrame, false);
-//    RegionGrowing(mCurrentFrame, false);
-//    cv::Mat Tc1c2(4,4,CV_32F);
-//    LidarICP(mInitialFrame,mCurrentFrame,Tc1c2);
-//    cout<<"init map mono Lidar Tc1c2 "<<endl<<Tc1c2<<endl;
-//    cv::Mat Tcw = mCurrentFrame.mTcw;
-//    cout<<"init map mono Vision Tcw "<<endl<<Tcw<<endl;
-//    ///calc and apply ratio
-//    float lengthVision = sqrt(Tcw.at<float>(0, 3) * Tcw.at<float>(0, 3)
-//                              + Tcw.at<float>(1, 3) * Tcw.at<float>(1, 3)
-//                              + Tcw.at<float>(2, 3) * Tcw.at<float>(2, 3));
-//    float lengthLiDAR = sqrt(Tc1c2.at<float>(0, 3) * Tc1c2.at<float>(0, 3)
-//                              + Tc1c2.at<float>(1, 3) * Tc1c2.at<float>(1, 3)
-//                              + Tc1c2.at<float>(2, 3) * Tc1c2.at<float>(2, 3));
-//    float ratio = lengthLiDAR / lengthVision;
-//    cout<<"lidar vision ratio "<<ratio<<endl;
-////    for(size_t i=0; i<mvIniMatches.size();i++)
-////    {
-////        if(mvIniMatches[i]<0)
-////            continue;
-////        mvIniP3D[i].x = mvIniP3D[i].x * ratio;
-////        mvIniP3D[i].y = mvIniP3D[i].y * ratio;
-////        mvIniP3D[i].z = mvIniP3D[i].z * ratio;
-////    }
 
     // * Step 3 用初始化得到的3D点来生成地图点MapPoints
     // Create MapPoints and asscoiate to keyframes
@@ -1866,7 +1785,7 @@ void Tracking::CreateInitialMapMonocular()
         //关键帧instance增加地图点和相应的索引
         pKFini->AddMapPoint(pMP,i);
         pKFcur->AddMapPoint(pMP,mvIniMatches[i]);
-        //地图点增加关键帧和对应的索引
+        //地图点增加关键帧和对应的索引69
         pMP->AddObservation(pKFini,i);
         pMP->AddObservation(pKFcur,mvIniMatches[i]);
         //从众多观测中挑选一个最具代表的描述子
@@ -1909,48 +1828,28 @@ void Tracking::CreateInitialMapMonocular()
         return;
     }
 
-    //* STEP6 将两帧之间的变换 归一化到平均深度为1的尺度下
+
+    ///Added Module --- with LiDAR, no need unify
+
+    //* STEP 6 将两帧之间的变换 归一化到平均深度为1的尺度下
     // Scale initial baseline
-    cv::Mat Tc2w = pKFcur->GetPose();
-    Tc2w.col(3).rowRange(0,3) = Tc2w.col(3).rowRange(0,3)*invMedianDepth;
-    pKFcur->SetPose(Tc2w);
+//    cv::Mat Tc2w = pKFcur->GetPose();
+//    cout<<"Tcw2 before medianDepth "<<endl<<Tc2w<<endl;
+//    Tc2w.col(3).rowRange(0,3) = Tc2w.col(3).rowRange(0,3)*invMedianDepth;
+//    pKFcur->SetPose(Tc2w);
+//    cout<<"Tcw2 after medianDepth "<<endl<<Tc2w<<endl;
 
-    cout<<"Tcw2"<<endl<<Tc2w<<endl;
-
-
-    /**
-    * Store keypoints used for initialization
-    */
-    ofstream outer1, outer2, outer3;
-    string fileName1 = to_string(mInitialFrame.mnId), fileName2 = to_string(mCurrentFrame.mnId);
-    cout<<endl<<"init by frame "<<fileName1<<" "<<fileName2<<endl;
-    outer1.open(fileName1 + ".txt",ios::out);
-    outer2.open(fileName2 + ".txt",ios::out);
-    outer3.open("Mappoints.txt", ios::out);
-    for (int i = 0; i < mvIniMatches.size(); i++) {
-        int curIndex = mvIniMatches[i];
-        if(curIndex>=0){
-            cout<<" mvIniMatches ["<<i<<"] = "<<mvIniMatches[i]<<endl;
-            outer1 << i << " " << mInitialFrame.mvKeys[i].pt.x << " " << mInitialFrame.mvKeys[i].pt.y << endl;
-            outer2 << curIndex << " " << mCurrentFrame.mvKeys[curIndex].pt.x << " " << mCurrentFrame.mvKeys[curIndex].pt.y << endl;
-        }
-    }
-    outer1.close();
-    outer2.close();
-    //* step7 把3D点也归一化到1
+    //* step 7 把3D点也归一化到1
     // Scale points
-    vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
-    for(size_t iMP=0; iMP<vpAllMapPoints.size(); iMP++)
-    {
-        if(vpAllMapPoints[iMP])
-        {
-            MapPoint* pMP = vpAllMapPoints[iMP];
-            pMP->SetWorldPos(pMP->GetWorldPos()*invMedianDepth);
-            cv::Mat newPose= pMP->GetWorldPos()*invMedianDepth;
-            outer3<<newPose.at<float>(0,0)<<" "<<newPose.at<float>(1,0)<<" "<<newPose.at<float>(0,0)<<endl;
-        }
-    }
-    outer3.close();
+//    vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
+//    for(size_t iMP=0; iMP<vpAllMapPoints.size(); iMP++)
+//    {
+//        if(vpAllMapPoints[iMP])
+//        {
+//            MapPoint* pMP = vpAllMapPoints[iMP];
+//            pMP->SetWorldPos(pMP->GetWorldPos()*invMedianDepth);
+//        }
+//    }
 
     //* Step 8 把关键帧插入局部地图，更新归一化后的位姿，局部地图点
     mpLocalMapper->InsertKeyFrame(pKFini);
@@ -1968,7 +1867,6 @@ void Tracking::CreateInitialMapMonocular()
     mCurrentFrame.mpReferenceKF = pKFcur;
 
     mLastFrame = Frame(mCurrentFrame);
-    //todo ? for local optimization
     mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
 
     mpMapDrawer->SetCurrentCameraPose(pKFcur->GetPose());
@@ -1976,6 +1874,9 @@ void Tracking::CreateInitialMapMonocular()
     mpMap->mvpKeyFrameOrigins.push_back(pKFini);
 
     mState=OK;
+
+    cout<<pKFcur->GetPose().inv()<<endl;
+    int pause = 0;
 }
 
 void Tracking::CheckReplacedInLastFrame()
@@ -2026,8 +1927,9 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
     //*Step4 优化重投影误差来（3D-2D）获得位姿
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization(&mCurrentFrame);//Just optimize current Frame.
 
+    cout<<"mCurrentFrame : "<<mCurrentFrame.mnId<<" "<<endl<<mCurrentFrame.mTcw<<endl;
     //*Step 5 剔除outlier
     // Discard outliers
     int nmatchesMap = 0;
@@ -2060,13 +1962,14 @@ void Tracking::UpdateLastFrame()
     //上一帧的参考帧
     KeyFrame* pRef = mLastFrame.mpReferenceKF;
     //Transfrom^lastframe_refence 从参考帧到上一帧的变换
-    cv::Mat Tlr = mlRelativeFramePoses.back();
+    cv::Mat Tlr = mlRelativeFramePoses.back();//T from ref to lastFrame
 
     //Tlw = Tlr * Trw  
     //?为什么视频说是上一帧在世界系下的位姿？应该类似getPose返回Tcw,这里是设置Tlw。
+    //是世界坐标在上一帧的位姿
     mLastFrame.SetPose(Tlr*pRef->GetPose());
 
-    //单目或者上一帧是关键帧，程序结束，就设置了当前帧的位姿
+    //单目或者上一帧是关键帧，程序结束，等于只设置了当前帧的位姿
     if(mnLastKeyFrameId==mLastFrame.mnId || mSensor==System::MONOCULAR || !mbOnlyTracking)
         return;
 
@@ -2074,7 +1977,7 @@ void Tracking::UpdateLastFrame()
     // Create "visual odometry" MapPoints
     // We sort points according to their measured depth by the stereo/RGB-D sensor
 
-    //*Step 2.1 得到上一帧有深度的地图点
+    //*Step 2.1 得到上一帧有深度的地图点,不一定是地图点
     vector<pair<float,int> > vDepthIdx;
     vDepthIdx.reserve(mLastFrame.N);
     for(int i=0; i<mLastFrame.N;i++)
@@ -2082,6 +1985,7 @@ void Tracking::UpdateLastFrame()
         float z = mLastFrame.mvDepth[i];
         if(z>0)
         {
+            //pair(depth,point_index)
             vDepthIdx.push_back(make_pair(z,i));
         }
     }
@@ -2117,10 +2021,11 @@ void Tracking::UpdateLastFrame()
             cv::Mat x3D = mLastFrame.UnprojectStereo(i);
             MapPoint* pNewMP = new MapPoint(x3D,mpMap,&mLastFrame,i);
 
-            //插入到上一帧地图中
+            //（临时）插入到上一帧地图中
             //?可以直接用i下标访问？所以之前是null?
             mLastFrame.mvpMapPoints[i]=pNewMP;
-            //加入到临时地图点容器中，再createnewkeyframe之前会清空
+
+            //加入到临时地图点容器中，为了将来createnewkeyframe清空这些临时地图点用
             mlpTemporalPoints.push_back(pNewMP);
             nPoints++;
         }
@@ -2128,7 +2033,7 @@ void Tracking::UpdateLastFrame()
         {
             nPoints++;
         }
-        //深度超过mTheDepth（35倍基线）并且 超过100个
+        //深度超过mTheDepth（35倍基线）并且 超过100个(因为depth sort过了，100个之后的点可能比较远了)
         if(vDepthIdx[j].first>mThDepth && nPoints>100)
             break;
     }
@@ -2145,15 +2050,14 @@ void Tracking::UpdateLastFrame()
 bool Tracking::TrackWithMotionModel()
 {
     //初始化matcher 0.9 是 最小距离小于次小距离0.9 | 检查旋转
-    //? keyframe tracking 没这个matcher？
     ORBmatcher matcher(0.9,true);
 
     //* Step 1 更新上一帧的位姿
-    // Update last frame pose according to its reference keyframe
-    // Create "visual odometry" points if in Localization Mode
+    //1. Update last frame pose according to its reference keyframe
+    //2. Create "visual odometry" points for RGBD/Sterep mode, if in Localization Mode
     UpdateLastFrame();
 
-    //当前帧位姿=速度*上一帧位姿 //Tc2w
+    //当前帧位姿=速度*上一帧位姿 //Tcw = Tcl * Tlw;
     mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
 
     //清空当前帧的地图点
@@ -2293,18 +2197,18 @@ bool Tracking::TrackLocalMap()
     // We have an estimation of the camera pose and some map points tracked in the frame.
     // We retrieve the local map and try to find matches to points in the local map.
 
-    //*Step 1 更新局部关键帧 mvpLocalKeyFrames 和 局部地图点 mvpLocalMapPoints
+    ///*Step 1 更新局部关键帧 mvpLocalKeyFrames 和 局部地图点 mvpLocalMapPoints
     UpdateLocalMap();
 
-    //*Step 2 匹配局部地图中 与 当前帧 匹配的Mappoints
+    ///*Step 2 匹配局部地图中 与 当前帧 匹配的Mappoints
     SearchLocalPoints();
 
-    //*Step 3 更新局部地图点后 更新位姿
+    ///*Step 3 更新局部地图点后 更新位姿
     // Optimize Pose
     Optimizer::PoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
 
-    //*Step 4 更新当前帧的mappoints被观测程度
+    ///*Step 4 更新当前帧的mappoints被观测程度
     // Update MapPoints Statistics
     for(int i=0; i<mCurrentFrame.N; i++)
     {
@@ -2326,12 +2230,13 @@ bool Tracking::TrackLocalMap()
             //? 是outlier并且是双目，就删除这个点
             else if(mSensor==System::STEREO)
                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
+            //question monocular do nothing?
 
         }
     }
 
-    //*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
-    // Decide if the tracking was succesful
+    ///*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
+    // Decide if the tracking was successful
     // More restrictive if there was a relocalization recently
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
         return false;
@@ -2353,22 +2258,22 @@ bool Tracking::TrackLocalMap()
  */ 
 bool Tracking::NeedNewKeyFrame()
 {
-    //*Step VO模式不插入
+    ///*Step 1 VO模式不插入
     if(mbOnlyTracking)
         return false;
-    //*Step 局部地图线城被闭环检测使用 不插入
+    ///*Step 1 局部地图线城被闭环检测使用 不插入
     // If Local Mapping is freezed by a Loop Closure do not insert keyframes
     if(mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
         return false;
 
     const int nKFs = mpMap->KeyFramesInMap();
 
-    //*Step 距离上次重定位比较远 或者 超出数量
+    ///*Step 2 距离上次重定位比较近 或者 超出数量
     // Do not insert keyframes if not enough frames have passed from last relocalisation
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
         return false;
 
-    //*Step 参考关键帧跟踪到的地图点数量
+    ///*Step 3 参考关键帧跟踪到的地图点数量
     //地图点有个最小观测次数的要求nminobs = 3
     // Tracked MapPoints in the reference keyframe
     int nMinObs = 3;
@@ -2376,11 +2281,11 @@ bool Tracking::NeedNewKeyFrame()
         nMinObs=2;
     int nRefMatches = mpReferenceKF->TrackedMapPoints(nMinObs);
 
-    //*Step 查询局部地图管理器是否繁忙
+    ///*Step 4 查询局部地图管理器是否繁忙
     // Local Mapping accept keyframes?
     bool bLocalMappingIdle = mpLocalMapper->AcceptKeyFrames();
 
-    //*Step stero或者rgbd 统计可以添加的有校地图点总数喝跟踪到的地图点数量
+    ///*Step 5 stero或者rgbd 统计可以添加的有校地图点总数和跟踪到的地图点数量
     // Check how many "close" points are being tracked and how many could be potentially created.
     int nNonTrackedClose = 0;
     int nTrackedClose= 0;
@@ -2402,7 +2307,8 @@ bool Tracking::NeedNewKeyFrame()
     //如果跟踪到的地图点太少 同时 没有跟踪到的点太多 插入关键帧
     bool bNeedToInsertClose = (nTrackedClose<100) && (nNonTrackedClose>70);
 
-    //*Step  决策是否插入关键帧
+    ///*Step 6  决策是否插入关键帧
+    ///*Step 6.1
     // Thresholds
     float thRefRatio = 0.75f;
     if(nKFs<2)
@@ -2411,24 +2317,25 @@ bool Tracking::NeedNewKeyFrame()
     if(mSensor==System::MONOCULAR)
         thRefRatio = 0.9f;
 
-    ////*Step 长时间没有插入
+    ////*Step 6.2 长时间没有插入
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
     const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
-    //*Step  满足插入关键帧的最小间隔 并且 localmapper空闲
+    ///*Step 6.3  满足插入关键帧的最小间隔 并且 localmapper空闲
     // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
     const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
-    //*Step 双目RGBD情况下当前帧跟踪到的点比参考帧的1.15倍少 或者 满足 needtiinsertclose
+    ///*Step 6.4 双目RGBD情况下当前帧跟踪到的点比参考帧的0.25倍少 或者 满足 bNeedToInsertClose
     //Condition 1c: tracking is weak
     const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || bNeedToInsertClose) ;
-    //*Step 跟踪到的点 < 参考帧的点 或者 needtoinsertclose TRUE 同时 跟跟踪到的点不是太少
+    ///*Step 6.5 跟踪到的点 < 参考帧的点 或者 needtoinsertclose TRUE 同时 跟跟踪到的点不是太少
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
     const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
 
     if((c1a||c1b||c1c)&&c2)
     {
         // If the mapping accepts keyframes, insert keyframe.
-        // Otherwise send a signal to interrupt BA
+        // Otherwise, send a signal to interrupt BA
         //*Step mapping空闲
+        ///*Step 6.6 localmappingidle free, return ture
         if(bLocalMappingIdle)
         {
             return true;
@@ -2439,12 +2346,14 @@ bool Tracking::NeedNewKeyFrame()
             mpLocalMapper->InterruptBA();
             if(mSensor!=System::MONOCULAR)
             {
+                ///*Step 6.7 mpLocalMapper contains KeyframesInQueue < 3, return ture
                 if(mpLocalMapper->KeyframesInQueue()<3)
                     return true;
                 else
                     return false;
             }
             else
+                //note no need for insert keyframe for monocular if localmapping thread is busy.
                 return false;
         }
     }
@@ -2461,24 +2370,24 @@ void Tracking::CreateNewKeyFrame()
     if(!mpLocalMapper->SetNotStop(true))
         return;
 
-    //*Step 1 将当前帧构造成关键帧
+    ///*Step 1 将当前帧构造成关键帧
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
 
-    //*Step 2 将当前关键帧设置为当前帧的参考关键帧
+    ///*Step 2 将当前关键帧设置为当前帧的参考关键帧
     mpReferenceKF = pKF; //参考关键帧成员，给后面的帧用
-    mCurrentFrame.mpReferenceKF = pKF;
+    mCurrentFrame.mpReferenceKF = pKF; //note this will be updated by updatelocalkeyframe function, a most co-visible frame will be set as reference KF for current frame.
 
-    //*Step 3 对于RGBstero 生成新得地图点
-    //跟 tracking::udpatelastframe里面更新地图点类似
+    ///*Step 3 对于RGB/Stereo 生成新得地图点
+    //跟 tracking::udpatelastframe()里面更新地图点类似
     if(mSensor!=System::MONOCULAR)
     {
         //更新几个位姿
         mCurrentFrame.UpdatePoseMatrices();
 
-        //*Step 3.1 当前帧有深度值的特征点
+        ///*Step 3.1 当前帧有深度值的特征点.
         // We sort points by the measured depth by the stereo/RGBD sensor.
         // We create all those MapPoints whose depth < mThDepth.
-        // If there are less than 100 close points we create the 100 closest.
+        // If there are less than 100 close points we create the 100 closest. LESS?
         vector<pair<float,int> > vDepthIdx;
         vDepthIdx.reserve(mCurrentFrame.N);
         for(int i=0; i<mCurrentFrame.N; i++)
@@ -2492,10 +2401,10 @@ void Tracking::CreateNewKeyFrame()
 
         if(!vDepthIdx.empty())
         {
-            //*Step 3.2 按照深度排序
+            ///*Step 3.2 按照深度排序, closer is better
             sort(vDepthIdx.begin(),vDepthIdx.end());
 
-            //*Step 3.3 从中找出不是地图点的生成临时地图点
+            ///*Step 3.3 从中找出不是地图点的生成临时地图点
             int nPoints = 0;
             for(size_t j=0; j<vDepthIdx.size();j++)
             {
@@ -2510,7 +2419,7 @@ void Tracking::CreateNewKeyFrame()
                 else if(pMP->Observations()<1)
                 {
                     bCreateNew = true;
-                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);//NULL the old one, create new instead
                 }
 
                 //如果需要就创建地图点，这里是全局地图的地图点，用于跟踪
@@ -2524,6 +2433,7 @@ void Tracking::CreateNewKeyFrame()
                     pNewMP->ComputeDistinctiveDescriptors();
                     pNewMP->UpdateNormalAndDepth();
                     mpMap->AddMapPoint(pNewMP);
+                    //note. in trackWithMotion function -> updateLastFrame function -> just create new mappoint but do not add attributions above
 
                     mCurrentFrame.mvpMapPoints[i]=pNewMP;
                     nPoints++;
@@ -2533,7 +2443,7 @@ void Tracking::CreateNewKeyFrame()
                     nPoints++;
                 }
 
-                //*Step 3.3 停止新建地图点需要满足以下条件
+                ///*Step 3.3 停止新建地图点需要满足以下条件
                 //点的深度超过阈值
                 //npoints超过100个
                 if(vDepthIdx[j].first>mThDepth && nPoints>100)
@@ -2542,7 +2452,7 @@ void Tracking::CreateNewKeyFrame()
         }
     }
 
-    //*Step 插入关键帧
+    ///*Step 4 插入关键帧
     //关键帧插入局部地图里面
     mpLocalMapper->InsertKeyFrame(pKF);
     //插入后允许局部建图线城停止
@@ -2602,137 +2512,6 @@ void Tracking::CreateNewKeyFrame()
 //            mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
 //        }
 //    }
-
-///added module
-//    void Tracking::RegionGrowing(Frame &inputFrame, bool Undistored) {
-//        pcl::PointCloud<pcl::PointXYZ>::Ptr LiDARCloud(new pcl::PointCloud<pcl::PointXYZ>);
-//        if (Undistored) {
-//            int LiDARNum = inputFrame.mLaserPtsUndis.size();
-//            LiDARCloud->points.resize(LiDARNum);
-//            int actualCounter = 0;
-//            for (int li = 0; li < LiDARNum; li++) {
-//                LiDARCloud->points[actualCounter].x = inputFrame.mLaserPtsUndis[li][0];
-//                LiDARCloud->points[actualCounter].y = inputFrame.mLaserPtsUndis[li][1];
-//                LiDARCloud->points[actualCounter].z = inputFrame.mLaserPtsUndis[li][2];
-//                actualCounter++;
-//            }
-//            LiDARCloud->points.resize(actualCounter);
-//        } else {
-//            int LiDARNum = inputFrame.mLaserPt_cam.size();
-//            LiDARCloud->points.resize(LiDARNum);
-//            int actualCounter = 0;
-//            for (int li = 0; li < LiDARNum; li++) {
-//                LiDARCloud->points[actualCounter].x = inputFrame.mLaserPt_cam[li][0];
-//                LiDARCloud->points[actualCounter].y = inputFrame.mLaserPt_cam[li][1];
-//                LiDARCloud->points[actualCounter].z = inputFrame.mLaserPt_cam[li][2];
-//                actualCounter++;
-//            }
-//            LiDARCloud->points.resize(actualCounter);
-//        }
-//        //cout<<"lidar cloud actual number "<<LiDARCloud->points.size()<<endl;
-//        ///estimating normals for each point
-//        pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-//        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-//        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-//        normal_estimator.setSearchMethod(tree);
-//        normal_estimator.setInputCloud(LiDARCloud);
-//        normal_estimator.setKSearch(50);
-//        normal_estimator.compute(*normals);
-//        ///region growing
-//        pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-//        reg.setMinClusterSize(1000);
-//        reg.setMaxClusterSize(100000);
-//        reg.setSearchMethod(tree);
-//        reg.setNumberOfNeighbours(100);//too little will cause run time error
-//        reg.setInputCloud(LiDARCloud);
-//        reg.setInputNormals(normals);
-//        reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
-//        reg.setCurvatureThreshold(2.0);
-//        ///extract each cluster
-//        clock_t startTime = clock();
-//        std::vector<pcl::PointIndices> clusters;
-//        reg.extract(clusters);
-//        clock_t endTime = clock();
-//        double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
-//        //cout << "Region Growing " << timeUsed << " sec ";
-//        ///call RANSAC plane fitting
-//        for (int ci = 0; ci < clusters.size(); ci++) {
-//            pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
-//            thisCloud->points.resize(clusters[ci].indices.size());
-//            thisCloud->height = 1;
-//            thisCloud->width = clusters[ci].indices.size();
-//            //cout<<" | cluster contains"<<clusters[ci].indices.size();
-//            for (int index = 0; index < clusters[ci].indices.size(); index++) {
-//                thisCloud->points[index].x = LiDARCloud->points[clusters[ci].indices[index]].x;
-//                thisCloud->points[index].y = LiDARCloud->points[clusters[ci].indices[index]].y;
-//                thisCloud->points[index].z = LiDARCloud->points[clusters[ci].indices[index]].z;
-//                //cout<<"cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
-//            }
-//            Plane foundPlane;
-//            startTime = clock();
-//            pcl::PointIndices inliersOUT;
-//            int inPlaneNum = RANSACPlane(thisCloud, foundPlane, inliersOUT);
-//            endTime = clock();
-//            double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
-//            //cout << " RANSAC plane " << timeUsed << " sec. Inliners num: " << inPlaneNum;
-//            if (inPlaneNum > 0) {
-//                int planeID = inputFrame.mvPlanes.size();
-//                foundPlane.PlaneId = planeID;
-//                inputFrame.mvPlanes.push_back(foundPlane);
-//            }
-//        }
-//        //cout << endl;
-//
-//        ///save LiDAR planes
-////    fstream writer;
-////    string fileName = "data//lidar//"+std::to_string(mCurrentFrame.mnId) + ".txt";
-////    writer.open(fileName,std::ios::out);
-////    for(int plni = 0; plni<mCurrentFrame.mvPlanes.size();plni++)
-////    {
-////        for(int pi=0;pi<mCurrentFrame.mvPlanes[plni].pointList.size();pi++)
-////        {
-////            writer<<mCurrentFrame.mvPlanes[plni].pointList[pi].x<<" "<<mCurrentFrame.mvPlanes[plni].pointList[pi].y<<" "<<mCurrentFrame.mvPlanes[plni].pointList[pi].z<<endl;
-////        }
-////    }
-////    writer.close();
-//    }
-
-int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOutput)
-{
-    //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = inputCloud.makeShared();
-    pcl::ModelCoefficients::Ptr  coefficients(new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    //create the segmentation objects
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
-    //Optional
-    seg.setOptimizeCoefficients(true);
-    //Mandatory
-    seg.setMethodType(pcl::SACMODEL_PLANE);
-    seg.setModelType(pcl::SAC_RANSAC);
-    seg.setDistanceThreshold(0.001);
-
-    seg.setInputCloud(cloud);
-    seg.segment(*inliers, *coefficients);
-    if(inliers->indices.size()==0)
-        return 0;
-    inliersOutput = *inliers;
-    foundPlane.A = coefficients->values[0];foundPlane.B = coefficients->values[1];
-    foundPlane.C = coefficients->values[2];foundPlane.D = coefficients->values[3];
-    double sumX =0,sumY=0,sumZ=0;
-    for(int i = 0; i < inliers->indices.size();i++)
-    {
-        double x = cloud->points[inliers->indices[i]].x;
-        double y = cloud->points[inliers->indices[i]].y;
-        double z = cloud->points[inliers->indices[i]].z;
-        sumX += x;
-        sumY += y;
-        sumZ += z;
-        //foundPlane.points3D.push_back(cv::Point3d(x,y,z));
-        //cout<<"inliner push back "<<x<<" "<<y<<" "<<z<<endl;
-    }
-    foundPlane.centreP = cv::Point3d (sumX/inliers->indices.size(), sumY/inliers->indices.size(),sumZ/inliers->indices.size());
-    return inliers->indices.size();
-}
 
 //void Tracking::LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation)
 //{
@@ -2835,10 +2614,10 @@ int Tracking::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &fou
 //            }
 //        }
 //    }
-
+//
 void Tracking::SearchLocalPoints()
 {
-    //*Step1 遍历当前帧的mappoints，标记这些点不参与之后的搜索
+    ///*Step1 遍历当前帧的mappoints，标记这些点不参与之后的搜索
     // Do not search map points already matched
     for(vector<MapPoint*>::iterator vit=mCurrentFrame.mvpMapPoints.begin(), vend=mCurrentFrame.mvpMapPoints.end(); vit!=vend; vit++)
     {
@@ -2920,7 +2699,7 @@ void Tracking::UpdateLocalPoints()
     //*Step1 清空局部mappoints
     mvpLocalMapPoints.clear();
 
-    //*Step1 遍历局部关键帧 将这些帧的地图点插入进来
+    //*Step1 遍历局部关键帧,将这些帧的地图点插入进来
     for(vector<KeyFrame*>::const_iterator itKF=mvpLocalKeyFrames.begin(), itEndKF=mvpLocalKeyFrames.end(); itKF!=itEndKF; itKF++)
     {
         KeyFrame* pKF = *itKF;
@@ -2931,6 +2710,7 @@ void Tracking::UpdateLocalPoints()
             MapPoint* pMP = *itMP;
             if(!pMP)
                 continue;
+            //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了,避免重复添加
             if(pMP->mnTrackReferenceForFrame==mCurrentFrame.mnId)
                 continue;
             if(!pMP->isBad())
@@ -2949,7 +2729,7 @@ void Tracking::UpdateLocalPoints()
  */
 void Tracking::UpdateLocalKeyFrames()
 {
-    //*Step 1 遍历当前帧的地图点 记录所有能观测到这些地图点的关键帧
+    ///*Step 1 遍历当前帧的地图点 记录所有能观测到这些地图点的关键帧
     // Each map point vote for the keyframes in which it has been observed
     map<KeyFrame*,int> keyframeCounter;
     for(int i=0; i<mCurrentFrame.N; i++)
@@ -2963,8 +2743,8 @@ void Tracking::UpdateLocalKeyFrames()
                 const map<KeyFrame*,size_t> observations = pMP->GetObservations();
                 for (map<KeyFrame *, size_t>::const_iterator it = observations.begin(), itend = observations.end(); it != itend; it++)
                     //it->first = keyframe
-                    //keyframeCounter本身没有初始化，如果it->first存在则++，不存在就增加一组键值对。
-                    //所以同一个关键帧看到的地图点，都会累加到这个关键帧（it->first）的计数
+                    //keyframeCounter本身没有初始化，如果it->first存在则value++，不存在就增加一组<keyframe,value>对。
+                    //所以每次这个关键帧看到一个地图点，都会累加到这个关键帧（it->first）的计数(value)
                     //最后得到的就是各个关键帧的共视程度
                     keyframeCounter[it->first]++;
             }
@@ -2986,7 +2766,7 @@ void Tracking::UpdateLocalKeyFrames()
     //申请三倍内存
     mvpLocalKeyFrames.reserve(3*keyframeCounter.size());
 
-    //*Step 2.1 遍历刚找到的有共视局部关键帧
+    ///*Step 2.1 遍历刚找到的有共视局部关键帧
     // All keyframes that observe a map point are included in the local map. Also check which keyframe shares most points
     for(map<KeyFrame*,int>::const_iterator it=keyframeCounter.begin(), itEnd=keyframeCounter.end(); it!=itEnd; it++)
     {
@@ -3004,11 +2784,11 @@ void Tracking::UpdateLocalKeyFrames()
 
         //把共视局部关键帧 添加进 局部关键帧
         mvpLocalKeyFrames.push_back(it->first);
-        //记录当前帧ID，表示这个关键帧已经是当前帧（mnId）的局部关键帧了
-        pKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+        //记录当前帧ID，表示这个pKF关键帧已经是当前帧currentFrame（mnId）的局部关键帧了
+        pKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;//待会就不重复添加了
     }
 
-    //*Step 2.2 遍历已经有的局部关键帧，将它们的共视度前10的帧插入 局部关键帧
+    ///*Step 2.2 遍历已经有的局部关键帧，将它们的共视度前10的帧插入 局部关键帧
     // Include also some not-already-included keyframes that are neighbors to already-included keyframes
     for(vector<KeyFrame*>::const_iterator itKF=mvpLocalKeyFrames.begin(), itEndKF=mvpLocalKeyFrames.end(); itKF!=itEndKF; itKF++)
     {
@@ -3019,7 +2799,7 @@ void Tracking::UpdateLocalKeyFrames()
         KeyFrame* pKF = *itKF;
 
         const vector<KeyFrame*> vNeighs = pKF->GetBestCovisibilityKeyFrames(10);
-        //*Step 2.2.1 共视关键帧的共视邻居
+        ///*Step 2.2.1 共视关键帧的共视邻居
         for(vector<KeyFrame*>::const_iterator itNeighKF=vNeighs.begin(), itEndNeighKF=vNeighs.end(); itNeighKF!=itEndNeighKF; itNeighKF++)
         {
             KeyFrame* pNeighKF = *itNeighKF;
@@ -3030,12 +2810,12 @@ void Tracking::UpdateLocalKeyFrames()
                 {
                     mvpLocalKeyFrames.push_back(pNeighKF);
                     pNeighKF->mnTrackReferenceForFrame=mCurrentFrame.mnId;
-                    //*只用了最高的邻居？
+                    //? 只用了最高的邻居？
                     break;
                 }
             }
         }
-        //*Step 2.2.2 共视关键帧的子关键帧
+        ///*Step 2.2.2 共视关键帧的子关键帧
         const set<KeyFrame*> spChilds = pKF->GetChilds();
         for(set<KeyFrame*>::const_iterator sit=spChilds.begin(), send=spChilds.end(); sit!=send; sit++)
         {
@@ -3046,11 +2826,12 @@ void Tracking::UpdateLocalKeyFrames()
                 {
                     mvpLocalKeyFrames.push_back(pChildKF);
                     pChildKF->mnTrackReferenceForFrame=mCurrentFrame.mnId;
+                    //? only take the first child?
                     break;
                 }
             }
         }
-        //*Step 2.2.3 共视关键帧的父关键帧
+        ///*Step 2.2.3 共视关键帧的父关键帧
         KeyFrame* pParent = pKF->GetParent();
         if(pParent)
         {
@@ -3062,10 +2843,14 @@ void Tracking::UpdateLocalKeyFrames()
                 break;
             }
         }
+        //Note. mpReferenceKF = pKFmax. which is the most co-visible keyframe of current frame.
+        //in Keyframe::UpdateConnections() confirms the keyframe's parent and child keyframes.
+        //parent: the most co-visible keyframe of this keyframe.
+        //child: the child of above parent's most co-visible keyframe.
 
     }
 
-    //*Step 3 当前帧的参考帧就是与自己共视程度最高的关键帧
+    ///*Step 3 当前帧的参考帧就是与自己共视程度最高的关键帧
     if(pKFmax)
     {
         mpReferenceKF = pKFmax;
@@ -3085,11 +2870,11 @@ void Tracking::UpdateLocalKeyFrames()
 */
 bool Tracking::Relocalization()
 {
-    //*Step 1 计算当前帧BoW
+    ///*Step 1 计算当前帧BoW
     // Compute Bag of Words Vector
     mCurrentFrame.ComputeBoW();
 
-    //*Step 2 找候选关键帧
+    ///*Step 2 找候选关键帧
     // Relocalization is performed when tracking is lost
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
     vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame);
@@ -3129,8 +2914,10 @@ bool Tracking::Relocalization()
             }
             else
             {
-                PnPsolver* pSolver = new PnPsolver(mCurrentFrame,vvpMapPointMatches[i]);
-                pSolver->SetRansacParameters(0.99,10,300,4,0.5,5.991);
+                PnPsolver *pSolver = new PnPsolver(mCurrentFrame, vvpMapPointMatches[i]);
+                pSolver->SetRansacParameters(0.99, 10, 300,
+                                             4,//min number of one sample, 3 for Sim3 4 for EPnP,
+                                             0.5, 5.991);
                 vpPnPsolvers[i] = pSolver;
                 nCandidates++;
             }
@@ -3142,11 +2929,11 @@ bool Tracking::Relocalization()
     bool bMatch = false;
     ORBmatcher matcher2(0.9,true);
 
-    //*Step 4 开始找匹配关键帧了-Epnp找初始位姿
+    ///*Step 4 开始找匹配关键帧了-Epnp找初始位姿
     //重定位一定要准确，所以很严格
     while (nCandidates > 0 && !bMatch)
     {
-        //所有候选关键帧
+        //所有候选关键帧---the first qualify KeyFrame will break the for loop and stop while loop by bMatch
         for(int i=0; i<nKFs; i++)
         {
             if(vbDiscarded[i])
@@ -3160,7 +2947,7 @@ bool Tracking::Relocalization()
             //RANSAC标记
             bool bNoMore;
 
-            //*Step 4.1 EPnP计算姿态 迭代5次
+            ///*Step 4.1 EPnP计算姿态 迭代5次
             PnPsolver* pSolver = vpPnPsolvers[i];
             cv::Mat Tcw = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
 
@@ -3171,8 +2958,8 @@ bool Tracking::Relocalization()
                 nCandidates--;
             }
 
-            //*Step 4.2 优化epnp结果，优化epnp结果，优化后inliner>50，结束。小于50，投影匹配增加匹配点，再优化。
-            //*再优化后inliner>50，结束。30<inliner<50,再投影匹配再优化。
+            ///*Step 4.2 优化epnp结果，优化后inliner>50，结束。小于50，投影匹配增加匹配点，再优化。
+            ///*再优化后inliner>50，结束。30<inliner<50,再投影匹配再优化。
             // If a Camera Pose is computed, optimize
             if(!Tcw.empty())
             {
@@ -3195,7 +2982,7 @@ bool Tracking::Relocalization()
                     else
                         mCurrentFrame.mvpMapPoints[j]=NULL;
                 }
-                //优化
+                //优化3D-2D PnP BA
                 int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
                 //内点太少，则跳过不优化，Tcw还是保留了
@@ -3219,7 +3006,7 @@ bool Tracking::Relocalization()
                         nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
                         ////*Step 4.4 BA后inliner不是很多，也不是太少
-                        //再进行投影匹配，用更小的搜索框口和距离阈值
+                        //再进行投影匹配，用更小的搜索框口和距离阈值(因为刚pnp之后的位姿更准确了)
                         // If many inliers but still not enough, search by projection again in a narrower window
                         // the camera has been already optimized with many points
                         if(nGood>30 && nGood<50)

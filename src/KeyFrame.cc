@@ -72,9 +72,9 @@ long unsigned int KeyFrame::nNextId=0;
             mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
             mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap),
             ///added modules
-            mLaserPoints(F.mLaserPoints),mLaserPt_cam(F.mLaserPt_cam)//,mLaserPtsUndis(F.mLaserPtsUndis),
-            //mLaserTimes(F.mLaserTimes), mPjcLaserPts(F.mPjcLaserPts), mPjcLaserPtsUndis(F.mPjcLaserPtsUndis),
-            //planNorms(F.planNorms)//, mvPlanes(mvPlanes)
+            mLaserPoints(F.mLaserPoints),mLaser16ScansPoints(F.mLaser16ScansPoints),mLaserPt_cam(F.mLaserPt_cam),
+            mLaserCorner_cam(F.mLaserCorner_cam),mLaserLessCorner_cam(F.mLaserLessCorner_cam),mLaserFlat_cam(F.mLaserFlat_cam),mLaserLessFlat_cam(F.mLaserLessFlat_cam),
+            mLaserTimes(F.mLaserTimes),mvPlanes(F.mvPlanes),mvLines(F.mvLines),mvORBAttributions(F.mvORBAttributions)
     {
         //关键帧ID
         mnId=nNextId++;
@@ -356,7 +356,7 @@ void KeyFrame::UpdateConnections()
     //For all map points in keyframe check in which other keyframes are they seen
     //Increase counter for those keyframes
     //通过3D点间接统计可以观测到这些3D点的所有关键帧之间的共视程度
-    //* Step 1 统计每个地图点都有多少关键帧与当前关键帧共视，结果放在Kfcounter
+    //* Step 1 统计每个地图点都有多少关键帧与当前关键帧共视，结果放在KfCounter
     for(vector<MapPoint*>::iterator vit=vpMP.begin(), vend=vpMP.end(); vit!=vend; vit++)
     {
         MapPoint* pMP = *vit;
@@ -369,11 +369,11 @@ void KeyFrame::UpdateConnections()
 
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
-        //已经有其他关键帧观测到这个mappoint就在KFcounter中对应的KFcounter[mit->first]++共视个数
-        //?但是“其他关键帧观测到这个地图点”这是哪里初始化的？
+        //已经有其他关键帧观测到这个mappoint就在KFCounter中对应的KFCounter[mit->first]++共视个数
+        //Question? 但是“其他关键帧观测到这个地图点”这是哪里初始化的？ 应该是增加地图点的时候添加的
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
-            //mnID关键帧的ID
+            //观测到这个地图点的关键帧不应该是当前关键帧
             if(mit->first->mnId==mnId)
                 continue;
             KFcounter[mit->first]++;
@@ -381,7 +381,7 @@ void KeyFrame::UpdateConnections()
     }
 
     // This should not happen
-    //?为什么不会发生
+    //QUESTION? 为什么不会发生
     if(KFcounter.empty())
         return;
 
@@ -407,19 +407,19 @@ void KeyFrame::UpdateConnections()
         if(mit->second>=th)
         {
             vPairs.push_back(make_pair(mit->second,mit->first));
-            (mit->first)->AddConnection(this,mit->second);
+            (mit->first)->AddConnection(this,mit->second);//共视关键帧增加一条和当前关键帧的联系
         }
     }
 
-    //* STEP3 如果没有超过阈值的关键帧，包留最大共视帧
+    //*STEP 3 如果没有超过阈值的关键帧，包留最大共视帧
     if(vPairs.empty())
     {
         vPairs.push_back(make_pair(nmax,pKFmax));
         pKFmax->AddConnection(this,nmax);
     }
 
-    //* Step4 对共视度比较高的关键帧更新连接关系和权重
-    //? 上面AddConnection的时候不是调用过updatecovisible了？
+    //*Step 4 对共视度比较高的关键帧更新连接关系和权重
+    //QUESTION? 上面AddConnection的时候不是调用过updateCovisible了？
     sort(vPairs.begin(),vPairs.end());
     list<KeyFrame*> lKFs;
     list<int> lWs;
@@ -446,7 +446,6 @@ void KeyFrame::UpdateConnections()
             mpParent->AddChild(this);
             mbFirstConnection = false;
         }
-
     }
 }
 
@@ -512,16 +511,22 @@ void KeyFrame::SetErase()
         unique_lock<mutex> lock(mMutexConnections);
         if(mspLoopEdges.empty())
         {
-            mbNotErase = false;
+            mbNotErase = false;//mark okay to erase
         }
     }
 
-    if(mbToBeErased)
+    if(mbToBeErased)//erase this keyframe if last time this keyframe be marked mbToBeErased true
     {
-        SetBadFlag();
+        SetBadFlag();//really erase function
     }
 }
-
+/**
+ * @brief : really / actually keyframe erase function,
+ * erase this keyframe and the connection between other keyframes and mapPoints
+ *
+ * mbNotErase: need to erase this keyframe and its connections, but this keyframe is probably under loop-closure or sim3 optimization, can not delete it.
+ * at first time, set mbNotErase = true will not erase this function, but mark mbToBeErased = true. then erase this keyframe next time.
+ */
 void KeyFrame::SetBadFlag()
 {   
     {

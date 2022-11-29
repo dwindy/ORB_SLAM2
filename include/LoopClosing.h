@@ -44,12 +44,18 @@ class KeyFrameDatabase;
 class LoopClosing
 {
 public:
+    //ConsistentGroup.first 对应每个“连续组”中的关键帧，ConsistentGroup.second为每个"连续组"的序号
+    typedef pair<set<KeyFrame*>,int> ConsistentGroup;
 
-    typedef pair<set<KeyFrame*>,int> ConsistentGroup;    
 //    typedef map<KeyFrame*,g2o::Sim3,std::less<KeyFrame*>,
 //        Eigen::aligned_allocator<std::pair<const KeyFrame*, g2o::Sim3> > > KeyFrameAndPose;
-    typedef map<KeyFrame*,g2o::Sim3,std::less<KeyFrame*>,
-            Eigen::aligned_allocator<std::pair<KeyFrame* const, g2o::Sim3> > > KeyFrameAndPose;
+
+    //map<key:关键帧，value: 位姿，排序算法>（这是map的完整构造函数
+    typedef map<KeyFrame *,//key
+            g2o::Sim3, //value
+            std::less<KeyFrame *>,//sort method
+            Eigen::aligned_allocator<std::pair<KeyFrame *const, g2o::Sim3> >//指定分配器，和内存空间开辟有关，为了可以使用eigen中的sse和avx指令
+            > KeyFrameAndPose;
 
 public:
 

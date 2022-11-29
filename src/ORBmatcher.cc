@@ -43,7 +43,7 @@ ORBmatcher::ORBmatcher(float nnratio, bool checkOri): mfNNratio(nnratio), mbChec
 }
 
 /**
- * @brief local mappoint 的投影匹配
+ * @brief local mappoint 的投影匹配, 往传进来的frame.mvpMapPoints里面塞mappoint
  * 遍历有效的局部地图点
  * 设定搜索窗口的大小
  * 通过投影点，搜索窗口和预测尺度进行搜索，找到搜索半径内的候选匹配点进行索引
@@ -149,7 +149,6 @@ float ORBmatcher::RadiusByViewingCos(const float &viewCos)
     else
         return 4.0;
 }
-
 
 bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoint &kp2,const cv::Mat &F12,const KeyFrame* pKF2)
 {
@@ -334,6 +333,15 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
     return nmatches;
 }
 
+/**
+ * @brief search by projection sim3 version
+ * @param pKF
+ * @param Scw
+ * @param vpPoints
+ * @param vpMatched [in&out] : this will be update after more match been found
+ * @param th
+ * @return
+ */
 int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapPoint*> &vpPoints, vector<MapPoint*> &vpMatched, int th)
 {
     // Get Calibration Parameters for later projection
@@ -342,29 +350,34 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
     const float &cx = pKF->cx;
     const float &cy = pKF->cy;
 
-    // Decompose Scw
+    //Step 1 分解sim3变换矩阵
+    //QUESTION 为何剥离尺度
+    //Decompose Scw
     cv::Mat sRcw = Scw.rowRange(0,3).colRange(0,3);
-    const float scw = sqrt(sRcw.row(0).dot(sRcw.row(0)));
-    cv::Mat Rcw = sRcw/scw;
-    cv::Mat tcw = Scw.rowRange(0,3).col(3)/scw;
-    cv::Mat Ow = -Rcw.t()*tcw;
+    const float scw = sqrt(sRcw.row(0).dot(sRcw.row(0))); //get scale
+    cv::Mat Rcw = sRcw/scw; //remove scale for ratation
+    cv::Mat tcw = Scw.rowRange(0,3).col(3)/scw; //get translation by remove scale
+    cv::Mat Ow = -Rcw.t()*tcw; //camera centre coordinate under world system
 
     // Set of MapPoints already found in the KeyFrame
     set<MapPoint*> spAlreadyFound(vpMatched.begin(), vpMatched.end());
-    spAlreadyFound.erase(static_cast<MapPoint*>(NULL));
+    spAlreadyFound.erase(static_cast<MapPoint*>(NULL));//remove NULL from the set
 
     int nmatches=0;
 
     // For each Candidate MapPoint Project and Match
+    //Step 2 遍历闭环KF及其共视KF的所有地图点(不考虑当前KF已经匹配的地图点）投影到当前KF
     for(int iMP=0, iendMP=vpPoints.size(); iMP<iendMP; iMP++)
     {
         MapPoint* pMP = vpPoints[iMP];
 
         // Discard Bad MapPoints and already found
+        //Step 2.1 ignore bad and ignore already matched
         if(pMP->isBad() || spAlreadyFound.count(pMP))
             continue;
 
         // Get 3D Coords.
+        //Step 2.2 Project to current keyframe, check if valid
         cv::Mat p3Dw = pMP->GetWorldPos();
 
         // Transform into Camera Coords.
@@ -387,8 +400,10 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
             continue;
 
         // Depth must be inside the scale invariance region of the point
+        //check depth is in range
         const float maxDistance = pMP->GetMaxDistanceInvariance();
         const float minDistance = pMP->GetMinDistanceInvariance();
+        //vector from map point to camera center
         cv::Mat PO = p3Dw-Ow;
         const float dist = cv::norm(PO);
 
@@ -406,6 +421,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
         // Search in a radius
         const float radius = th*pKF->mvScaleFactors[nPredictedLevel];
 
+        //Step 2.3 search candidate match points
         const vector<size_t> vIndices = pKF->GetFeaturesInArea(u,v,radius);
 
         if(vIndices.empty())
@@ -416,6 +432,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
 
         int bestDist = 256;
         int bestIdx = -1;
+        //Step 2.4 traverse candidate match points, find best match
         for(vector<size_t>::const_iterator vit=vIndices.begin(), vend=vIndices.end(); vit!=vend; vit++)
         {
             const size_t idx = *vit;
@@ -424,6 +441,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
 
             const int &kpLevel= pKF->mvKeysUn[idx].octave;
 
+            //should be in the same scale or same scale -1
             if(kpLevel<nPredictedLevel-1 || kpLevel>nPredictedLevel)
                 continue;
 
@@ -824,7 +842,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                             continue;
                     
                     const cv::Mat &d2 = pKF2->mDescriptors.row(idx2);
-                    //*Step 2。6 描述子距离
+                    //*Step 2.6 描述子距离
                     const int dist = DescriptorDistance(d1,d2);
                     
                     if(dist>TH_LOW || dist>bestDist)
@@ -832,7 +850,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
 
                     const cv::KeyPoint &kp2 = pKF2->mvKeysUn[idx2];
 
-                    //? 为什么双目不需要判断像素点到极点的距离？
+                    //QUESTION 为什么双目不需要判断像素点到极点的距离？
                     //* 因为双目可以恢复三维点
                     if(!bStereo1 && !bStereo2)
                     {
@@ -841,7 +859,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                          //*Step 2.7 极点e2到kp2的像素距离 小于 阈值th 认为kp2对应的Mappoint距离pkf1相机太近，跳过
                          //坐着根据kp2金字塔尺度因子(scale^n,scale=1.2,n为层数)定义阈值th
                          //金字塔层数从0到7，对应距离sqrt(100*pKF2->mvScaleFactors[kp2,octave])是10-20个像素
-                         //? 对这个阈值的有效性持怀疑态度
+                         //QUESTION? 对这个阈值的有效性持怀疑态度
                         if(distex*distex+distey*distey<100*pKF2->mvScaleFactors[kp2.octave])
                             continue;
                     }
@@ -949,7 +967,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
 
     for(int i=0; i<nMPs; i++)
     {
-        //*Step1 地图点的有效性
+        //*Step 1 地图点的有效性
         MapPoint* pMP = vpMapPoints[i];
 
         if(!pMP)
@@ -1092,6 +1110,15 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
     return nFused;
 }
 
+/**
+ * @brief 闭环矫正中使用，将当前关键帧闭环匹配上的关键帧及其共视关键帧组成的地图点投影到当前关键帧，融合地图点
+ * @param pKF : current Keyframe
+ * @param Scw : current keyframe sim3 after loop correction
+ * @param vpPoints : mapPoints of loop-closure candidates keyframe and its connected keyframe
+ * @param th : threshold
+ * @param vpReplacePoint : replace mappoints
+ * @return
+ */
 int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoints, float th, vector<MapPoint *> &vpReplacePoint)
 {
     // Get Calibration Parameters for later projection
@@ -1101,8 +1128,9 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
     const float &cy = pKF->cy;
 
     // Decompose Scw
+    //Step 1 sim3 to SE3
     cv::Mat sRcw = Scw.rowRange(0,3).colRange(0,3);
-    const float scw = sqrt(sRcw.row(0).dot(sRcw.row(0)));
+    const float scw = sqrt(sRcw.row(0).dot(sRcw.row(0))); //QUESTION ? why this is scale?
     cv::Mat Rcw = sRcw/scw;
     cv::Mat tcw = Scw.rowRange(0,3).col(3)/scw;
     cv::Mat Ow = -Rcw.t()*tcw;
@@ -1124,6 +1152,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
             continue;
 
         // Get 3D Coords.
+        //Step 2 Mappoint to keyframe coords
         cv::Mat p3Dw = pMP->GetWorldPos();
 
         // Transform into Camera Coords.
@@ -1134,6 +1163,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
             continue;
 
         // Project into Image
+        //Step 3 project to image frame
         const float invz = 1.0/p3Dc.at<float>(2);
         const float x = p3Dc.at<float>(0)*invz;
         const float y = p3Dc.at<float>(1)*invz;
@@ -1146,6 +1176,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
             continue;
 
         // Depth must be inside the scale pyramid of the image
+        //Step 4 range and angle valid
         const float maxDistance = pMP->GetMaxDistanceInvariance();
         const float minDistance = pMP->GetMinDistanceInvariance();
         cv::Mat PO = p3Dw-Ow;
@@ -1165,7 +1196,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
 
         // Search in a radius
         const float radius = th*pKF->mvScaleFactors[nPredictedLevel];
-
+        //Step 5 search matches in radius
         const vector<size_t> vIndices = pKF->GetFeaturesInArea(u,v,radius);
 
         if(vIndices.empty())
@@ -1177,6 +1208,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
 
         int bestDist = INT_MAX;
         int bestIdx = -1;
+        //Step 6 find best match
         for(vector<size_t>::const_iterator vit=vIndices.begin(); vit!=vIndices.end(); vit++)
         {
             const size_t idx = *vit;
@@ -1197,13 +1229,15 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
         }
 
         // If there is already a MapPoint replace otherwise add new measurement
+        //Step 7 replace or add mappoint
         if(bestDist<=TH_LOW)
         {
             MapPoint* pMPinKF = pKF->GetMapPoint(bestIdx);
             if(pMPinKF)
             {
+                //should not directly replace. need mutex lock before replace. so mark this replacement first
                 if(!pMPinKF->isBad())
-                    vpReplacePoint[iMP] = pMPinKF;
+                    vpReplacePoint[iMP] = pMPinKF;// index is iMp-th candidate map points and value is its target mappoints
             }
             else
             {
@@ -1246,9 +1280,9 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
     cv::Mat t2w = pKF2->GetTranslation();
 
     //Transformation between cameras
-    //? 为什么带个s12?
-    cv::Mat sR12 = s12*R12;
-    cv::Mat sR21 = (1.0/s12)*R12.t();
+    //sim3 = [sR t; 0 1]; sim3_inv = [R^T/s -(R^T*t/s); 0 1]
+    cv::Mat sR12 = s12*R12;//get sR from cam2 to cam1
+    cv::Mat sR21 = (1.0/s12)*R12.t();//get sR and t from cam1 to cam2
     cv::Mat t21 = -sR21*t12;
 
     const vector<MapPoint*> vpMapPoints1 = pKF1->GetMapPointMatches();
@@ -1270,7 +1304,7 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
             //地图点在pKF2中的索引
             //*这个方法好用
             int idx2 = pMP->GetIndexInKeyFrame(pKF2);
-            if(idx2>=0 && idx2<N2)
+            if(idx2>=0 && idx2<N2)//question is this a case that idx2 >= N2?
                 vbAlreadyMatched2[idx2]=true;
         }
     }
@@ -1572,7 +1606,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
                 {
                     const size_t i2 = *vit;
                     if(CurrentFrame.mvpMapPoints[i2])
-                        //? 这个会已经有observation得情况吗？
+                        //? 这个会已经有observation得情况吗？被之前遍历到的点找到了？
                         if(CurrentFrame.mvpMapPoints[i2]->Observations()>0)
                             continue;
 

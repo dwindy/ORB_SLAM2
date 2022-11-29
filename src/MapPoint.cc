@@ -386,9 +386,12 @@ void MapPoint::UpdateNormalAndDepth()
 
     {
         unique_lock<mutex> lock3(mMutexPos);
-        mfMaxDistance = dist * levelScaleFactor;                             //观测到该点的距离上限
-        mfMinDistance = mfMaxDistance / pRefKF->mvScaleFactors[nLevels - 1]; //观测到该点的距离下限
-        mNormalVector = normal / n;                                          //平均观测方向
+        //观测到该点的距离上限
+        mfMaxDistance = dist * levelScaleFactor;
+        //观测到该点的距离下限
+        mfMinDistance = mfMaxDistance / pRefKF->mvScaleFactors[nLevels - 1];
+        //平均观测方向
+        mNormalVector = normal / n;
     }
 }
 

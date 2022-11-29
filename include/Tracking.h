@@ -116,7 +116,7 @@ namespace ORB_SLAM2
         // Initialization Variables (Monocular)
         std::vector<int> mvIniLastMatches;
         std::vector<int> mvIniMatches;
-        std::vector<cv::Point2f> mvbPrevMatched;
+        std::vector<cv::Point2f> mvbPrevMatched;//features in the first frame
         std::vector<cv::Point3f> mvIniP3D;
         Frame mInitialFrame;
         ///Added Module
@@ -153,6 +153,8 @@ namespace ORB_SLAM2
         // Map initialization for monocular
         void MonocularInitialization();
         void CreateInitialMapMonocular();
+        ///Added Module
+        void MonoLiDARInitialization();
 
         void CheckReplacedInLastFrame();
         bool TrackReferenceKeyFrame();
@@ -195,8 +197,7 @@ namespace ORB_SLAM2
 
         void UndisLiDAR();
         //void ApplyLiDARRatio();
-        void RegionGrowing(Frame &inputFrame,bool Undistored);
-        int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOUT);
+
         void LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation);
         bool associateVisionLiDAR();
         void AssociateLiDARInit(float);

@@ -28,6 +28,8 @@
 #include "ORBextractor.h"
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <mutex>
 
@@ -40,6 +42,10 @@ class MapPoint;
 class Frame;
 class KeyFrameDatabase;
 class PtLsr;
+class mPlane;
+struct mLine;
+struct mORBAttribution;
+typedef pcl::PointXYZI PointType;
 
 class KeyFrame
 {
@@ -48,15 +54,21 @@ public:
 
     ///added module
     cv::Mat mTcamlid;
-    void ProjectLiDARtoCam();
-    vector<std::vector<double>> mLaserPoints;
-    vector<PtLsr> mLaserPt_cam;
-    vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
+    vector<std::vector<double>> mLaserPoints;//Raw LiDAR point under LiDAR coordination System
+    vector<pcl::PointCloud<pcl::PointXYZI>> mLaser16ScansPoints;//Raw LiDAR point under LiDAR coordination System
+    pcl::PointCloud<PointType> mCornerPointsSharp;//LiDAR feature under LiDAR system
+    pcl::PointCloud<PointType> mCornerPointsLessSharp;//LiDAR feature under LiDAR system
+    pcl::PointCloud<PointType> mSurfPointsFlat;//LiDAR feature under LiDAR system
+    pcl::PointCloud<PointType> mSurfPointsLessFlat;//LiDAR feature under LiDAR system
+    vector<PtLsr> mLaserPt_cam;//Projected LiDAR under Camera Coordination System
+    vector<PtLsr> mLaserCorner_cam;//Projected LiDAR Corner point under Camera Coordination System
+    vector<PtLsr> mLaserLessCorner_cam;//Projected LiDAR less Corner point under Camera Coordination System
+    vector<PtLsr> mLaserFlat_cam;//Projected LiDAR flat  point under Camera Coordination System
+    vector<PtLsr> mLaserLessFlat_cam;//Projected LiDAR less flat point under Camera Coordination System
     vector<double> mLaserTimes; //{middle time, start, end}
-    vector<cv::Point> mPjcLaserPts;
-    vector<cv::KeyPoint> mPjcLaserPtsUndis;
-    vector<vector<cv::Point>> planNorms;
-    //std::vector<ORB_SLAM2::Plane> mvPlanes;
+    vector<ORB_SLAM2::mPlane> mvPlanes;
+    vector<mLine> mvLines;
+    vector<mORBAttribution> mvORBAttributions; //size init at un-distortion function
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
