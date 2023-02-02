@@ -33,6 +33,10 @@ using namespace std;
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
+void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, const int frameNum);
+
+void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoints);
+
 int main(int argc, char **argv)
 {
     if(argc != 4)
@@ -158,4 +162,61 @@ void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vecto
         }
         counter++;
     }
+}
+
+/**
+ * @brief Load Laser data file names
+ * @param [in] strPathToSequence : the data folder address
+ * @param [in,out] vstrLaserscanFilenames : the string vector contains each Scan File name
+ */
+void LoadLaserscans(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, const int nTimes)
+{
+    //load Laser Scan file names
+    //string strPrefixLeft = strPathToSequence + "/image_0/";
+    string strPrefixLeft = strPathToSequence + "/velodyne/";
+
+    vstrLaserscanFilenames.resize(nTimes);
+    for(int i=0; i<nTimes; i++)
+    {
+        stringstream ss;
+        ss << setfill('0') << setw(6) << i;
+        //ss << setfill('0') << setw(10) << i; //why i set 10?
+        vstrLaserscanFilenames[i] = strPrefixLeft + ss.str() + ".bin";
+    }
+}
+
+/**
+ * @brief Load laserpoint by given filename.
+ * @param [in] vstrScanFilename : filename of laser scans
+ * @param [in,out] laserPoints : laser points
+ */
+void readLaserPoints(string vstrScanFilename, vector<vector<double>> &laserPoints)
+{
+    ///Step 1 load laser points
+    //allocate 4MB buffer (around ~130 * 4 * 4 KB)
+    int32_t num = 1000000;
+    float *data = (float *) malloc(num * sizeof(float));
+    //pointers for reading laser point
+    float *px = data + 0;
+    float *py = data + 1;
+    float *pz = data + 2;
+    float *pr = data + 3;
+
+    //load point cloud
+    FILE *fstream;
+    fstream = fopen(vstrScanFilename.c_str(), "rb");
+    num = fread(data, sizeof(float), num, fstream)/4;
+    for(int i=0; i<num;i++)
+    {
+        laserPoints[i][0] = *px;
+        laserPoints[i][1] = *py;
+        laserPoints[i][2] = *pz;
+        laserPoints[i][3] = *pr;
+        px+=4;py+=4;pz+=4;pr+=4;
+    }
+    fclose(fstream);
+    //reset laserpoint vector size
+    laserPoints.resize(num);
+
+    ///Step2 why i wrote Step2, is there supposed to have a step2?
 }

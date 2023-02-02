@@ -787,7 +787,9 @@ namespace ORB_SLAM2
         allKeypoints.resize(nlevels);
 
         //每个网格的大小
-        const float W = 30;
+        ///Modified
+        const float W = 30; //30
+
 
         for (int level = 0; level < nlevels; ++level)
         {
@@ -804,13 +806,13 @@ namespace ORB_SLAM2
 
             const int nCols = width / W;
             const int nRows = height / W;
-            const int wCell = ceil(width / nCols);
-            const int hCell = ceil(height / nRows);
+            const int wCell = ceil(width / nCols); //width of each Cell
+            const int hCell = ceil(height / nRows); //height of each Cell
 
             for (int i = 0; i < nRows; i++)
             {
                 const float iniY = minBorderY + i * hCell;
-                float maxY = iniY + hCell + 6;
+                float maxY = iniY + hCell + 6; //has a overlap of 6
 
                 if (iniY >= maxBorderY - 3)
                     continue;
@@ -1112,7 +1114,7 @@ namespace ORB_SLAM2
             offset += nkeypointsLevel;
 
             // Scale keypoint coordinates
-            //为什么要恢复到第0层？我记得图像金字塔不是跨层匹配也可以吗？
+            // question 为什么要恢复到第0层？我记得图像金字塔不是跨层匹配也可以吗？
             if (level != 0)
             {
                 float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);

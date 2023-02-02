@@ -502,11 +502,11 @@ void System::SaveKeyFrameTrajectoryTUM(const string &filename)
 void System::SaveTrajectoryKITTI(const string &filename)
 {
     cout << endl << "Saving camera trajectory to " << filename << " ..." << endl;
-    if(mSensor==MONOCULAR)
-    {
-        cerr << "ERROR: SaveTrajectoryKITTI cannot be used for monocular." << endl;
-        return;
-    }
+//    if(mSensor==MONOCULAR)
+//    {
+////        cerr << "ERROR: SaveTrajectoryKITTI cannot be used for monocular." << endl;
+////        return;
+//    }
 
     vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
     sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
@@ -518,6 +518,14 @@ void System::SaveTrajectoryKITTI(const string &filename)
     ofstream f;
     f.open(filename.c_str());
     f << fixed;
+
+    if(mSensor==MONOCULAR){///Added module
+        f << 1.000000 << " " << 0.000000  << " " << 0.000000  << " "  << 0.000000  << " " <<
+          0.000000 << " " << 1.000000  << " " << 0.000000 << " "  << 0.000000 << " " <<
+          0.000000 << " " << 0.000000  << " " << 1.000000 << " "  << 0.000000 << endl;
+    }
+
+
 
     // Frame pose is stored relative to its reference keyframe (which is optimized by BA and pose graph).
     // We need to get first the keyframe pose and then concatenate the relative transformation.
@@ -546,7 +554,9 @@ void System::SaveTrajectoryKITTI(const string &filename)
         cv::Mat Rwc = Tcw.rowRange(0,3).colRange(0,3).t();
         cv::Mat twc = -Rwc*Tcw.rowRange(0,3).col(3);
 
-        f << setprecision(9) << Rwc.at<float>(0,0) << " " << Rwc.at<float>(0,1)  << " " << Rwc.at<float>(0,2) << " "  << twc.at<float>(0) << " " <<
+        //added f << setprecision(6) << pKF->mTimeStamp for evo
+        //f << setprecision(6) << pKF->mTimeStamp<< setprecision(9) <<" "
+        f << Rwc.at<float>(0,0) << " " << Rwc.at<float>(0,1)  << " " << Rwc.at<float>(0,2) << " "  << twc.at<float>(0) << " " <<
              Rwc.at<float>(1,0) << " " << Rwc.at<float>(1,1)  << " " << Rwc.at<float>(1,2) << " "  << twc.at<float>(1) << " " <<
              Rwc.at<float>(2,0) << " " << Rwc.at<float>(2,1)  << " " << Rwc.at<float>(2,2) << " "  << twc.at<float>(2) << endl;
     }

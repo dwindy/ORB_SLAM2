@@ -93,7 +93,7 @@ class KeyFrame;
         bool low;
         int planeID;
         int LSDlineID;
-        mLine *LSDline;
+        mLine *LSDline;//not tested
 
         PtLsr() {
             ptID = -1;
@@ -132,20 +132,20 @@ class KeyFrame;
 
     struct mORBAttribution{
         int ID;
-        cv::KeyPoint * keyPt;
+        cv::KeyPoint keyPt;
         int depthSource;//1 for plane 2 for line
         float depth;//current using closest PT3d. but should use intersection depth in the future
         int LSDlineID;
         mLine *LSDline;
         int floorPlaneID;
-        mPlane *Plane;
+        //mPlane *Plane; We visit the plane by planeID.
         int LiDARPtID;
         PtLsr * LiDARPt;
         cv::Point3d p3d_est;
         cv::Point3d p3d_tri;//p3d from triangulation comes from ORBSLAM2
         cv::Point3d p3d_tri_scaled;//p3d_tri after scaled with LiDAR
-        mORBAttribution() : ID(-1), keyPt(nullptr), depthSource(-1), depth(-1),
-                            LSDlineID(-1), LSDline(nullptr), floorPlaneID(-1), Plane(nullptr), LiDARPtID(-1),LiDARPt(nullptr),
+        mORBAttribution() : ID(-1), depthSource(-1), depth(-1),
+                            LSDlineID(-1), LSDline(nullptr), floorPlaneID(-1), LiDARPtID(-1),LiDARPt(nullptr),
                             p3d_est(NULL), p3d_tri(NULL), p3d_tri_scaled(NULL) {};
     };
 
@@ -225,6 +225,7 @@ public:
 
     ///added module
     cv::Mat mTcamlid;
+    int givenDepthNum;
     void PlaneFitting();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, mPlane &foundPlane, pcl::PointIndices &inliersOutput);
     void ProjectLiDARtoCam();
@@ -239,6 +240,7 @@ public:
     void ORBdepthFromPoint( vector<PtLsr> &LiDARInputs,  vector<mORBAttribution> &ORBinputs, double threshold, cv::Mat im);
     vector<std::vector<double>> mLaserPoints; //Raw LiDAR point under LiDAR coordination System
     vector<pcl::PointCloud<pcl::PointXYZI>> mLaser16ScansPoints; //Raw LiDAR point under LiDAR coordination System
+    vector<pcl::PointCloud<pcl::PointXYZI>> mlaserScansPoints;
     pcl::PointCloud<PointType> mCornerPointsSharp; //LiDAR feature under LiDAR system
     pcl::PointCloud<PointType> mCornerPointsLessSharp;//LiDAR feature under LiDAR system
     pcl::PointCloud<PointType> mSurfPointsFlat;//LiDAR feature under LiDAR system

@@ -205,7 +205,8 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
         rotHist[i].reserve(500);
 
     //! 应该改为 const float factor HISTO_LENGTH/360.f;
-    const float factor = 1.0f/HISTO_LENGTH;
+    //const float factor = 1.0f/HISTO_LENGTH;
+    const float factor = HISTO_LENGTH/360.0f;
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
     DBoW2::FeatureVector::const_iterator KFit = vFeatVecKF.begin();
@@ -485,9 +486,9 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
     //源代码 BUG 
-    const float factor = 1.0f/HISTO_LENGTH;
-    //应该定义为
-    //const float factor = HISTO_LENGTH/360.0f;
+    //const float factor = 1.0f/HISTO_LENGTH;
+    ///Modified 应该定义为
+    const float factor = HISTO_LENGTH/360.0f;
 
     //翻过来构建一个f2到f1的匹配表
     vector<int> vMatchedDistance(F2.mvKeysUn.size(),INT_MAX);
@@ -627,7 +628,8 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
 
-    const float factor = 1.0f/HISTO_LENGTH;
+    //const float factor = 1.0f/HISTO_LENGTH;
+    const float factor = HISTO_LENGTH/360.0f;
 
     int nmatches = 0;
 
@@ -781,7 +783,8 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
     //! AGAIN const float factor = HISTO_LENGTH/360.0f
-    const float factor = 1.0f/HISTO_LENGTH;
+    //const float factor = 1.0f/HISTO_LENGTH;
+    const float factor = HISTO_LENGTH/360.0f;
 
     //*Step 2 BoW加速匹配 在node层匹配
     //FeatureVector其实就是一个map类 直接获取它的迭代器遍历
@@ -1525,7 +1528,8 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
     //! Again. 应该用 const float factor = HISTO_LENGTH/360.0f;
-    const float factor = 1.0f/HISTO_LENGTH;
+    //const float factor = 1.0f/HISTO_LENGTH;
+    const float factor = HISTO_LENGTH/360.0f;
 
     //*Step 2 计算当前帧和前一帧的平移向量
     const cv::Mat Rcw = CurrentFrame.mTcw.rowRange(0,3).colRange(0,3);
@@ -1700,7 +1704,9 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const set
     vector<int> rotHist[HISTO_LENGTH];
     for(int i=0;i<HISTO_LENGTH;i++)
         rotHist[i].reserve(500);
-    const float factor = 1.0f/HISTO_LENGTH;
+
+    //const float factor = 1.0f/HISTO_LENGTH;
+    const float factor = HISTO_LENGTH/360.0f;
 
     const vector<MapPoint*> vpMPs = pKF->GetMapPointMatches();
 

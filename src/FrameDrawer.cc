@@ -69,151 +69,147 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
 //    return im;
 //}
 
-cv::Mat FrameDrawer::DrawFrame()
-{
-    cv::Mat im;
-    vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
-    vector<int> vMatches; // Initialization: correspondeces with reference keypoints
-    vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
-    vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
-    int state; // Tracking state
-    ///Added module
-    vector<cv::Point2d> vCurrentLsrPt; //Laser point in current frame
-    vector<cv::Point2d> vCurrentLsrCorner; //Laser point in current frame
-    vector<cv::Point2d> vCurrentLsrLessCorner; //Laser point in current frame
-    vector<cv::Point2d> vCurrentLsrFlat; //Laser point in current frame
-    vector<cv::Point2d> vCurrentLsrLessFlat; //Laser point in current frame
+    cv::Mat FrameDrawer::DrawFrame() {
+        cv::Mat im;
+        vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
+        vector<int> vMatches; // Initialization: correspondences with reference keypoints
+        vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
+        vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
+        int state; // Tracking state
+        ///Added module
+        vector<cv::Point2d> vCurrentLsrPt; //Laser point in current frame
+        vector<cv::Point2d> vCurrentLsrCorner; //Laser point in current frame
+        vector<cv::Point2d> vCurrentLsrLessCorner; //Laser point in current frame
+        vector<cv::Point2d> vCurrentLsrFlat; //Laser point in current frame
+        vector<cv::Point2d> vCurrentLsrLessFlat; //Laser point in current frame
+        vector<int> vDepthSource;
 
-    //Copy variables within scoped mutex
-    {
-        unique_lock<mutex> lock(mMutex);
-        state=mState;
-        if(mState==Tracking::SYSTEM_NOT_READY)
-            mState=Tracking::NO_IMAGES_YET;
-
-        mIm.copyTo(im);
-
-        if(mState==Tracking::NOT_INITIALIZED)
+        //Copy variables within scoped mutex
         {
-            vCurrentKeys = mvCurrentKeys;
-            vIniKeys = mvIniKeys;
-            vMatches = mvIniMatches;
-        }
-        else if(mState==Tracking::OK)
-        {
-            vCurrentKeys = mvCurrentKeys;
-            vbVO = mvbVO;
-            vbMap = mvbMap;
-        }
-        else if(mState==Tracking::LOST)
-        {
-            vCurrentKeys = mvCurrentKeys;
-        }
-        ///added module
-        vCurrentLsrPt = mvPjcLsrPts;
-        vCurrentLsrCorner = mvPjcLsrCorner;
-        vCurrentLsrLessCorner = mvPjcLsrLessCorner;
-        vCurrentLsrFlat = mvPjcLsrFlat;
-        vCurrentLsrLessFlat = mvPjcLsrLessFlat;
-    } // destroy scoped mutex -> release mutex
+            unique_lock<mutex> lock(mMutex);
+            state = mState;
+            if (mState == Tracking::SYSTEM_NOT_READY)
+                mState = Tracking::NO_IMAGES_YET;
 
-    if(im.channels()<3) //this should be always true
-        cvtColor(im,im,CV_GRAY2BGR);
+            mIm.copyTo(im);
 
-    //Draw
-    if(state==Tracking::NOT_INITIALIZED) //INITIALIZING
-    {
-        for(unsigned int i=0; i<vMatches.size(); i++)
-        {
-            if(vMatches[i]>=0)
-            {
-                cv::line(im,vIniKeys[i].pt,vCurrentKeys[vMatches[i]].pt,
-                        cv::Scalar(0,255,0));
+            if (mState == Tracking::NOT_INITIALIZED) {
+                vCurrentKeys = mvCurrentKeys;
+                vIniKeys = mvIniKeys;
+                vMatches = mvIniMatches;
+            } else if (mState == Tracking::OK) {
+                vCurrentKeys = mvCurrentKeys;
+                vbVO = mvbVO;
+                vbMap = mvbMap;
+            } else if (mState == Tracking::LOST) {
+                vCurrentKeys = mvCurrentKeys;
             }
-        }
-    }
-    else if(state==Tracking::OK) //TRACKING
-    {
-        mnTracked=0;
-        mnTrackedVO=0;
-        const float r = 5;
-        const int n = vCurrentKeys.size();
-        for(int i=0;i<n;i++)
-        {
-            if(vbVO[i] || vbMap[i])
-            {
-                cv::Point2f pt1,pt2;
-                pt1.x=vCurrentKeys[i].pt.x-r;
-                pt1.y=vCurrentKeys[i].pt.y-r;
-                pt2.x=vCurrentKeys[i].pt.x+r;
-                pt2.y=vCurrentKeys[i].pt.y+r;
+            ///added module
+            vCurrentLsrPt = mvPjcLsrPts;
+            vCurrentLsrCorner = mvPjcLsrCorner;
+            vCurrentLsrLessCorner = mvPjcLsrLessCorner;
+            vCurrentLsrFlat = mvPjcLsrFlat;
+            vCurrentLsrLessFlat = mvPjcLsrLessFlat;
+            vDepthSource = mvDepthSource;
+        } // destroy scoped mutex -> release mutex
 
-                // This is a match to a MapPoint in the map
-                if(vbMap[i])
-                {
-                    cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
-                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
-                    mnTracked++;
-                }
-                else // This is match to a "visual odometry" MapPoint created in the last frame
-                {
-                    cv::rectangle(im,pt1,pt2,cv::Scalar(255,0,0));
-                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(255,0,0),-1);
-                    mnTrackedVO++;
+        if (im.channels() < 3) //this should be always true
+            cvtColor(im, im, CV_GRAY2BGR);
+
+        //Draw
+        if (state == Tracking::NOT_INITIALIZED) //INITIALIZING
+        {
+            for (unsigned int i = 0; i < vMatches.size(); i++) {
+                if (vMatches[i] >= 0) {
+                    cv::line(im, vIniKeys[i].pt, vCurrentKeys[vMatches[i]].pt,
+                             cv::Scalar(0, 255, 0));
                 }
             }
-        }
-        ///added module : draw projected raw laser points
-        int PjcLsrNum = vCurrentLsrPt.size();
-        if(PjcLsrNum>0)
+        } else if (state == Tracking::OK) //TRACKING
         {
-            for(int i=0;i<PjcLsrNum;i++)
-            {
-                //color
+            mnTracked = 0;
+            mnTrackedVO = 0;
+            const float r = 5;
+            const int n = vCurrentKeys.size();
+            for (int i = 0; i < n; i++) {
+                if (vbVO[i] || vbMap[i]) {
+                    cv::Point2f pt1, pt2;
+                    pt1.x = vCurrentKeys[i].pt.x - r;
+                    pt1.y = vCurrentKeys[i].pt.y - r;
+                    pt2.x = vCurrentKeys[i].pt.x + r;
+                    pt2.y = vCurrentKeys[i].pt.y + r;
+
+                    // This is a match to a MapPoint in the map
+                    if (vbMap[i]) {
+                        if (vDepthSource[i] == 1) {
+                            cv::rectangle(im, pt1, pt2, cv::Scalar(255, 128, 0)); //gray-blue
+                            cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 128, 0), -1);
+                            mnTracked++;
+                        } else {
+                            if (vDepthSource[i] == 2) {
+                                cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 127)); //purple
+                                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 127), -1);
+                                mnTracked++;
+                            } else {
+                                if (vDepthSource[i] == 3) {
+                                    cv::rectangle(im, pt1, pt2, cv::Scalar(0, 0, 255)); //red
+                                    cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
+                                    mnTracked++;
+                                } else {
+                                    cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0)); //green
+                                    cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
+                                    mnTracked++;
+                                }
+                            }
+                        }
+                    } else // This is match to a "visual odometry" MapPoint created in the last frame
+                    {
+                        cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 0));
+                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 0), -1);
+                        mnTrackedVO++;
+                    }
+                }
+            }
+            ///added module : draw projected raw laser points
+//        int PjcLsrNum = vCurrentLsrPt.size();
+//        if (PjcLsrNum > 0) {
+//            for (int i = 0; i < PjcLsrNum; i++) {
 //                float maxVal = 20.0;
-//                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
-//                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
-                //cv::circle(im,vCurrentLsrPt[i],2,cv::Scalar(0,255,255),-1);
-            }
+////                int red = min(255, (int) (255 * abs((mvPjcLsrPts[i].response - maxVal) / maxVal)));
+////                int green = min(255, (int) (255 * (1 - abs((mvPjcLsrPts[i].response - maxVal) / maxVal))));
+//                cv::circle(im, vCurrentLsrPt[i], 2, cv::Scalar(0, 255, 255), -1);
+//            }
+//        }
+//            int PjcLsrCorNum = vCurrentLsrCorner.size();
+//            if (PjcLsrCorNum > 0) {
+//                for (int i = 0; i < PjcLsrCorNum; i++) {
+//                    cv::circle(im, vCurrentLsrCorner[i], 2, cv::Scalar(60, 20, 220), -1);
+//                }
+//            }
+//            int PjcLsrLessCorNum = vCurrentLsrLessCorner.size();
+//            if (PjcLsrLessCorNum > 0) {
+//                for (int i = 0; i < PjcLsrLessCorNum; i++) {
+//                    cv::circle(im, vCurrentLsrLessCorner[i], 2, cv::Scalar(180, 105, 255), -1);
+//                }
+//            }
+//            int PjcLsrFltNum = vCurrentLsrFlat.size();
+//            if (PjcLsrFltNum > 0) {
+//                for (int i = 0; i < PjcLsrFltNum; i++) {
+//                    cv::circle(im, vCurrentLsrFlat[i], 2, cv::Scalar(255, 0, 0), -1);
+//                }
+//            }
+//            int PjcLsrLessFltNum = vCurrentLsrLessFlat.size();
+//            if (PjcLsrLessFltNum > 0) {
+//                for (int i = 0; i < PjcLsrLessFltNum; i++) {
+//                    cv::circle(im, vCurrentLsrLessFlat[i], 2, cv::Scalar(255, 255, 0), -1);
+//                }
+//            }
         }
-        int PjcLsrCorNum = vCurrentLsrCorner.size();
-        if(PjcLsrCorNum>0)
-        {
-            for(int i=0;i<PjcLsrCorNum;i++)
-            {
-                cv::circle(im,vCurrentLsrCorner[i],2,cv::Scalar(60,20,220),-1);
-            }
-        }
-        int PjcLsrLessCorNum = vCurrentLsrLessCorner.size();
-        if(PjcLsrLessCorNum>0)
-        {
-            for(int i=0;i<PjcLsrLessCorNum;i++)
-            {
-                cv::circle(im,vCurrentLsrLessCorner[i],2,cv::Scalar(180,105,255),-1);
-            }
-        }
-        int PjcLsrFltNum = vCurrentLsrFlat.size();
-        if(PjcLsrFltNum>0)
-        {
-            for(int i=0;i<PjcLsrFltNum;i++)
-            {
-                cv::circle(im,vCurrentLsrFlat[i],2,cv::Scalar(255,0,0),-1);
-            }
-        }
-        int PjcLsrLessFltNum = vCurrentLsrLessFlat.size();
-        if(PjcLsrLessFltNum>0)
-        {
-            for(int i=0;i<PjcLsrLessFltNum;i++)
-            {
-                cv::circle(im,vCurrentLsrLessFlat[i],2,cv::Scalar(255,255,0),-1);
-            }
-        }
-    }
-    cv::Mat imWithInfo;
-    DrawTextInfo(im,state, imWithInfo);
+        cv::Mat imWithInfo;
+        DrawTextInfo(im, state, imWithInfo);
 
-    return imWithInfo;
-}
+        return imWithInfo;
+    }
 
 
 void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
@@ -254,87 +250,69 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 }
 
-void FrameDrawer::Update(Tracking *pTracker) {
-    unique_lock<mutex> lock(mMutex);
-    pTracker->mImGray.copyTo(mIm);
-    mvCurrentKeys = pTracker->mCurrentFrame.mvKeys; //pass tracker->fames.keypoint to framedrawer.keypoints
-    /*....
-     * temporary added for store key points-------------------------------------
-     */
-    ofstream kpWriter;
-    kpWriter.open("keypoint.txt");
-    for(int i = 0; i < mvCurrentKeys.size();i++){
-        kpWriter<<mvCurrentKeys[i].pt.x<<" ";
-        kpWriter<<mvCurrentKeys[i].pt.y<<endl;
-    }
-    kpWriter.close();
-    //--------------------------------------------------------------------------
-
-    ///todo when mvCurrentKeys clear?
-    N = mvCurrentKeys.size();
-    mvbVO = vector<bool>(N, false);
-    mvbMap = vector<bool>(N, false);
-    mbOnlyTracking = pTracker->mbOnlyTracking;
-    ///Added Module: pass tracker->frame.mLaserPt_cam[].pt2d to framedrawer.mvPjcLsrPts
-    mvPjcLsrPts.clear();
-    for (int i = 0; i < pTracker->mCurrentFrame.mLaserPt_cam.size(); i++) {
-        mvPjcLsrPts.push_back(pTracker->mCurrentFrame.mLaserPt_cam[i].pt2d);
-    }
-    mvPjcLsrCorner.clear();
-    for (int i = 0; i < pTracker->mCurrentFrame.mLaserCorner_cam.size(); i++) {
-        mvPjcLsrCorner.push_back(pTracker->mCurrentFrame.mLaserCorner_cam[i].pt2d);
-    }
-    mvPjcLsrLessCorner.clear();
-    for(int i = 0; i < pTracker->mCurrentFrame.mLaserLessCorner_cam.size(); i++){
-        mvPjcLsrLessCorner.push_back(pTracker->mCurrentFrame.mLaserLessCorner_cam[i].pt2d);
-    }
-    mvPjcLsrFlat.clear();
-    for(int i=0; i< pTracker->mCurrentFrame.mLaserFlat_cam.size();i++){
-        mvPjcLsrFlat.push_back(pTracker->mCurrentFrame.mLaserFlat_cam[i].pt2d);
-    }
-    mvPjcLsrLessFlat.clear();
-    for(int i=0; i< pTracker->mCurrentFrame.mLaserLessFlat_cam.size();i++){
-        mvPjcLsrLessFlat.push_back(pTracker->mCurrentFrame.mLaserLessFlat_cam[i].pt2d);
-    }
+    void FrameDrawer::Update(Tracking *pTracker) {
+        unique_lock<mutex> lock(mMutex);
+        pTracker->mImGray.copyTo(mIm);
+        mvCurrentKeys = pTracker->mCurrentFrame.mvKeys; //pass tracker->fames' keypoint to framedrawer.keypoints
+        N = mvCurrentKeys.size();
+        mvbVO = vector<bool>(N, false);
+        mvbMap = vector<bool>(N, false);
+        mbOnlyTracking = pTracker->mbOnlyTracking;
+        ///Added Module: pass tracker->frame.mLaserPt_cam[].pt2d to frameDrawer.mvPjcLsrPts
+        mvPjcLsrPts.clear();
+        for (int i = 0; i < pTracker->mCurrentFrame.mLaserPt_cam.size(); i++) {
+            mvPjcLsrPts.push_back(pTracker->mCurrentFrame.mLaserPt_cam[i].pt2d);
+        }
+        mvPjcLsrCorner.clear();
+        for (int i = 0; i < pTracker->mCurrentFrame.mLaserCorner_cam.size(); i++) {
+            mvPjcLsrCorner.push_back(pTracker->mCurrentFrame.mLaserCorner_cam[i].pt2d);
+        }
+        mvPjcLsrLessCorner.clear();
+        for (int i = 0; i < pTracker->mCurrentFrame.mLaserLessCorner_cam.size(); i++) {
+            mvPjcLsrLessCorner.push_back(pTracker->mCurrentFrame.mLaserLessCorner_cam[i].pt2d);
+        }
+        mvPjcLsrFlat.clear();
+        for (int i = 0; i < pTracker->mCurrentFrame.mLaserFlat_cam.size(); i++) {
+            mvPjcLsrFlat.push_back(pTracker->mCurrentFrame.mLaserFlat_cam[i].pt2d);
+        }
+        mvPjcLsrLessFlat.clear();
+        for (int i = 0; i < pTracker->mCurrentFrame.mLaserLessFlat_cam.size(); i++) {
+            mvPjcLsrLessFlat.push_back(pTracker->mCurrentFrame.mLaserLessFlat_cam[i].pt2d);
+        }
+        mvDepthSource.clear();
+        for (int i = 0; i < pTracker->mCurrentFrame.mvORBAttributions.size(); i++) {
+            mvDepthSource.push_back(pTracker->mCurrentFrame.mvORBAttributions[i].depthSource);
+        }
+        ///-------------------------------------------------------------------------------------
 
 
-    if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
-    {
-        mvIniKeys=pTracker->mInitialFrame.mvKeys;
-        mvIniMatches=pTracker->mvIniMatches;
-    }
-    else if(pTracker->mLastProcessedState==Tracking::OK)
-    {
-        for(int i=0;i<N;i++)
-        {
-            MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
-            if(pMP)
-            {
-                if(!pTracker->mCurrentFrame.mvbOutlier[i])
-                {
-                    if(pMP->Observations()>0)
-                        mvbMap[i]=true;
-                    else
-                        mvbVO[i]=true;
+        if (pTracker->mLastProcessedState == Tracking::NOT_INITIALIZED) {
+            mvIniKeys = pTracker->mInitialFrame.mvKeys;
+            mvIniMatches = pTracker->mvIniMatches;
+        } else if (pTracker->mLastProcessedState == Tracking::OK) {
+            for (int i = 0; i < N; i++) {
+                MapPoint *pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
+                if (pMP) {
+                    //if (!pTracker->mCurrentFrame.mvbOutlier[i]) { ///My comments to check why my withdetph Feature no working.
+                        if (pMP->Observations() > 0)
+                            mvbMap[i] = true;
+                        else
+                            mvbVO[i] = true;
+                    //}
                 }
             }
         }
-    }
-    mState=static_cast<int>(pTracker->mLastProcessedState);
-}
+        mState = static_cast<int>(pTracker->mLastProcessedState);
 
-//void FrameDrawer::UpdateLiDAR(Tracking *pTracker)
-//{
-//    unique_lock<mutex> lock(mMutex);
-//    mvPlanePoints.clear();
-//    if (pTracker->mLastProcessedState == Tracking::OK) {
-//        int PlanNum = pTracker->mCurrentFrame.mvPlanes.size();
-//        if (PlanNum > 0) {
-//            for (int plni = 0; plni < pTracker->mCurrentFrame.mvPlanes.size(); plni++) {
-//                mvPlanePoints.push_back(pTracker->mCurrentFrame.mvPlanes[plni].pointList2D);
-//            }
+//        cout << "pTracker->mCurrentFrame.mvKeys " << pTracker->mCurrentFrame.mvKeys.size()
+//             << " " << pTracker->mCurrentFrame.mvORBAttributions.size() << endl;
+//        for (int i = 0; i < pTracker->mCurrentFrame.mvKeys.size(); i++) {
+//            if (pTracker->mCurrentFrame.mvpMapPoints[i])
+//                cout << pTracker->mCurrentFrame.mvKeys[i].pt.x << " " << pTracker->mCurrentFrame.mvKeys[i].pt.y
+//                     << " mvbMap " << mvbMap[i] << " depth source "
+//                     << pTracker->mCurrentFrame.mvORBAttributions[i].depthSource << endl;
 //        }
-//    }
-//}
+        int pause = 1;
+    }
 
 } //namespace ORB_SLAM

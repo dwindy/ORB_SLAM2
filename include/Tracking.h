@@ -76,8 +76,6 @@ namespace ORB_SLAM2
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
         ///added module ---with Laser
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
-        void ProjectLiDARtoImage();
-        void ProjectPlanetoImage();
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);

@@ -522,156 +522,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
-
-/////added module
-//    void Tracking::ProjectLiDARtoImage() {
-////    ///test
-////    int testNum = 10;
-////    vector<vector<double>> testPoints;
-////    for(int i=0;i<testNum;i++)
-////    {
-////        vector<double> thisPoint = {1,0,-2};
-////        thisPoint[0] +=i*2;
-////        testPoints.push_back(thisPoint);
-////    }
-////    mCurrentFrame.mLaserPoints = testPoints;
-//
-//        ///project distorted Laser points to Image frame
-//        int lsrPtNum = mCurrentFrame.mLaserPoints.size();
-//
-//        if (lsrPtNum > 0) {
-//            //cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-//            cv::Mat P_rect_00 = cv::Mat::zeros(3, 4, CV_64F);
-//            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-//            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-//            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-//            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-//            P_rect_00.at<double>(2, 2) = 1;
-//            //cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-//            cv::Mat R_rect_00 = cv::Mat::eye(4, 4, CV_64F);
-//
-//            cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-//            cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-//            for (int li = 0; li < lsrPtNum; li++) {
-//                // filter the not needed points
-//                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
-//                if (mCurrentFrame.mLaserPoints[li][0] > maxX || mCurrentFrame.mLaserPoints[li][0] < 0.0
-//                    || mCurrentFrame.mLaserPoints[li][1] > maxY || mCurrentFrame.mLaserPoints[li][1] < -maxY
-//                    || mCurrentFrame.mLaserPoints[li][2] < minZ || mCurrentFrame.mLaserPoints[li][3] >
-//                       -minZ) //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-//                {
-//                    continue;
-//                }
-//
-//                X.at<double>(0, 0) = mCurrentFrame.mLaserPoints[li][0];
-//                X.at<double>(1, 0) = mCurrentFrame.mLaserPoints[li][1];
-//                X.at<double>(2, 0) = mCurrentFrame.mLaserPoints[li][2];
-//                X.at<double>(3, 0) = 1;
-//
-//                //cout<<"LiDAR point "<<X.t()<<endl;
-//                Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-//                //cout<<"Y "<<Y<<endl;
-//                cv::Point pt;
-//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//                //cout<<"image frame "<<pt.x<<" "<<pt.y<<endl;
-//                if (pt.x < 0 || pt.x >= mImGray.cols || pt.y < 0 || pt.y >= mImGray.rows) {
-//                    continue;
-//                }
-//                //distance as response
-//                double responseVal = sqrt(
-//                        X.at<double>(0, 0) * X.at<double>(0, 0) + X.at<double>(1, 0) * X.at<double>(1, 0) +
-//                        X.at<double>(2, 0) * X.at<double>(2, 0));
-//                cv::KeyPoint thisPoint(pt, 0, -1, responseVal, 0, -1);
-//                //mCurrentFrame.mPjcLaserPts.push_back(thisPoint);
-//                mCurrentFrame.mPjcLaserPts.push_back(pt);
-//            }
-//        }
-//        ///project undistorted laser points
-//        lsrPtNum = mCurrentFrame.mLaserPtsUndis.size();
-//        if (lsrPtNum > 0) {
-//            cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-//            P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-//            P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-//            P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-//            P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-//            P_rect_00.at<double>(2, 2) = 1;
-//            cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-//
-//            cv::Mat X(4, 1, CV_64F);
-//            cv::Mat Y(3, 1, CV_64F);
-//            for (int li = 0; li < lsrPtNum; li++) {
-//                // filter the not needed points
-//                double maxX = 25.0, maxY = 6.0, minZ = -1.8;
-//                if (mCurrentFrame.mLaserPtsUndis[li][0] > maxX || mCurrentFrame.mLaserPtsUndis[li][0] < 0.0
-//                    || mCurrentFrame.mLaserPtsUndis[li][1] > maxY || mCurrentFrame.mLaserPtsUndis[li][1] < -maxY
-//                    || mCurrentFrame.mLaserPtsUndis[li][2] < minZ
-//                    || mCurrentFrame.mLaserPtsUndis[li][3] < 0.01) {
-//                    continue;
-//                }
-//
-//                X.at<double>(0, 0) = mCurrentFrame.mLaserPtsUndis[li][0];
-//                X.at<double>(1, 0) = mCurrentFrame.mLaserPtsUndis[li][1];
-//                X.at<double>(2, 0) = mCurrentFrame.mLaserPtsUndis[li][2];
-//                X.at<double>(3, 0) = 1;
-//
-//                cout << "X " << X << endl;
-//                Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-//                cout << "Y " << Y << endl;
-//                cv::Point pt;
-//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//                if (pt.x < 0 || pt.x > mImGray.cols || pt.y < 0 || pt.y > mImGray.rows) {
-//                    //cout<<X.t()<<" | ";cout<<pt<<endl;
-//                    continue;
-//                }
-//                //distance as response
-//                double responseVal = sqrt(
-//                        X.at<double>(0, 0) * X.at<double>(0, 0) + X.at<double>(1, 0) * X.at<double>(1, 0) +
-//                        X.at<double>(2, 0) * X.at<double>(2, 0));
-//                cv::KeyPoint thisPoint(pt, 0, -1, responseVal, 0, -1);
-//                mCurrentFrame.mPjcLaserPtsUndis.push_back(thisPoint);
-//            }
-//        }
-//    }
-
-///**
-// * project plane's 3D point to 2D frame
-// */
-//    void Tracking::ProjectPlanetoImage() {
-//        cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-//        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-//        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-//        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-//        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-//        P_rect_00.at<double>(2, 2) = 1;
-//        cv::Mat R_rect_00 = cv::Mat::eye(CvSize(4, 4), CV_64F);
-//        ///1st project plane normal first
-//        int planNum = mCurrentFrame.mvPlanes.size();
-//        for (int plni = 0; plni < planNum; plni++) {
-//            cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-//            cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-//            cv::Point pt;
-//            for (int pti = 0; pti < mCurrentFrame.mvPlanes[plni].pointList.size(); pti++) {
-//                X.at<double>(0, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].x;
-//                X.at<double>(1, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].y;
-//                X.at<double>(2, 0) = mCurrentFrame.mvPlanes[plni].pointList[pti].z;
-//                X.at<double>(3, 0) = 1;
-//                //Y = P_rect_00 * R_rect_00 * mTcamlid * X;
-//                Y = P_rect_00 * R_rect_00 * X;
-//                pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-//                pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-//                mCurrentFrame.mvPlanes[plni].pointList2D.push_back(pt);
-//                //cout<<"project point "<<X.t()<<" to "<<pt.x<<" "<<pt.y<<endl;
-//            }
-//        }
-//    }
-
 void Tracking::Track()
 {
-    ///added module
-    ///project raw 3D LiDAR point to 2D image frame
-    //ProjectLiDARtoImage();
 
     //Track包含估计运动和跟踪局部地图两个部分
     if(mState==NO_IMAGES_YET)
@@ -851,7 +703,7 @@ void Tracking::Track()
         // If we have an initial estimation of the camera pose and matching. Track the local map.
         if(!mbOnlyTracking)
         {
-            if(bOK)
+            if(bOK){
                 //post-process following above three track functions: trackReference trackMotion, reLocalization.
                 //search level 1 co-visible keyframes by currentFrame's mapPoints.
                 //search level 2 co-visible, parent, child keyframes of level 1 keyframes
@@ -859,6 +711,53 @@ void Tracking::Track()
                 //project the rest to local frame, match by SearchByProjection
                 //BA, PoseOptimization
                 bOK = TrackLocalMap();
+//                cout<<"mCurrentFrame.mnId Twc: "<<mCurrentFrame.mnId<<endl;
+//                cout<<mCurrentFrame.mTcw.inv()<<endl;
+                if (!bOK) {//check why lost
+                    //write lost frame's key point
+                    ofstream writer;
+                    writer.open("lostFrameKeys.txt", ios::out);
+                    for (int i = 0; i < mCurrentFrame.mvKeysUn.size(); i++) {
+                        if (mCurrentFrame.mvpMapPoints[i])//if keypoint matched with mappoints
+                        {
+                            writer << i << " " << mCurrentFrame.mvKeysUn[i].pt.x
+                                   << " " << mCurrentFrame.mvKeysUn[i].pt.y // u,v
+                                   << " " << mCurrentFrame.mvORBAttributions[i].ID // ID
+                                   << " " << mCurrentFrame.mvORBAttributions[i].depth // ID
+                                   << " " << mCurrentFrame.mvORBAttributions[i].depthSource << " "; //depthSource
+                            if (mCurrentFrame.mvORBAttributions[i].depthSource == 1) {//Plane
+                                int tmpPlaneID = mCurrentFrame.mvORBAttributions[i].floorPlaneID;
+                                writer << mCurrentFrame.mvORBAttributions[i].floorPlaneID
+                                       << " " << mCurrentFrame.mvPlanes[tmpPlaneID].A
+                                       << " " << mCurrentFrame.mvPlanes[tmpPlaneID].B
+                                       << " " << mCurrentFrame.mvPlanes[tmpPlaneID].C
+                                       << " " << mCurrentFrame.mvPlanes[tmpPlaneID].D << " ";
+                            }
+                            if (mCurrentFrame.mvORBAttributions[i].depthSource == 2) {
+                                int tmpLineID = mCurrentFrame.mvORBAttributions[i].LSDlineID;
+                                writer << mCurrentFrame.mvORBAttributions[i].LSDlineID
+                                       << " " << mCurrentFrame.mvLines[tmpLineID].pt3dStart.x
+                                       << " " << mCurrentFrame.mvLines[tmpLineID].pt3dStart.y
+                                       << " " << mCurrentFrame.mvLines[tmpLineID].pt3dStart.z
+                                       << " " << mCurrentFrame.mvLines[tmpLineID].pt3dEnd.x
+                                       << " " << mCurrentFrame.mvLines[tmpLineID].pt3dEnd.y
+                                       << " " << mCurrentFrame.mvLines[tmpLineID].pt3dEnd.z << " ";
+                            }
+                            if (mCurrentFrame.mvORBAttributions[i].depthSource == 3) {
+                                int tmpLiDARID = mCurrentFrame.mvORBAttributions[i].LiDARPtID;
+                                writer << mCurrentFrame.mvORBAttributions[i].LiDARPtID
+                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.x
+                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.y
+                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.z << " ";
+                            }
+                            writer<<endl;
+                        }
+
+                    }
+                    writer.close();
+                    int pause = 1;
+                }
+            }
         }
         else
         {
@@ -934,10 +833,10 @@ void Tracking::Track()
             }
         }
 
-        ///added module - Need to check if safe or not
-        //*Step 4 更新显示线城的信息 比如图像 特征点 地图点
-        // Update drawer
-        mpFrameDrawer->Update(this);
+        ///added module - Need to check if safe or not --- why I add this?
+//        //*Step 4 更新显示线城的信息 比如图像 特征点 地图点
+//        // Update drawer
+//        mpFrameDrawer->Update(this);
 
         //*Step 10 如果初始化不久就跟踪失败 并且relocation也没搞定 就reset
         // Reset if the camera get lost soon after initialization
@@ -1510,9 +1409,21 @@ void Tracking::StereoInitialization()
                         nmatches--;
                     }
                 }
-
+//                //Print point with depth and point pair with second frame
+//                //index larger than 1000 could not be matched by second frame? why?
+//                for(int i=0;i<mInitialFrame.mvORBAttributions.size();i++){
+//                    if(mInitialFrame.mvORBAttributions[i].depthSource>-1){
+//                        cout<<i<<endl;
+//                    }
+//                }
+//                cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
+//                for(int i=0;i<mvIniMatches.size();i++){
+//                    if(mvIniMatches[i]>-1){
+//                        cout<<i<<endl;
+//                    }
+//                }
                 /**
-                * Store keypoints used for initialization
+                * Store key points used for initialization
                 */
                 ofstream outer1, outer2,outer3;
                 string fileName1 = to_string(mInitialFrame.mnId), fileName2 = to_string(mCurrentFrame.mnId);
@@ -1535,19 +1446,156 @@ void Tracking::StereoInitialization()
 
                 ///Added Module ------ After triangulated 3d map points. now LiDAR information get involves
                 ///Step Fusion 1 --- if a point, in initial frame, successfully triangulated, and has depth from LiDAR
-                cout<<"mInitialFrame.mvORBAttributions.size() "<<mInitialFrame.mvORBAttributions.size()<<" mvIniMatches.size "<<mvIniMatches.size()<<endl;
+                //cout<<"mInitialFrame.mvORBAttributions.size() "<<mInitialFrame.mvORBAttributions.size()<<" mvIniMatches.size "<<mvIniMatches.size()<<endl;
                 vector<vector<double>> ratiosXYZ;
                 ///Step Fusion 1.1 store ratios over each axis
-                for(int i = 0; i < mInitialFrame.mvORBAttributions.size();i++){
-                    //has depth from LiDAR
-                    if(mInitialFrame.mvORBAttributions[i].depthSource>-1){
-                        vector<double> thisRatio;
-                        thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.x/mvIniP3D[i].x);
-                        thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.y/mvIniP3D[i].y);
-                        thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.z/mvIniP3D[i].z);
-                        ratiosXYZ.push_back(thisRatio);
+                int count1  = 0, count2 = 0;
+                for(int i=0;i<mInitialFrame.mvORBAttributions.size();i++){
+                    if(mInitialFrame.mvORBAttributions[i].depthSource>-1)
+                        count1++;
+                }
+                cout<<"init frame with depth point num "<<count1<<endl;
+                for(int i=0;i<mCurrentFrame.mvORBAttributions.size();i++){
+                    if(mCurrentFrame.mvORBAttributions[i].depthSource>-1)
+                        count2++;
+                }
+
+                cv::Mat image0 = cv::imread("000000.png", CV_LOAD_IMAGE_UNCHANGED);
+                cv::Mat im_clone = image0.clone();//note this is image two
+                cv::cvtColor(image0, im_clone, CV_GRAY2BGR);
+                for (int i = 0; i < mvIniMatches.size(); i++) {
+                    if (mvIniMatches[i] > -1) {//this is a ORB feature
+                        cv::circle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x,
+                                                       mInitialFrame.mvORBAttributions[i].keyPt.pt.y), 1,
+                                   cv::Scalar(0, 0, 255), -1);//red
+                        if (mInitialFrame.mvORBAttributions[i].depthSource == 1) {
+                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
+                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
+                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
+                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
+                                          cv::Scalar(0, 255, 0), -1);//green
+                        }
+                        if (mInitialFrame.mvORBAttributions[i].depthSource == 2) {
+                            int lineID = mInitialFrame.mvORBAttributions[i].LSDlineID;
+                            float sx = mInitialFrame.mvLines[lineID].LSD.startPointX;
+                            float sy = mInitialFrame.mvLines[lineID].LSD.startPointY;
+                            float ex = mInitialFrame.mvLines[lineID].LSD.endPointX;
+                            float ey = mInitialFrame.mvLines[lineID].LSD.endPointY;
+                            cv::line(im_clone, cv::Point(sx,sy),cv::Point(ex,ey),cv::Scalar(255,153,255),1);
+                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
+                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
+                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
+                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
+                                          cv::Scalar(255, 0, 127), -1);//purple
+                        }
+                        if (mInitialFrame.mvORBAttributions[i].depthSource == 3) {
+                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
+                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
+                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
+                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
+                                          cv::Scalar(255, 255, 0), -1);//light blue
+                        }
                     }
                 }
+                for (int i = 0; i < mInitialFrame.mLaserPt_cam.size(); i++) {
+                    cv::circle(im_clone, cv::Point(mInitialFrame.mLaserPt_cam[i].pt2d.x,
+                                                   mInitialFrame.mLaserPt_cam[i].pt2d.y), 1,
+                               cv::Scalar(0, 255, 255));
+                }
+                string windowName = "check fusion " + mInitialFrame.mnId;
+                cv::imshow(windowName, im_clone);
+                cv::waitKey(0);
+
+                cout<<"feature number, ini "<<mInitialFrame.mvORBAttributions.size()<<" cur "<<mCurrentFrame.mvORBAttributions.size()<<endl;
+                cout<<"init frame with depth point num "<<count1<<endl;
+                cout<<"current frame with depth point num "<<count2<<endl;
+                int matchNum = 0;
+                for (int i = 0; i < mvIniMatches.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if (curIndex >= 0) {
+//                        cout<<i<<" match to "<<curIndex<<" with estimated "<<mInitialFrame.mvORBAttributions[i].p3d_est.x<<" "
+//                        <<mInitialFrame.mvORBAttributions[i].p3d_est.y<<" "
+//                        <<mInitialFrame.mvORBAttributions[i].p3d_est.z<<" triangulated "
+//                        <<mvIniP3D[i].x<<" "<<mvIniP3D[i].y<<" "<<mvIniP3D[i].z<<endl;
+                        matchNum++;
+                    }
+                }
+                int matchwithdepthnum = 0;
+                int depthPlnCounter =0, depthLinCounter = 0, depthPtCounter = 0;
+                for (int i = 0; i < mInitialFrame.mvORBAttributions.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if (curIndex >= 0) {
+                        if (mInitialFrame.mvORBAttributions[i].depthSource > -1) {
+                            if (mInitialFrame.mvORBAttributions[i].depthSource == 1)
+                                depthPlnCounter++;
+                            if (mInitialFrame.mvORBAttributions[i].depthSource == 2)
+                                depthLinCounter++;
+                            if (mInitialFrame.mvORBAttributions[i].depthSource == 3)
+                                depthPtCounter++;
+//                            cout << "ID " << mInitialFrame.mvORBAttributions[i].ID
+//                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.x
+//                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
+//                                 << " " << mInitialFrame.mvORBAttributions[i].depthSource
+//                                 << " " << mInitialFrame.mvORBAttributions[i].p3d_est
+//                                 << " ORBSLAM2 : "
+//                                 //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
+//                                 << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
+                            vector<double> thisRatio;
+                            thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.x / mvIniP3D[i].x);
+                            thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.y / mvIniP3D[i].y);
+                            thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.z / mvIniP3D[i].z);
+                            ratiosXYZ.push_back(thisRatio);
+                            matchwithdepthnum++;
+                        }
+                    }
+                }
+                for (int i = 0; i < mInitialFrame.mvORBAttributions.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if (curIndex >= 0) {
+                        if (mInitialFrame.mvORBAttributions[i].depthSource ==1) {
+                            cout << "ID " << mInitialFrame.mvORBAttributions[i].ID
+                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.x
+                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
+                                 << " " << mInitialFrame.mvORBAttributions[i].depthSource
+                                 << " " << mInitialFrame.mvORBAttributions[i].p3d_est
+                                 << " ORBSLAM2 : "
+                                 //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
+                                 << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
+                        }
+                    }
+                }
+                for (int i = 0; i < mInitialFrame.mvORBAttributions.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if (curIndex >= 0) {
+                        if (mInitialFrame.mvORBAttributions[i].depthSource ==2) {
+                            cout << "ID " << mInitialFrame.mvORBAttributions[i].ID
+                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.x
+                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
+                                 << " " << mInitialFrame.mvORBAttributions[i].depthSource
+                                 << " " << mInitialFrame.mvORBAttributions[i].p3d_est
+                                 << " ORBSLAM2 : "
+                                 //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
+                                 << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
+                        }
+                    }
+                }
+                for (int i = 0; i < mInitialFrame.mvORBAttributions.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if (curIndex >= 0) {
+                        if (mInitialFrame.mvORBAttributions[i].depthSource ==3) {
+                            cout << "ID " << mInitialFrame.mvORBAttributions[i].ID
+                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.x
+                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
+                                 << " " << mInitialFrame.mvORBAttributions[i].depthSource
+                                 << " " << mInitialFrame.mvORBAttributions[i].p3d_est
+                                 << " ORBSLAM2 : "
+                                 //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
+                                 << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
+                        }
+                    }
+                }
+                cout<<"matched "<<matchNum<<" match with depth num "<<matchwithdepthnum<<endl;
+                cout<<"plane point "<<depthPlnCounter<<" line point "<<depthLinCounter<<" point point "<<depthPtCounter<<endl;
                 size_t ratiosNum = ratiosXYZ.size();
                 ///Step Fusion 1.2 select ratios with small variance
                 double meanXratio=0,meanYratio=0,meanZratio=0;
@@ -1558,6 +1606,7 @@ void Tracking::StereoInitialization()
                     variance = sqrt((ratiosXYZ[i][0] - mean) * (ratiosXYZ[i][0] - mean)
                                     + (ratiosXYZ[i][1] - mean) * (ratiosXYZ[i][1] - mean)
                                     + (ratiosXYZ[i][2] - mean) * (ratiosXYZ[i][2] - mean));
+                    //cout<<"ratio "<<ratiosXYZ[i][0]<<" "<<ratiosXYZ[i][1]<<" "<<ratiosXYZ[i][2]<<" mean "<<mean<<" variance "<<variance<<endl;
                     if (variance < 0.005) {//remove candidate with large ratio variance
                         meanXratio += ratiosXYZ[i][0];
                         meanYratio += ratiosXYZ[i][1];
@@ -1570,14 +1619,26 @@ void Tracking::StereoInitialization()
                 meanYratio = meanYratio/validRatioNum;
                 meanZratio = meanZratio/validRatioNum;
                 cout<<"meanXratio "<<meanXratio<<" meanYratio "<<meanYratio<<" meanZratio "<<meanZratio<<endl;
-                ///Step Fusion 1.3 Apply ratio to ini3dpoints
-                for (auto &eachP3d: mvIniP3D) {
-                    eachP3d.x = eachP3d.x * meanXratio;
-                    eachP3d.y = eachP3d.y * meanXratio;
-                    eachP3d.z = eachP3d.z * meanXratio;
+                ///Step Fusion 1.3 Apply ratio to All ini3dpoints
+                for (int i = 0; i < mvIniP3D.size(); i++) {
+                    int curIndex = mvIniMatches[i];
+                    if(curIndex>-1){
+                        if (mInitialFrame.mvORBAttributions[i].depthSource > -1) {
+//                        mvIniP3D[i].x = mInitialFrame.mvORBAttributions[i].p3d_est.x;
+//                        mvIniP3D[i].y = mInitialFrame.mvORBAttributions[i].p3d_est.y;
+//                        mvIniP3D[i].z = mInitialFrame.mvORBAttributions[i].p3d_est.z;
+                            mvIniP3D[i].x = mvIniP3D[i].x * meanXratio;
+                            mvIniP3D[i].y = mvIniP3D[i].y * meanYratio;
+                            mvIniP3D[i].z = mvIniP3D[i].z * meanZratio;
+                        } else {
+                            mvIniP3D[i].x = mvIniP3D[i].x * meanXratio;
+                            mvIniP3D[i].y = mvIniP3D[i].y * meanYratio;
+                            mvIniP3D[i].z = mvIniP3D[i].z * meanZratio;
+                        }
+                    }
                 }
 
-                ///Step Fusion 2 run a BA ( at here or in track?)
+                ///Step Fusion 2. BA. in the create map function
 
                 // Set Frame Poses
                 // Step 7 初始化的第一帧作为世界坐标系，所以第一帧pose为I
@@ -1589,7 +1650,7 @@ void Tracking::StereoInitialization()
 
                 ///Added module-----
                 //There should be a ratio between mono and lidar
-                cout<<"Tcw "<<endl<<Tcw.inv()<<endl;
+                cout<<"init Tcw from Mono Triangulated but not scaled with lidar :"<<endl<<Tcw.inv()<<endl;
                 //------------------
 
                 // Step 8 创建初始化地图点MapPoints
@@ -1875,7 +1936,7 @@ void Tracking::CreateInitialMapMonocular()
 
     mState=OK;
 
-    cout<<pKFcur->GetPose().inv()<<endl;
+    cout<<"after first Global BA Twc:"<<endl<<pKFcur->GetPose().inv()<<endl;
     int pause = 0;
 }
 
@@ -1917,6 +1978,27 @@ bool Tracking::TrackReferenceKeyFrame()
     vector<MapPoint*> vpMapPointMatches;
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
+    ///Added for check
+//    int monoMatchNum = 0, planeMatchNum = 0, lineMatchNum = 0, pointMatchNum = 0;
+//    for (int i = 0; i < vpMapPointMatches.size(); i++) {
+//        if (mCurrentFrame.mvORBAttributions[i].depthSource == 1 && vpMapPointMatches[i]) {
+//            planeMatchNum++;
+//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
+//        }
+//        if (mCurrentFrame.mvORBAttributions[i].depthSource == 2 && vpMapPointMatches[i]) {
+//            lineMatchNum++;
+//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
+//        }
+//        if (mCurrentFrame.mvORBAttributions[i].depthSource == 3 && vpMapPointMatches[i]) {
+//            pointMatchNum++;
+//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
+//        }
+//        if (mCurrentFrame.mvORBAttributions[i].depthSource == -1 && vpMapPointMatches[i]) {
+//            monoMatchNum++;
+//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
+//        }
+//    }
+//    cout<<"normal "<<monoMatchNum<<" planematch "<<planeMatchNum<<" lineMatch "<<lineMatchNum<<" pointMatch "<<pointMatchNum<<endl;
 
     if(nmatches<15)
         return false;
@@ -1927,9 +2009,10 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
     //*Step4 优化重投影误差来（3D-2D）获得位姿
-    Optimizer::PoseOptimization(&mCurrentFrame);//Just optimize current Frame.
+    //Optimizer::PoseOptimization(&mCurrentFrame);//Just optimize current Frame.
+    Optimizer::FusionPoseOptimization(&mCurrentFrame);//Just optimize current Frame.
 
-    cout<<"mCurrentFrame : "<<mCurrentFrame.mnId<<" "<<endl<<mCurrentFrame.mTcw<<endl;
+//    cout<<"mCurrentFrame : "<<mCurrentFrame.mnId<<" "<<endl<<mCurrentFrame.mTcw<<endl;
     //*Step 5 剔除outlier
     // Discard outliers
     int nmatchesMap = 0;
@@ -2085,7 +2168,8 @@ bool Tracking::TrackWithMotionModel()
 
     //*Step 3 优化当前位姿
     // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
+//    Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::FusionPoseOptimization(&mCurrentFrame);
 
     //*Step 4 剔除ouliter
     // Discard outliers
@@ -2117,7 +2201,9 @@ bool Tracking::TrackWithMotionModel()
         return nmatches>20;
     }
     //*Step return
+    cout<<"frame ID "<<mCurrentFrame.mnId<<" trackwithmotion nmatchesMap "<<nmatchesMap<<endl;
     return nmatchesMap>=10;
+
 }
 
 /**
@@ -2205,7 +2291,8 @@ bool Tracking::TrackLocalMap()
 
     ///*Step 3 更新局部地图点后 更新位姿
     // Optimize Pose
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    //Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::FusionPoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
 
     ///*Step 4 更新当前帧的mappoints被观测程度
@@ -2235,13 +2322,15 @@ bool Tracking::TrackLocalMap()
         }
     }
 
+    cout<<"track localmap mnMatchesInliers "<<mnMatchesInliers<<endl;
+
     ///*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
     // Decide if the tracking was successful
     // More restrictive if there was a relocalization recently
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
         return false;
 
-    if(mnMatchesInliers<30)
+    if(mnMatchesInliers<20) //30
         return false;
     else
         return true;
@@ -2674,7 +2763,8 @@ void Tracking::SearchLocalPoints()
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
             //对局部地图点中新增的地图点进行投影匹配
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        int matchNum = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        cout<<"frame ID "<<mCurrentFrame.mnId<<" SearchByProjection match result "<<matchNum<<endl;
     }
 }
 
