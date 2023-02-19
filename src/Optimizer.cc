@@ -354,7 +354,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
     //自由度为2的卡方分布，显著性水平为0.05,对应的临界值是5.991
     const float deltaMono = sqrt(5.991);
-    const float deltaStereo = sqrt(7.815);
+    const float deltaStereo = sqrt(78.15);//sqrt(7.815);
 
 //    ofstream stereoWriter;
 //    stereoWriter.open("stereoVertices.txt",ios::out);
@@ -606,7 +606,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
         //自由度为2的卡方分布，显著性水平为0.05,对应的临界值是5.991
         const float deltaMono = sqrt(5.991);
         const float deltaStereo = sqrt(7.815);
-        //const float deltaStereo = sqrt(78.15);
+        //const float deltaStereo = sqrt(17.815);
 
 //    ofstream stereoWriter;
 //    stereoWriter.open("stereoVertices.txt",ios::out);

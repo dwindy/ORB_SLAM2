@@ -788,7 +788,7 @@ namespace ORB_SLAM2
 
         //每个网格的大小
         ///Modified
-        const float W = 30; //30
+        const float W = 10; //30
 
 
         for (int level = 0; level < nlevels; ++level)

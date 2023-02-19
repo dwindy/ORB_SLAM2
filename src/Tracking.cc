@@ -1460,51 +1460,51 @@ void Tracking::StereoInitialization()
                         count2++;
                 }
 
-                cv::Mat image0 = cv::imread("000000.png", CV_LOAD_IMAGE_UNCHANGED);
-                cv::Mat im_clone = image0.clone();//note this is image two
-                cv::cvtColor(image0, im_clone, CV_GRAY2BGR);
-                for (int i = 0; i < mvIniMatches.size(); i++) {
-                    if (mvIniMatches[i] > -1) {//this is a ORB feature
-                        cv::circle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x,
-                                                       mInitialFrame.mvORBAttributions[i].keyPt.pt.y), 1,
-                                   cv::Scalar(0, 0, 255), -1);//red
-                        if (mInitialFrame.mvORBAttributions[i].depthSource == 1) {
-                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
-                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
-                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
-                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
-                                          cv::Scalar(0, 255, 0), -1);//green
-                        }
-                        if (mInitialFrame.mvORBAttributions[i].depthSource == 2) {
-                            int lineID = mInitialFrame.mvORBAttributions[i].LSDlineID;
-                            float sx = mInitialFrame.mvLines[lineID].LSD.startPointX;
-                            float sy = mInitialFrame.mvLines[lineID].LSD.startPointY;
-                            float ex = mInitialFrame.mvLines[lineID].LSD.endPointX;
-                            float ey = mInitialFrame.mvLines[lineID].LSD.endPointY;
-                            cv::line(im_clone, cv::Point(sx,sy),cv::Point(ex,ey),cv::Scalar(255,153,255),1);
-                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
-                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
-                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
-                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
-                                          cv::Scalar(255, 0, 127), -1);//purple
-                        }
-                        if (mInitialFrame.mvORBAttributions[i].depthSource == 3) {
-                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
-                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
-                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
-                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
-                                          cv::Scalar(255, 255, 0), -1);//light blue
-                        }
-                    }
-                }
-                for (int i = 0; i < mInitialFrame.mLaserPt_cam.size(); i++) {
-                    cv::circle(im_clone, cv::Point(mInitialFrame.mLaserPt_cam[i].pt2d.x,
-                                                   mInitialFrame.mLaserPt_cam[i].pt2d.y), 1,
-                               cv::Scalar(0, 255, 255));
-                }
-                string windowName = "check fusion " + mInitialFrame.mnId;
-                cv::imshow(windowName, im_clone);
-                cv::waitKey(0);
+//                cv::Mat image0 = cv::imread("000000.png", CV_LOAD_IMAGE_UNCHANGED);
+//                cv::Mat im_clone = image0.clone();//note this is image two
+//                cv::cvtColor(image0, im_clone, CV_GRAY2BGR);
+//                for (int i = 0; i < mvIniMatches.size(); i++) {
+//                    if (mvIniMatches[i] > -1) {//this is a ORB feature
+//                        cv::circle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x,
+//                                                       mInitialFrame.mvORBAttributions[i].keyPt.pt.y), 1,
+//                                   cv::Scalar(0, 0, 255), -1);//red
+//                        if (mInitialFrame.mvORBAttributions[i].depthSource == 1) {
+//                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
+//                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
+//                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
+//                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
+//                                          cv::Scalar(0, 255, 0), -1);//green
+//                        }
+//                        if (mInitialFrame.mvORBAttributions[i].depthSource == 2) {
+//                            int lineID = mInitialFrame.mvORBAttributions[i].LSDlineID;
+//                            float sx = mInitialFrame.mvLines[lineID].LSD.startPointX;
+//                            float sy = mInitialFrame.mvLines[lineID].LSD.startPointY;
+//                            float ex = mInitialFrame.mvLines[lineID].LSD.endPointX;
+//                            float ey = mInitialFrame.mvLines[lineID].LSD.endPointY;
+//                            cv::line(im_clone, cv::Point(sx,sy),cv::Point(ex,ey),cv::Scalar(255,153,255),1);
+//                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
+//                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
+//                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
+//                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
+//                                          cv::Scalar(255, 0, 127), -1);//purple
+//                        }
+//                        if (mInitialFrame.mvORBAttributions[i].depthSource == 3) {
+//                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
+//                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
+//                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
+//                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
+//                                          cv::Scalar(255, 255, 0), -1);//light blue
+//                        }
+//                    }
+//                }
+//                for (int i = 0; i < mInitialFrame.mLaserPt_cam.size(); i++) {
+//                    cv::circle(im_clone, cv::Point(mInitialFrame.mLaserPt_cam[i].pt2d.x,
+//                                                   mInitialFrame.mLaserPt_cam[i].pt2d.y), 1,
+//                               cv::Scalar(0, 255, 255));
+//                }
+//                string windowName = "check fusion " + mInitialFrame.mnId;
+//                cv::imshow(windowName, im_clone);
+//                cv::waitKey(0);
 
                 cout<<"feature number, ini "<<mInitialFrame.mvORBAttributions.size()<<" cur "<<mCurrentFrame.mvORBAttributions.size()<<endl;
                 cout<<"init frame with depth point num "<<count1<<endl;
@@ -2035,6 +2035,7 @@ bool Tracking::TrackReferenceKeyFrame()
         }
     }
 
+    cout<<"frame "<<mCurrentFrame.mnId<<" TrackReferenceKeyFrame() nmatchesMap "<<nmatchesMap<<endl;
     return nmatchesMap>=10;
 }
 
@@ -2150,21 +2151,24 @@ bool Tracking::TrackWithMotionModel()
     // Project points seen in previous frame
     int th;
     if(mSensor!=System::STEREO)
-        th=15;
+        th=30;//th=15;
     else
         th=7;
     //*Step 2 根据上一帧的特征点对应地图点进行投影匹配
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
 
     // If few matches, uses a wider window search
-    if(nmatches<20)
+    if(nmatches<5)//20
     {
         fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
         nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,2*th,mSensor==System::MONOCULAR);
     }
 
-    if(nmatches<20)
+    if(nmatches<5){//20
+        cout<<"TrackWithMotionModel() nmatches : "<<nmatches<<endl;
         return false;
+    }
+
 
     //*Step 3 优化当前位姿
     // Optimize frame pose with all matches
@@ -2201,8 +2205,8 @@ bool Tracking::TrackWithMotionModel()
         return nmatches>20;
     }
     //*Step return
-    cout<<"frame ID "<<mCurrentFrame.mnId<<" trackwithmotion nmatchesMap "<<nmatchesMap<<endl;
-    return nmatchesMap>=10;
+    cout<<"frame ID "<<mCurrentFrame.mnId<<" TrackWithMotionModel() nmatchesMap "<<nmatchesMap<<endl;
+    return nmatchesMap>=5; //10
 
 }
 
@@ -2327,11 +2331,15 @@ bool Tracking::TrackLocalMap()
     ///*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
     // Decide if the tracking was successful
     // More restrictive if there was a relocalization recently
-    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
+    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<20) //50
         return false;
 
-    if(mnMatchesInliers<20) //30
+    if(mnMatchesInliers<5) //30
+    {
+        cout<<"TrackLocalMap() "<<mnMatchesInliers<<endl;
         return false;
+    }
+
     else
         return true;
 }
@@ -2764,7 +2772,7 @@ void Tracking::SearchLocalPoints()
             th=5;
             //对局部地图点中新增的地图点进行投影匹配
         int matchNum = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
-        cout<<"frame ID "<<mCurrentFrame.mnId<<" SearchByProjection match result "<<matchNum<<endl;
+        cout<<"frame ID "<<mCurrentFrame.mnId<<" TrackLocalMap()->SearchByProjection() match result "<<matchNum<<endl;
     }
 }
 

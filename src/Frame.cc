@@ -1185,7 +1185,7 @@ namespace ORB_SLAM2
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(allPoints);
         //KITTI x forward, y left, z up; Camera ref x->right, y->down, z->front
-        sor.setLeafSize(0.05f, 0.05f, 0.05f);
+        sor.setLeafSize(0.02f, 0.02f, 0.02f);
         sor.filter(*downSampledPts);
         cout << " downsample left points " << downSampledPts->points.size() << endl;
         pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
@@ -1214,7 +1214,7 @@ namespace ORB_SLAM2
         //clock_t endTime = clock();
         //double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
         //cout << "Region Growing " << timeUsed << " sec ";
-        cout << " region growing clusters number  " << clusters.size() << endl;
+        cout << " region growing clusters number  " << clusters.size();
         ///step 4  RANSAC plane fitting
         for (auto & thisCluster : clusters) {
             pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1760,27 +1760,18 @@ namespace ORB_SLAM2
         start = clock();
         connectORB2Plane(mLaserPt_cam, mvKeysUn, mvPlanes, 100, im.clone());
         end = clock();
-        cout<<"on plane features "<<endl;
-        //cout << "connectORB2Plane costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini second" << endl;
-//        int counter = 0;
-//        for (int i = 0; i < mvORBAttributions.size(); i++) {
-//            if (mvORBAttributions[i].depthSource == 1) {
-//                cout<<"ID"<<mvORBAttributions[i].ID<<" 2d "<<mvORBAttributions[i].keyPt.pt.x<<" "<<mvORBAttributions[i].keyPt.pt.y
-//                    <<" PlaneID "<<mvORBAttributions[i].floorPlaneID<<" depthsource "<<mvORBAttributions[i].depthSource<<" depth "<<mvORBAttributions[i].depth<<endl;
-//                counter++;
-//            }
-//        }
-//        cout << counter << " ORBS points on plane" << endl;
+
         ///Step 5.2 connect feature point and feature line
         start = clock();
         connectORB2LSD(mvLines, mvKeysUn, im.clone());
         end = clock();
 
         //check mvvkeysun and mvorbattributions
-        cout << "mvKeysUn size " << mvKeysUn.size() << " orbattribution size " << mvORBAttributions.size() << endl;
+//        cout << "mvKeysUn size " << mvKeysUn.size() << " orbattribution size " << mvORBAttributions.size() << endl;
         for (int i = 0; i < mvKeysUn.size(); i++) {
             if (mvKeysUn[i].pt.x != mvORBAttributions[i].keyPt.pt.x
                 || mvKeysUn[i].pt.y != mvORBAttributions[i].keyPt.pt.y) {
+                cout<<"mvkeysun unmatch to orbattribution i"<<i<<" ";
                 cout << mvKeysUn[i].pt.x << " " << mvKeysUn[i].pt.y
                      << " " << mvORBAttributions[i].keyPt.pt.x << " " << mvORBAttributions[i].keyPt.pt.y << endl;
             }
@@ -1805,7 +1796,7 @@ namespace ORB_SLAM2
 
         //cout << "ORBdepthFromLine costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
         start = clock();
-        ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 3, im.clone());
+//        ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 3, im.clone());
         end = clock();
 
 //        counter = 0;
