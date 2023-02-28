@@ -350,7 +350,7 @@ namespace ORB_SLAM2
  * the merged line should be those two endpoints that far-est to each other.
  * Still, merge line2 into line1
  */
-    void mergeSelectedKeyLine(cv::line_descriptor::KeyLine &line1, const cv::line_descriptor::KeyLine &line2, int i, int j, cv::Mat &descriptors) {
+    void mergeSelectedKeyLine(cv::line_descriptor::KeyLine &line1, const cv::line_descriptor::KeyLine &line2) {
 
         float SX1 = line1.startPointX, SY1 = line1.startPointY, SX2 = line2.startPointX, SY2 = line2.startPointY;
         float EX1 = line1.endPointX, EY1 = line1.endPointY, EX2 = line2.endPointX, EY2 = line2.endPointY;
@@ -416,7 +416,6 @@ namespace ORB_SLAM2
                                 (line1.endPointY - line1.startPointY) * (line1.endPointY - line1.startPointY));
         line1.response += line2.response;
         line1.size = (line1.startPointX - line1.endPointX) * (line1.startPointY - line1.endPointY);
-        //cv::vconcat(descriptors[i],descriptors[j],descriptors[i]);
     }
 
     /**
@@ -469,7 +468,7 @@ namespace ORB_SLAM2
                         if (distanceMid < distanceThres)Mid = true;
                         if (SS || SE || EE || ES || Mid) {//start points or end points or mid-points are close
                             ///Merge merge merge
-                            mergeSelectedKeyLine(keylines[i], keylines[j], i,j, descriptors);
+                            mergeSelectedKeyLine(keylines[i], keylines[j]);
                             keylineMergeFlags[j] = true;
                         }
                     }
@@ -1165,8 +1164,6 @@ int pause = 1;
     ///added module
     void Frame::PlaneFitting() {
         ///Step 1 store all lidar point into container
-//        //load image for testing
-//        cv::Mat testIMG = cv::imread("000000.png",cv::IMREAD_UNCHANGED);
         int actualNum = 0;
         pcl::PointCloud<pcl::PointXYZ>::Ptr allPoints(new pcl::PointCloud<pcl::PointXYZ>);
         allPoints->resize(mLaserPt_cam.size());
@@ -1176,10 +1173,6 @@ int pause = 1;
                 allPoints->points[actualNum].x = float(mLaserPt_cam[i].pt3d.x);
                 allPoints->points[actualNum].y = float(mLaserPt_cam[i].pt3d.y);
                 allPoints->points[actualNum].z = float(mLaserPt_cam[i].pt3d.z);
-//                if (actualNum <= 5)
-//                    cout << allPoints->points[actualNum].x <<
-//                         " " << allPoints->points[actualNum].y <<
-//                         " " << allPoints->points[actualNum].z << endl;
                 actualNum++;
             }
         }
@@ -1235,11 +1228,6 @@ int pause = 1;
                 thisCloud->points[j].y = downSampledPts->points[index].y;
                 thisCloud->points[j].z = downSampledPts->points[index].z;
                 //cout<<"cluster point "<<thisCloud->points[index].x<<" "<<thisCloud->points[index].y<<" "<<thisCloud->points[index].z<<endl;
-//                if (j <= 5) {
-//                    cout << index << " : ";
-//                    cout << thisCloud->points[j].x << " " << thisCloud->points[j].y << " " << thisCloud->points[j].z
-//                         << endl;
-//                }
             }
             mPlane foundPlane;
             //startTime = clock();
@@ -1434,7 +1422,7 @@ int pause = 1;
         for (auto &i: mLSDLinesIN) {
             float x1 = i.LSD.startPointX, y1 = i.LSD.startPointY;
             float x2 = i.LSD.endPointX, y2 = i.LSD.endPointY;
-            float A = y2 - y1, B = x1 - x2, C = x2 * y1 - x1 * y2;
+            float A = y2 - y1, B = x1 - x2, C = x2 * y1 - x1 * y2;//https://math.stackexchange.com/questions/422602/convert-two-points-to-line-eq-ax-by-c-0
             vector<float> thisLine;
             thisLine.push_back(A);
             thisLine.push_back(B);
@@ -1574,18 +1562,9 @@ int pause = 1;
 
     void Frame::ORBdepthFromLine(vector<mLine> &lineInputs, vector<mORBAttribution> &ORBinputs, cv::Mat im) {
         for (int i = 0; i < ORBinputs.size(); i++) {
-            if (ORBinputs[i].keyPt.pt.x == 231 && ORBinputs[i].keyPt.pt.y == 260)
-                int puaseu = 1;
             if (ORBinputs[i].depthSource != 1 && ORBinputs[i].LSDlineID > -1) {
                 mLine *thisLine = &lineInputs[mvORBAttributions[i].LSDlineID];
                 if (thisLine->fit3DLine) {
-//                    cout << "ORB point " << mvORBAttributions[i].ID <<" "<<mvORBAttributions[i].keyPt->pt.x<<" "<<mvORBAttributions[i].keyPt->pt.y
-//                    <<" close to LSD line " << mvORBAttributions[i].LSDlineID
-//                    <<mvLines[mvORBAttributions[i].LSDlineID].LSD.startPointX<<" "<<mvLines[mvORBAttributions[i].LSDlineID].LSD.startPointY
-//                    <<mvLines[mvORBAttributions[i].LSDlineID].LSD.endPointX<<" "<<mvLines[mvORBAttributions[i].LSDlineID].LSD.endPointY;
-//                    cout << " which has fit 3d line " << endl;
-
-//                        if (thisLine->nonfloorLine) { //
                     if (true) {
                         ///Complicate formula below
                         ///Given X=(u-Cx)*Z/fx | Y=(v-Cy)*Z/fy | Z=(Fx*X)/(u-Cx)
@@ -1619,7 +1598,6 @@ int pause = 1;
 //                ///Function 2 . point position ratio in 2d line, the ratio is the same with 3d line
 //                ///Note that LSD start point end point is not the 3d LiDAR line start point end point.
 //                double ratioX2d = (ORBpoint.keyPt.x - ORBpoint.LSDline.LSD.startPointX) / abs(ORBpoint.LSDline.LSD.startPointX-ORBpoint.LSDline.LSD.endPointX);
-
                     }
                 }
             }
@@ -1706,6 +1684,116 @@ int pause = 1;
 //        int pause = 1;
     }
 
+    /**
+ * get depth from nearby LiDAR patch plane.
+ * @param LiDARInputs
+ * @param ORBinputs
+ * @param threshold
+ * @param im
+ */
+    void Frame::ORBdepthFromPointPatch(vector<PtLsr> &LiDARInputs, vector<mORBAttribution> &ORBinputs, double threshold, cv::Mat im){
+        for(auto &pt:ORBinputs){
+            if(pt.ID==75){
+                int pause = 1;
+            }
+            if(pt.depthSource>0)
+                continue;
+
+            //Step 1 find a nearest bin
+            //Find the nearest LiDAR points
+            pcl::PointCloud<pcl::PointXYZ>::Ptr localPatch
+            = pcl::PointCloud<pcl::PointXYZ>::Ptr (new pcl::PointCloud<pcl::PointXYZ>);
+            double minDistance = 999;
+            int minID = -1;
+            for(auto lidPT:LiDARInputs){
+//            double distance = sqrt((lidPT.pt2D.x - pt.keyPt.x)*(lidPT.pt2D.x - pt.keyPt.x) + (lidPT.pt2D.y - pt.keyPt.y)*(lidPT.pt2D.y - pt.keyPt.y));
+//            if(distance<threshold){
+//                localPatch->points.push_back(lidPT.p3DonCam);
+//            }
+                bool xok, yok;
+                xok = abs(lidPT.pt2d.x - pt.keyPt.pt.x) <= 5?true:false;
+                yok = abs(lidPT.pt2d.y - pt.keyPt.pt.y) <= 5?true:false;
+                if(xok&&yok)
+                    localPatch->points.push_back(pcl::PointXYZ(lidPT.pt3d.x,lidPT.pt3d.y,lidPT.pt3d.z));
+            }
+            if(localPatch->points.size()>=3){
+                //Divide into frontend backend by histogram
+                pcl::PointXYZ min_pt, max_pt;
+                pcl::getMinMax3D(*localPatch, min_pt, max_pt);
+                // Compute the bin number
+                //cout<<"min_pt"<<min_pt<<" max_pt "<<max_pt<<endl;
+                int num_bins = ceil((max_pt.z - min_pt.z)/0.3);
+                //cout<<"nun_bins "<<num_bins<<endl;
+                // Create a histogram with num_bins bins
+                std::vector<std::vector<int>> histogram;
+                for (int i = 0; i < num_bins; i++) {
+                    std::vector<int> localBin;
+                    histogram.push_back(localBin);
+                }
+                // Iterate over the points in the point cloud
+                for (int i = 0; i < localPatch->points.size(); i++) {
+                    // Compute the bin index for the point based on its distance from the middle of the bounding box
+                    int bin_index = floor(num_bins * (localPatch->points[i].z - min_pt.z) / (max_pt.z - min_pt.z));
+                    if(localPatch->points[i].z==max_pt.z)
+                        bin_index = num_bins -1;
+                    //cout<<" bin_index "<<bin_index<<" add "<<i<<endl;
+                    // Add the point to the appropriate histogram bin
+                    histogram[bin_index].push_back(i);
+                }
+                // Define the significant bin size and find nearest significant bin index
+                int numThreshold = localPatch->points.size() * 0.2;
+                int selectedBinIndex = -1;
+                for(int i=0;i<num_bins;i++){
+                    if(histogram[i].size()>0){
+                        //cout<<"histogram "<<i<<" has z ";
+                        for(int j=0;j<histogram[i].size();j++){
+                            int index = histogram[i][j];
+                            //cout<<localPatch->points[index].z<<" ";
+                        }
+                        //cout<<endl;
+                    }
+                    //find the nearest bin
+                    if(histogram[i].size()>=numThreshold){
+                        selectedBinIndex = i;
+                    }
+                }
+                if(selectedBinIndex>-1&&histogram[selectedBinIndex].size()>=3){
+                    //Step 2 fit a plane by those points
+                    pcl::PointCloud<pcl::PointXYZ>::Ptr localPointCloud =
+                            pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+                    for(int i=0;i<histogram[selectedBinIndex].size();i++){
+                        int ptIndex = histogram[selectedBinIndex][i];
+                        localPointCloud->points.push_back(localPatch->points[ptIndex]);
+                        //cout<<localPatch->points[ptIndex]<<endl;
+                    }
+                    //RANSAC
+                    pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr model(new pcl::SampleConsensusModelPlane<pcl::PointXYZ>(localPointCloud));
+                    pcl::RandomSampleConsensus<pcl::PointXYZ> ransac(model);
+                    ransac.setDistanceThreshold(0.1);
+                    ransac.computeModel();
+                    Eigen::VectorXf coefficients;
+                    ransac.getModelCoefficients(coefficients);
+                    //cout<<coefficients[0]<<" "<<coefficients[1]<<" "<<coefficients[2]<<" "<<coefficients[3]<<endl;
+                    //calc Z
+                    double A = coefficients[0], B = coefficients[1], C = coefficients[2], D = coefficients[3];
+                    double u = pt.keyPt.pt.x, v = pt.keyPt.pt.y;
+                    //cout<<"option 2 "<<endl;
+                    //cout<<"u "<<u<<" v "<<v<<" A "<<A<<" B "<<B<<" C "<<C<<" D "<<D<<" fx "<<fx<<" fy "<<fy<<" cx "<<cx<<" cy "<<cy<<" ---------------------------------------------------------------------"<<endl;
+                    double Z = -D / (A*(u-cx)/fx + B*(v-cy)/fy + C); //from Ax+By+Cz + D =0;
+                    if(abs(Z-localPointCloud->points[0].z)<=1){
+                        pt.depth = Z;
+                        pt.depthSource = 3;
+                        double X = (u - cx) * Z / fx, Y = (v - cy) * Z / fy;
+                        pt.p3d_est.x = X, pt.p3d_est.y = Y, pt.p3d_est.z = Z;
+                    }else{
+                        //cout<<"estimated Z "<<Z<<" far away from candidates Z "<<localPointCloud->points[0].z<<endl;
+                    }
+
+                }
+            }
+        }
+    }
+
     ///Added module
     /**
      * @brief search the image feature with nearby Laser depth
@@ -1725,7 +1813,7 @@ int pause = 1;
         bd->detect(im, priKeylines, mask);
         /* compute descriptors */
         cv::Mat descriptors;
-        bd->compute(im, priKeylines, descriptors);
+        //bd->compute(im, priKeylines, descriptors);
         /* merge primary keylines*/
         std::vector<bool> keylineMergeFlags(priKeylines.size(), false);
         mergeKeyLines(priKeylines, keylineMergeFlags,descriptors, im.clone());
@@ -1752,7 +1840,8 @@ int pause = 1;
 //        }
 //        cv::imshow("check",im_clone);
 //        cv::waitKey(1);
-
+        //cv::Mat descriptors;
+        bd->compute(im, selectedKeyLines, descriptors);
         end = clock();
         //cout << "Search for LSD and LiDAR line costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
 
@@ -1793,6 +1882,7 @@ int pause = 1;
 
         //cout << "mvLines costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
         ///! NOTE there is a big issue that ORB member's line is not the same with mline vector.
+        /// For safey, reach Line by Line ID
         /// there are not the same address !!!!!!
         start = clock();
         ORBdepthFromLine(mvLines, mvORBAttributions, im.clone());
@@ -1809,7 +1899,8 @@ int pause = 1;
 
         //cout << "ORBdepthFromLine costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
         start = clock();
-//        ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 3, im.clone());
+        //ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 3, im.clone());
+        ORBdepthFromPointPatch(mLaserPt_cam, mvORBAttributions, 7, im.clone());
         end = clock();
 
 //        counter = 0;
@@ -1822,39 +1913,40 @@ int pause = 1;
 //        }
 //        cout << counter << " ORBS points on point" << endl;
 
-        cout << "ORBdepthFromPoint costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
+        //cout << "ORBdepthFromPoint costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
+
         //show
-        cv::Mat im_clone=im.clone();
-        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
-        for(int i=0;i<mLaserPt_cam.size();i++){
-            if(mLaserPt_cam[i].planeID==-1)
-                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(102,255,255));
-            if(mLaserPt_cam[i].planeID>-1){
-                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(51,153,255));//orange
-            }
-        }
-        for(int i=0;i<mvORBAttributions.size();i++){
-            if (mvORBAttributions[i].depthSource == -1) {
-                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-                        ,2,cv::Scalar(0,0,255),-1);//red
-            }
-            if (mvORBAttributions[i].depthSource == 1) {
-                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-                           ,3,cv::Scalar(0,255,0),-1);//green
-            }
-            if (mvORBAttributions[i].depthSource == 2) {
-                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-                           ,3,cv::Scalar(255,0,127),-1);//purple
-            }
-            if (mvORBAttributions[i].depthSource == 3) {
-                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-                           ,3,cv::Scalar(255,255,0),-1);//light blue
-            }
-        }
-        string windowName = "fusioned features " + to_string(mnId);
-        //cout<<windowName<<endl;
-        cv::imshow(windowName, im_clone);
-        cv::waitKey(0);
+//        cv::Mat im_clone=im.clone();
+//        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
+//        for(int i=0;i<mLaserPt_cam.size();i++){
+//            if(mLaserPt_cam[i].planeID==-1)
+//                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(102,255,255));
+//            if(mLaserPt_cam[i].planeID>-1){
+//                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(51,153,255));//orange
+//            }
+//        }
+//        for(int i=0;i<mvORBAttributions.size();i++){
+//            if (mvORBAttributions[i].depthSource == -1) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+//                        ,2,cv::Scalar(0,0,255),-1);//red
+//            }
+//            if (mvORBAttributions[i].depthSource == 1) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+//                           ,3,cv::Scalar(0,255,0),-1);//green
+//            }
+//            if (mvORBAttributions[i].depthSource == 2) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+//                           ,3,cv::Scalar(255,0,127),-1);//purple
+//            }
+//            if (mvORBAttributions[i].depthSource == 3) {
+//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+//                           ,3,cv::Scalar(255,255,0),-1);//light blue
+//            }
+//        }
+//        string windowName = "fusioned features " + to_string(mnId);
+//        //cout<<windowName<<endl;
+//        cv::imshow(windowName, im_clone);
+//        cv::waitKey(0);
         ///Step 6 check if est depth larger than 25 meter
         for(int i=0;i<mvORBAttributions.size();i++){
             if(mvORBAttributions[i].depthSource>-1){

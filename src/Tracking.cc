@@ -1409,6 +1409,7 @@ void Tracking::StereoInitialization()
                         nmatches--;
                     }
                 }
+                //Question index larger than 1000 could not be matched by second frame? why?
 //                //Print point with depth and point pair with second frame
 //                //index larger than 1000 could not be matched by second frame? why?
 //                for(int i=0;i<mInitialFrame.mvORBAttributions.size();i++){

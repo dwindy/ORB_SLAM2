@@ -45,6 +45,9 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include "pcl/sample_consensus/sac_model_line.h"
 #include <pcl/sample_consensus/ransac.h>
+#include <pcl/features/pfh.h>
+#include "pcl/common/common.h"
+#include <pcl/sample_consensus/sac_model_plane.h>
 #include "opencv2/line_descriptor/descriptor.hpp"
 #include <cmath>
 
@@ -239,6 +242,7 @@ public:
     void connectORB2LSD(vector<mLine> &mLSDLinesIN, vector<cv::KeyPoint> &ORBin, cv::Mat im);
     void ORBdepthFromLine(vector<mLine> &lineInputs, vector<mORBAttribution> &ORBinputs, cv::Mat im);
     void ORBdepthFromPoint( vector<PtLsr> &LiDARInputs,  vector<mORBAttribution> &ORBinputs, double threshold, cv::Mat im);
+    void ORBdepthFromPointPatch(vector<PtLsr> &LiDARInputs, vector<mORBAttribution> &ORBinputs, double threshold, cv::Mat im);
     vector<std::vector<double>> mLaserPoints; //Raw LiDAR point under LiDAR coordination System
     vector<pcl::PointCloud<pcl::PointXYZI>> mLaser16ScansPoints; //Raw LiDAR point under LiDAR coordination System
     vector<pcl::PointCloud<pcl::PointXYZI>> mlaserScansPoints;
