@@ -46,6 +46,7 @@
 #include "pcl/sample_consensus/sac_model_line.h"
 #include <pcl/sample_consensus/ransac.h>
 #include "opencv2/line_descriptor/descriptor.hpp"
+#include <cmath>
 
 typedef pcl::PointXYZI PointType;
 

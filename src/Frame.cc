@@ -302,8 +302,8 @@ namespace ORB_SLAM2
         //cout<<"PairLaserVisionFeatures costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
         float wait = 0;
     }
-    ///Added module
 
+    ///Added module
     template <typename PointT>
     void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in,
                                 pcl::PointCloud<PointT> &cloud_out, float thres)
@@ -350,7 +350,7 @@ namespace ORB_SLAM2
  * the merged line should be those two endpoints that far-est to each other.
  * Still, merge line2 into line1
  */
-    void mergeSelectedKeyLine(cv::line_descriptor::KeyLine &line1, const cv::line_descriptor::KeyLine &line2) {
+    void mergeSelectedKeyLine(cv::line_descriptor::KeyLine &line1, const cv::line_descriptor::KeyLine &line2, int i, int j, cv::Mat &descriptors) {
 
         float SX1 = line1.startPointX, SY1 = line1.startPointY, SX2 = line2.startPointX, SY2 = line2.startPointY;
         float EX1 = line1.endPointX, EY1 = line1.endPointY, EX2 = line2.endPointX, EY2 = line2.endPointY;
@@ -416,14 +416,15 @@ namespace ORB_SLAM2
                                 (line1.endPointY - line1.startPointY) * (line1.endPointY - line1.startPointY));
         line1.response += line2.response;
         line1.size = (line1.startPointX - line1.endPointX) * (line1.startPointY - line1.endPointY);
+        //cv::vconcat(descriptors[i],descriptors[j],descriptors[i]);
     }
 
     /**
     * merge the primary keylines
     */
-    void mergeKeyLines(vector<cv::line_descriptor::KeyLine> &keylines, vector<bool> &keylineMergeFlags, cv::Mat im) {
+    void mergeKeyLines(vector<cv::line_descriptor::KeyLine> &keylines, vector<bool> &keylineMergeFlags, cv::Mat &descriptors, cv::Mat im) {
         ///Search for Keylines to merge
-        const float degreeThres = 0.008722222 * 5;
+        const float degreeThres = 0.008722222 * 5; //5 degree
         const float distanceThres = 25;
         const float lineLengthThres = 30;
         for (int i = 0; i < keylines.size(); i++) {
@@ -435,18 +436,22 @@ namespace ORB_SLAM2
                     float degreeSum = abs(keylines[i].angle) + abs(keylines[j].angle);
                     float degreeDiff = abs(keylines[j].angle - keylines[i].angle);
                     if ((abs(degreeSum - 3.1415926) < degreeThres) || degreeDiff < degreeThres) {//angle < 5 degrees
+                        //start to start distance
                         float distanceSS = (keylines[i].startPointX - keylines[j].startPointX) *
                                            (keylines[i].startPointX - keylines[j].startPointX) +
                                            (keylines[i].startPointY - keylines[j].startPointY) *
                                            (keylines[i].startPointY - keylines[j].startPointY);
+                        //start to end distance
                         float distanceSE = (keylines[i].startPointX - keylines[j].endPointX) *
                                            (keylines[i].startPointX - keylines[j].endPointX) +
                                            (keylines[i].startPointY - keylines[j].endPointY) *
                                            (keylines[i].startPointY - keylines[j].endPointY);
+                        //end to start distance
                         float distanceES = (keylines[i].endPointX - keylines[j].startPointX) *
                                            (keylines[i].endPointX - keylines[j].startPointX) +
                                            (keylines[i].endPointY - keylines[j].startPointY) *
                                            (keylines[i].endPointY - keylines[j].startPointY);
+                        //end to end distance
                         float distanceEE = (keylines[i].endPointX - keylines[j].endPointX) *
                                            (keylines[i].endPointX - keylines[j].endPointX) +
                                            (keylines[i].endPointY - keylines[j].endPointY) *
@@ -464,14 +469,14 @@ namespace ORB_SLAM2
                         if (distanceMid < distanceThres)Mid = true;
                         if (SS || SE || EE || ES || Mid) {//start points or end points or mid-points are close
                             ///Merge merge merge
-                            mergeSelectedKeyLine(keylines[i], keylines[j]);
+                            mergeSelectedKeyLine(keylines[i], keylines[j], i,j, descriptors);
                             keylineMergeFlags[j] = true;
                         }
                     }
                 }
             }
         }
-        ///Check and reOrder startPoint and endPoint(startPoint closer to Origin)
+        ///Check and re-Order startPoint and endPoint(startPoint closer to Origin)
         for (int i = 0; i < keylines.size(); i++) {
             if (keylineMergeFlags[i])
                 continue;
@@ -574,13 +579,13 @@ namespace ORB_SLAM2
         }
 
         ///Check
-//cvtColor(im_in, im_in, CV_GRAY2BGR);
+//        cvtColor(im_in, im_in, CV_GRAY2BGR);
 //        for (const auto &i: LiDARPtIN) {
 //            if (i.LSDlineID > -1) {
 //                cv::circle(im_in, cvPoint(i.pt2d.x, i.pt2d.y), 1, cv::Scalar(0, 0, 255), 1);
 //                //cout<<"start "<<i.LSDline->LSD.startPointX<<" "<<i.LSDline->LSD.startPointY<<" ends "<<i.LSDline->LSD.endPointX<<" "<<i.LSDline->LSD.endPointY<<endl;
 //                cv::line(im_in, cvPoint(i.LSDline->LSD.startPointX, i.LSDline->LSD.startPointY),
-//                         cvPoint(i.LSDline->LSD.endPointX, i.LSDline->LSD.endPointY), cv::Scalar(0, 255, 0), 1);
+//                         cvPoint(i.LSDline->LSD.endPointX, i.LSDline->LSD.endPointY), cv::Scalar(0, 255, 0), 2);
 //                imshow("LSD2LiDAR", im_in);
 //                //waitKey(10);
 //            } else {
@@ -591,8 +596,8 @@ namespace ORB_SLAM2
 //        }
 //        imshow("LSD2LiDAR", im_in);
 //        cv::waitKey(1);
-//        for (int i = 0; i <mLSDLinesIN.size();i++) {
-//            cout << "mLSDLine "<<i<<" contains LiDAR point number " << mLSDLinesIN[i].LiDARPtIDs.size() << endl;
+//        for (int i = 0; i < mLSDLinesIN.size(); i++) {
+//            cout << "mLSDLine " << i << " contains LiDAR point number " << mLSDLinesIN[i].LiDARPtIDs.size() << endl;
 //        }
 //        int pause = 0;
     }
@@ -776,6 +781,7 @@ namespace ORB_SLAM2
 //        cv::imshow("im_clone",im_clone);
 //        cv::waitKey(1);
 //        return 1;
+int pause = 1;
     }
 
 
@@ -792,14 +798,14 @@ namespace ORB_SLAM2
             pcl::PointCloud<pcl::PointXYZI> newPointCloud;
             mlaserScansPoints.push_back(newPointCloud);
         }
-        ///Step1 : fetch 3d lidar points from mLaserPoints (lidar coordination)
+        ///Step 1 : fetch 3d lidar points from mLaserPoints (lidar coordination)
         TicToc t_whole;
         TicToc t_prepare;
-//        std::vector<int> scanStartInd(N_SCANS, 0);
-//        std::vector<int> scanEndInd(N_SCANS, 0);
-        std::vector<int> scanStartInd(16, 0);
-        std::vector<int> scanEndInd(16, 0);
-        pcl::PointCloud<pcl::PointXYZ> laserCloudIn;//all 64 scans
+        std::vector<int> scanStartInd(N_SCANS, 0);
+        std::vector<int> scanEndInd(N_SCANS, 0);
+        //std::vector<int> scanStartInd(16, 0);
+        //std::vector<int> scanEndInd(16, 0);
+        pcl::PointCloud<pcl::PointXYZ> laserCloudIn;//all 64 scans points
         std::vector<int> indices;
         int lsrPtNum = mLaserPoints.size();
         laserCloudIn.resize(lsrPtNum);
@@ -809,7 +815,7 @@ namespace ORB_SLAM2
             laserCloudIn.points[i].z = mLaserPoints[i][2];
         }
         pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices);
-        removeClosedPointCloud(laserCloudIn, laserCloudIn, 0.3);
+        removeClosedPointCloud(laserCloudIn, laserCloudIn, 0.1);//close to sensor
         ///Step2 : calc the angles
         // 计算起始点和结束点的角度，由于激光雷达是顺时针旋转，这里取反就相当于转成了逆时针
         int cloudSize = laserCloudIn.points.size();
@@ -834,7 +840,7 @@ namespace ORB_SLAM2
         int count16scan = 0;
         PointType point;
         std::vector<pcl::PointCloud<PointType>> laserCloudScans(N_SCANS);
-        std::vector<pcl::PointCloud<PointType>> laserCloud16Scans(16);
+        //std::vector<pcl::PointCloud<PointType>> laserCloud16Scans(16);
         ///Added---for pcl alignment issue
         //QUESTION? this is because in some case, when system pushback point to vector<pcl::pointcloud<pointtype>> could lead pcl alignment issue.
         //So init the vector's each pointcloud with same size the resize it.
@@ -846,7 +852,6 @@ namespace ORB_SLAM2
 //        for(int i = 0; i < N_SCANS;i++)
 //            eachScanIndexs.push_back(0);
         // 遍历每一个点
-//        cout<<"input cloudSize "<<cloudSize;
         for (int i = 0; i < cloudSize; i++)
         {
             point.x = laserCloudIn.points[i].x;
@@ -930,18 +935,19 @@ namespace ORB_SLAM2
             float relTime = (ori - startOri) / (endOri - startOri);
             // 整数部分是scan的索引，小数部分是相对起始时刻的时间
             point.intensity = scanID + scanPeriod * relTime;
-            ///Added --- for pcl alignment problem
+            ///Added --- for pcl alignment problem explained above
 //            int index = eachScanIndexs[scanID];
 //            laserCloudScans[scanID].points[index] = point;
 //            eachScanIndexs[scanID]++;
             // 根据scan的idx送入各自数组
-            laserCloudScans[scanID].push_back(point);//comment if met alignment issue
+            laserCloudScans[scanID].push_back(point);//comment this if met alignment issue
             mlaserScansPoints[scanID].push_back(point);
-            if (scanID % 4 == 0) {///added
-                laserCloud16Scans[scanID / 4].push_back(point);
-                mLaser16ScansPoints[scanID / 4].push_back(point);
-                count16scan++;
-            }
+            ///added for 16 scans
+//            if (scanID % 4 == 0) {
+//                laserCloud16Scans[scanID / 4].push_back(point);
+//                mLaser16ScansPoints[scanID / 4].push_back(point);
+//                count16scan++;
+//            }
         }
         ///Added---for pcl alignment problem since the pointCloud size was resize to 4000 above
 //        for(int i=0;i<N_SCANS;i++){
@@ -951,7 +957,7 @@ namespace ORB_SLAM2
 //        }
         // cloudSize是有效的点云的数目
         cloudSize = count;
-        int cloudSize16 = laserCloud16Scans.size();
+        //int cloudSize16 = laserCloud16Scans.size();
 //        printf(" valid points size %d ", cloudSize);
 //        printf(" 16 scans point size %d \n",count16scan);
         // 全部集合到一个点云里面去，但是使用两个数组标记起始和结果，这里分别+5和-6是为了计算曲率方便
@@ -959,8 +965,8 @@ namespace ORB_SLAM2
         pcl::PointCloud<PointType>::Ptr laserCloud(new pcl::PointCloud<PointType>());
         for (int i = 0; i < 16; i++) {//N_SCANS
             scanStartInd[i] = laserCloud->size() + 5; //most left 5 and right 6 didn't count curve value
-            //*laserCloud += laserCloudScans[i];
-            *laserCloud += laserCloud16Scans[i];
+            *laserCloud += laserCloudScans[i];
+            //*laserCloud += laserCloud16Scans[i];
             scanEndInd[i] = laserCloud->size() - 6;
         }
 ///Calc Curvature and Calc Features
@@ -1178,14 +1184,15 @@ namespace ORB_SLAM2
             }
         }
         allPoints->resize(actualNum);
-        cout<<"lower ground point number "<<actualNum<<" ";
+        cout<<"lower ground point number "<<actualNum<<" / "<<mLaserPt_cam.size();
         ///Step 2 DownSampling and calc norm
         //NOTE lose the index after down-sample
         pcl::PointCloud<pcl::PointXYZ>::Ptr downSampledPts(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::VoxelGrid<pcl::PointXYZ> sor;
         sor.setInputCloud(allPoints);
         //KITTI x forward, y left, z up; Camera ref x->right, y->down, z->front
-        sor.setLeafSize(0.02f, 0.02f, 0.02f);
+        //sor.setLeafSize(0.02f, 0.02f, 0.02f);
+        sor.setLeafSize(0.1f, 0.1f, 0.1f);//for 64 scans
         sor.filter(*downSampledPts);
         cout << " downsample left points " << downSampledPts->points.size() << endl;
         pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
@@ -1193,20 +1200,20 @@ namespace ORB_SLAM2
         pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
         normal_estimator.setSearchMethod(tree);
         normal_estimator.setInputCloud(downSampledPts);
-        normal_estimator.setKSearch(200);
+        normal_estimator.setKSearch(50);
         //normal_estimator.setRadiusSearch(0.10);
         normal_estimator.compute(*normals);
         ///step 3 region growing
         pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-        reg.setMinClusterSize(1500);
-        reg.setMaxClusterSize(10000);
+        reg.setMinClusterSize(2000);
+        reg.setMaxClusterSize(50000);
         reg.setSearchMethod(tree);
         reg.setNumberOfNeighbours(50);//too little will cause run time error
         //reg.setResidualThreshold(0.10);
         reg.setInputCloud(downSampledPts);
         reg.setInputNormals(normals);
-        reg.setSmoothnessThreshold(10.0 / 180.0 * M_PI);
-        reg.setCurvatureThreshold(10.0);
+        reg.setSmoothnessThreshold(7.0 / 180.0 * M_PI);
+        reg.setCurvatureThreshold(1.0);
         //extract each cluster
         //clock_t startTime = clock();
         std::vector<pcl::PointIndices> clusters;
@@ -1214,7 +1221,7 @@ namespace ORB_SLAM2
         //clock_t endTime = clock();
         //double timeUsed = double(endTime - startTime) / CLOCKS_PER_SEC;
         //cout << "Region Growing " << timeUsed << " sec ";
-        cout << " region growing clusters number  " << clusters.size();
+        cout << " region growing clusters total number  " << clusters.size();
         ///step 4  RANSAC plane fitting
         for (auto & thisCluster : clusters) {
             pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1245,7 +1252,11 @@ namespace ORB_SLAM2
                 int planeID = this->mvPlanes.size();
                 foundPlane.PlaneId = planeID;
                 this->mvPlanes.push_back(foundPlane);
-                cout<<"frame "<<mnId<<" plane ID "<<foundPlane.PlaneId<<" "<<foundPlane.A<<" "<<foundPlane.B<<" "<<foundPlane.C<<" "<<foundPlane.D<<endl;
+                cout<<"frame "<<mnId<<" plane ID "<<foundPlane.PlaneId<<" "<<foundPlane.A<<" "<<foundPlane.B<<" "<<foundPlane.C<<" "<<foundPlane.D<<" | " ;
+                float theta = atan2(foundPlane.C,sqrt(foundPlane.A*foundPlane.A+foundPlane.B*foundPlane.B));
+                float phi = atan2(foundPlane.B,foundPlane.A);
+                cout<<"theta "<<(theta/M_PI*180)<<" phi "<<phi/M_PI*180<<endl;
+
             }
         }
         ///Step 5 connect all LiDAR points with Found Plane (from down-sampled cluster)
@@ -1256,7 +1267,7 @@ namespace ORB_SLAM2
                     float A = mvPlanes[j].A, B = mvPlanes[j].B, C = mvPlanes[j].C, D = mvPlanes[j].D;
                     float distance = (abs(eachPT.pt3d.x * A + eachPT.pt3d.y * B + eachPT.pt3d.z * C + D)) /
                                      (sqrt(A * A + B * B + C * C));
-                    if (distance < 0.10) {
+                    if (distance < 0.05) {
                         eachPT.planeID = j;
 //                        eachPT.A = A, eachPT.B = B, eachPT.C = C, eachPT.D = D;
                         PlaneLiDARNum2++;
@@ -1280,6 +1291,7 @@ namespace ORB_SLAM2
         //Mandatory
         seg.setMethodType(pcl::SACMODEL_PLANE);
         seg.setModelType(pcl::SAC_RANSAC);
+        seg.setMaxIterations(1000);
         seg.setDistanceThreshold(0.05);
 
         seg.setInputCloud(cloud);
@@ -1343,11 +1355,12 @@ namespace ORB_SLAM2
 //            cv::circle(im, cv::Point(ORBFeatures[i].pt.x, ORBFeatures[i].pt.y), 3, cv::Scalar(0, 0, 255), 1);
 //            imshow("function connectORB2Plane : on plane ORB", im);
 //            waitKey(1);
-            if(ORBFeatures[i].pt.x==320&&ORBFeatures[i].pt.y==273){
-                int pause = 1;
-                target = i;
-                cout<<"target "<<target<<endl;
-            }
+
+//            if(ORBFeatures[i].pt.x==320&&ORBFeatures[i].pt.y==273){
+//                int pause = 1;
+//                target = i;
+//                cout<<"target "<<target<<endl;
+//            }
 
             //some kdtree parameters
             pcl::PointXY searchPoint;
@@ -1715,11 +1728,11 @@ namespace ORB_SLAM2
         bd->compute(im, priKeylines, descriptors);
         /* merge primary keylines*/
         std::vector<bool> keylineMergeFlags(priKeylines.size(), false);
-        mergeKeyLines(priKeylines, keylineMergeFlags, im.clone());
+        mergeKeyLines(priKeylines, keylineMergeFlags,descriptors, im.clone());
         /* select the lines with enough length */
         vector<cv::line_descriptor::KeyLine> selectedKeyLines;
         int lineCounter = 0;
-        const float lineLengthThres = 30;
+        const float lineLengthThres = 50;
         for (int i = 0; i < priKeylines.size(); i++) {
             if (keylineMergeFlags[i])
                 continue;
@@ -1809,39 +1822,39 @@ namespace ORB_SLAM2
 //        }
 //        cout << counter << " ORBS points on point" << endl;
 
-        //cout << "ORBdepthFromPoint costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
-//        //show
-//        cv::Mat im_clone=im.clone();
-//        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
-//        for(int i=0;i<mLaserPt_cam.size();i++){
-//            if(mLaserPt_cam[i].planeID==-1)
-//                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(102,255,255));
-//            if(mLaserPt_cam[i].planeID>-1){
-//                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(51,153,255));//orange
-//            }
-//        }
-//        for(int i=0;i<mvORBAttributions.size();i++){
-//            if (mvORBAttributions[i].depthSource == -1) {
-//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-//                        ,2,cv::Scalar(0,0,255),-1);//red
-//            }
-//            if (mvORBAttributions[i].depthSource == 1) {
-//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-//                           ,3,cv::Scalar(0,255,0),-1);//green
-//            }
-//            if (mvORBAttributions[i].depthSource == 2) {
-//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-//                           ,3,cv::Scalar(255,0,127),-1);//purple
-//            }
-//            if (mvORBAttributions[i].depthSource == 3) {
-//                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
-//                           ,3,cv::Scalar(255,255,0),-1);//light blue
-//            }
-//        }
-//        string windowName = "fusioned features " + to_string(mnId);
-//        //cout<<windowName<<endl;
-//        cv::imshow(windowName, im_clone);
-//        cv::waitKey(0);
+        cout << "ORBdepthFromPoint costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
+        //show
+        cv::Mat im_clone=im.clone();
+        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
+        for(int i=0;i<mLaserPt_cam.size();i++){
+            if(mLaserPt_cam[i].planeID==-1)
+                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(102,255,255));
+            if(mLaserPt_cam[i].planeID>-1){
+                cv::circle(im_clone,cv::Point(mLaserPt_cam[i].pt2d.x,mLaserPt_cam[i].pt2d.y),1,cv::Scalar(51,153,255));//orange
+            }
+        }
+        for(int i=0;i<mvORBAttributions.size();i++){
+            if (mvORBAttributions[i].depthSource == -1) {
+                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+                        ,2,cv::Scalar(0,0,255),-1);//red
+            }
+            if (mvORBAttributions[i].depthSource == 1) {
+                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+                           ,3,cv::Scalar(0,255,0),-1);//green
+            }
+            if (mvORBAttributions[i].depthSource == 2) {
+                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+                           ,3,cv::Scalar(255,0,127),-1);//purple
+            }
+            if (mvORBAttributions[i].depthSource == 3) {
+                cv::circle(im_clone,cv::Point(mvORBAttributions[i].keyPt.pt.x,mvORBAttributions[i].keyPt.pt.y)
+                           ,3,cv::Scalar(255,255,0),-1);//light blue
+            }
+        }
+        string windowName = "fusioned features " + to_string(mnId);
+        //cout<<windowName<<endl;
+        cv::imshow(windowName, im_clone);
+        cv::waitKey(0);
         ///Step 6 check if est depth larger than 25 meter
         for(int i=0;i<mvORBAttributions.size();i++){
             if(mvORBAttributions[i].depthSource>-1){
@@ -2020,22 +2033,22 @@ namespace ORB_SLAM2
     void Frame::ProjectLiDARtoCam() {
         double maxX = 50.0, maxY = 50.0, minZ = 20.0;
         ///Step1 Project common LiDAR points
-        //int lsrPtNum = mLaser16ScansPoints.size();
         int IDCounter = 0;
-        for (int i = 0; i < mLaser16ScansPoints.size(); i++) {
-            for (int j = 0; j < mLaser16ScansPoints[i].points.size(); j++) {
+        //chose mlaserScansPoints or mLaser16ScansPoints
+        for (int i = 0; i < mlaserScansPoints.size(); i++) {
+            for (int j = 0; j < mlaserScansPoints[i].points.size(); j++) {
                 cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
                 cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
                 //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
                 //X front, Y left, Z up
-                if (mLaser16ScansPoints[i].points[j].x > maxX || mLaser16ScansPoints[i].points[j].x < 0.0
-                    || mLaser16ScansPoints[i].points[j].y > maxY || mLaser16ScansPoints[i].points[j].y < -maxY
-                    || mLaser16ScansPoints[i].points[j].z > minZ || mLaser16ScansPoints[i].points[j].z  < -minZ) {
+                if (mlaserScansPoints[i].points[j].x > maxX || mlaserScansPoints[i].points[j].x < 0.0
+                    || mlaserScansPoints[i].points[j].y > maxY || mlaserScansPoints[i].points[j].y < -maxY
+                    || mlaserScansPoints[i].points[j].z > minZ || mlaserScansPoints[i].points[j].z  < -minZ) {
                     continue;
                 }
-                P_lidar.at<double>(0, 0) = mLaser16ScansPoints[i].points[j].x;
-                P_lidar.at<double>(1, 0) = mLaser16ScansPoints[i].points[j].y;
-                P_lidar.at<double>(2, 0) = mLaser16ScansPoints[i].points[j].z;
+                P_lidar.at<double>(0, 0) = mlaserScansPoints[i].points[j].x;
+                P_lidar.at<double>(1, 0) = mlaserScansPoints[i].points[j].y;
+                P_lidar.at<double>(2, 0) = mlaserScansPoints[i].points[j].z;
                 P_lidar.at<double>(3, 0) = 1;
                 P_cam = mTcamlid * P_lidar;
                 cv::Point3d newP;
@@ -2044,33 +2057,32 @@ namespace ORB_SLAM2
                 newP.z = P_cam.at<double>(2, 0);
                 PtLsr newPtLsr;
                 newPtLsr.pt3d = newP;
-                newPtLsr.intensity =  mLaser16ScansPoints[i].points[j].intensity;
+                newPtLsr.intensity =  mlaserScansPoints[i].points[j].intensity;
                 newPtLsr.scanID = i;
                 newPtLsr.pointID = j;
                 newPtLsr.low = false;
                 newPtLsr.planeID = -1;
                 newPtLsr.ptID = IDCounter;
-                if (mLaser16ScansPoints[i].points[j].z < -1.6)
+                if (mlaserScansPoints[i].points[j].z < -1.6)
                     newPtLsr.low = true;
                 IDCounter++;
                 mLaserPt_cam.push_back(newPtLsr);
             }
         }
-//        int IDCounter = 0;
-//        for (int i = 0; i < mlaserScansPoints.size(); i++) {
-//            for (int j = 0; j < mlaserScansPoints[i].points.size(); j++) {
+//        for (int i = 0; i < mLaser16ScansPoints.size(); i++) {
+//            for (int j = 0; j < mLaser16ScansPoints[i].points.size(); j++) {
 //                cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
 //                cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
 //                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
 //                //X front, Y left, Z up
-//                if (mlaserScansPoints[i].points[j].x > maxX || mlaserScansPoints[i].points[j].x < 0.0
-//                    || mlaserScansPoints[i].points[j].y > maxY || mlaserScansPoints[i].points[j].y < -maxY
-//                    || mlaserScansPoints[i].points[j].z > minZ || mlaserScansPoints[i].points[j].z  < -minZ) {
+//                if (mLaser16ScansPoints[i].points[j].x > maxX || mLaser16ScansPoints[i].points[j].x < 0.0
+//                    || mLaser16ScansPoints[i].points[j].y > maxY || mLaser16ScansPoints[i].points[j].y < -maxY
+//                    || mLaser16ScansPoints[i].points[j].z > minZ || mLaser16ScansPoints[i].points[j].z  < -minZ) {
 //                    continue;
 //                }
-//                P_lidar.at<double>(0, 0) = mlaserScansPoints[i].points[j].x;
-//                P_lidar.at<double>(1, 0) = mlaserScansPoints[i].points[j].y;
-//                P_lidar.at<double>(2, 0) = mlaserScansPoints[i].points[j].z;
+//                P_lidar.at<double>(0, 0) = mLaser16ScansPoints[i].points[j].x;
+//                P_lidar.at<double>(1, 0) = mLaser16ScansPoints[i].points[j].y;
+//                P_lidar.at<double>(2, 0) = mLaser16ScansPoints[i].points[j].z;
 //                P_lidar.at<double>(3, 0) = 1;
 //                P_cam = mTcamlid * P_lidar;
 //                cv::Point3d newP;
@@ -2079,13 +2091,13 @@ namespace ORB_SLAM2
 //                newP.z = P_cam.at<double>(2, 0);
 //                PtLsr newPtLsr;
 //                newPtLsr.pt3d = newP;
-//                newPtLsr.intensity =  mlaserScansPoints[i].points[j].intensity;
+//                newPtLsr.intensity =  mLaser16ScansPoints[i].points[j].intensity;
 //                newPtLsr.scanID = i;
 //                newPtLsr.pointID = j;
 //                newPtLsr.low = false;
 //                newPtLsr.planeID = -1;
 //                newPtLsr.ptID = IDCounter;
-//                if (mlaserScansPoints[i].points[j].z < -1.6)
+//                if (mLaser16ScansPoints[i].points[j].z < -1.6)
 //                    newPtLsr.low = true;
 //                IDCounter++;
 //                mLaserPt_cam.push_back(newPtLsr);
