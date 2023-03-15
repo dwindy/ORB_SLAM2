@@ -30,6 +30,8 @@
 #include "KeyFrameDatabase.h"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+///Added module
+#include "MapLine.h"
 
 #include <mutex>
 
@@ -69,6 +71,7 @@ public:
     vector<ORB_SLAM2::mPlane> mvPlanes;
     vector<mLine> mvLines;
     vector<mORBAttribution> mvORBAttributions; //size init at un-distortion function
+    cv::Mat mlsdDescriptors;
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
@@ -114,6 +117,10 @@ public:
     std::vector<MapPoint*> GetMapPointMatches();
     int TrackedMapPoints(const int &minObs);
     MapPoint* GetMapPoint(const size_t &idx);
+    ///Added Module
+    //MapLine observation functions
+    void AddMapLine(MapLine *lML, const size_t &idx);
+    std::vector<MapLine*> GetMapLineMatches();
 
     // KeyPoint functions
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
@@ -183,6 +190,8 @@ public:
 
     // Number of KeyPoints
     const int N;
+    ///Added Module --- Lines
+    const int N_lines;
 
     // KeyPoints, stereo coordinate and descriptors (all associated by an index)
     const std::vector<cv::KeyPoint> mvKeys;
@@ -190,6 +199,8 @@ public:
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
     const cv::Mat mDescriptors;
+    ///Added Module --- Lines
+
 
     //BoW
     DBoW2::BowVector mBowVec;
@@ -213,6 +224,8 @@ public:
     const int mnMaxY;
     const cv::Mat mK;
 
+    ///Added module
+    std::vector<MapLine*> mvpMapLines;
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:
@@ -226,6 +239,7 @@ protected:
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*> mvpMapPoints;
+
 
     // BoW
     KeyFrameDatabase* mpKeyFrameDB;

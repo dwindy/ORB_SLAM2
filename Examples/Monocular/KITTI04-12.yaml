@@ -23,6 +23,19 @@ Camera.RGB: 1
 
 #added module
 #--------------------------------------------------------------------------------------------
+# Monocular Detph Debug
+#--------------------------------------------------------------------------------------------
+Camera.width: 1241
+Camera.height: 376
+
+# stereo baseline times fx
+Camera.bf: 379.8145
+
+# Close/Far threshold. Baseline times.
+ThDepth: 40
+
+#added module
+#--------------------------------------------------------------------------------------------
 # Camera LiDAR Calibration Parameters
 #--------------------------------------------------------------------------------------------
 Rcl.11: 0.007533745
@@ -44,7 +57,7 @@ Tcl.3: -0.2717806
 #--------------------------------------------------------------------------------------------
 
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 2000 #2000
+ORBextractor.nFeatures: 4000 #2000
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
 ORBextractor.scaleFactor: 1.2

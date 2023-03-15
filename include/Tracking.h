@@ -114,6 +114,8 @@ namespace ORB_SLAM2
         // Initialization Variables (Monocular)
         std::vector<int> mvIniLastMatches;
         std::vector<int> mvIniMatches;
+        ///Added Module
+        std::vector<vector<int>> mvIniMatchedLines;
         std::vector<cv::Point2f> mvbPrevMatched;//features in the first frame
         std::vector<cv::Point3f> mvIniP3D;
         Frame mInitialFrame;
@@ -164,9 +166,13 @@ namespace ORB_SLAM2
         void UpdateLocalMap();
         void UpdateLocalPoints();
         void UpdateLocalKeyFrames();
+        ///Added Module
+        void UpdateLocalLines();
 
         bool TrackLocalMap();
         void SearchLocalPoints();
+        ///Added Module
+        void SearchLocalLines();
 
         bool NeedNewKeyFrame();
         void CreateNewKeyFrame();
@@ -226,6 +232,8 @@ namespace ORB_SLAM2
         KeyFrame* mpReferenceKF;
         std::vector<KeyFrame*> mvpLocalKeyFrames;
         std::vector<MapPoint*> mvpLocalMapPoints;
+        ///Added Module
+        std::vector<MapLine*> mvpLocalMapLines;
 
         // System
         System* mpSystem;
@@ -261,6 +269,8 @@ namespace ORB_SLAM2
 
         //Current matches in frame
         int mnMatchesInliers;
+        //Added module
+        int mnMatchesInliersLine;
 
         //Last Frame, KeyFrame and Relocalisation Info
         KeyFrame* mpLastKeyFrame;

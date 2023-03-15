@@ -90,12 +90,6 @@ int main(int argc, char **argv)
             return 1;
         }
 
-#ifdef COMPILEDWITHC14
-        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-#else
-        std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
-#endif
-
         ///Added module
         //Load scans of this frame
         vector<vector<double>> laserPoints;
@@ -109,7 +103,11 @@ int main(int argc, char **argv)
 //        //store scan Middle time, start time and end time
 //        vector<double> laserTimes = {vLaserTimestamps[ni], vLaserStartTimes[ni], vLaserEndTimes[ni]};
 
-
+#ifdef COMPILEDWITHC14
+        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+#else
+        std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
+#endif
         //SLAM.TrackMonocular(im,tframe);
         ///added module
         //Pass both the image and lasers to the SLAM system

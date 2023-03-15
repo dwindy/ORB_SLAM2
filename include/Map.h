@@ -24,6 +24,7 @@
 #include "MapPoint.h"
 #include "KeyFrame.h"
 #include <set>
+#include "MapLine.h"
 
 #include <mutex>
 
@@ -34,6 +35,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+///Added Module
+class MapLine;
 
 class Map
 {
@@ -45,6 +48,9 @@ public:
     void EraseMapPoint(MapPoint* pMP);
     //todo AddMapPlane();
     //todo EraseMapPlane();
+    ///Added module
+    void AddMapLine(MapLine* pML);
+    void EraseMapLine(MapLine* pML);
     void EraseKeyFrame(KeyFrame* pKF);
     void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
     void InformNewBigChange();
@@ -53,6 +59,9 @@ public:
     std::vector<KeyFrame*> GetAllKeyFrames();
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
+    //Added Module
+    std::vector<MapLine*> GetAllMapLines();
+    std::vector<MapLine*> GetReferenceMapLines();
 
     long unsigned int MapPointsInMap();
     long unsigned  KeyFramesInMap();
@@ -71,8 +80,12 @@ public:
 protected:
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
+    ///Added Module
+    std::set<MapLine*> mspMapLines;
 
     std::vector<MapPoint*> mvpReferenceMapPoints;
+    ///Added Module
+    std::vector<MapLine*> mvpReferenceMapLines;
 
     long unsigned int mnMaxKFid;
 

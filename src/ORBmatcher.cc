@@ -42,105 +42,97 @@ ORBmatcher::ORBmatcher(float nnratio, bool checkOri): mfNNratio(nnratio), mbChec
 {
 }
 
-/**
- * @brief local mappoint 的投影匹配, 往传进来的frame.mvpMapPoints里面塞mappoint
+    /**
+ * @brief local mapline 的投影匹配, 往传进来的frame.mvpLines里面塞mapline
  * 遍历有效的局部地图点
  * 设定搜索窗口的大小
  * 通过投影点，搜索窗口和预测尺度进行搜索，找到搜索半径内的候选匹配点进行索引
  * 最佳和次佳匹配
  * 筛选最佳匹配
  */
-int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoints, const float th)
-{
-    int nmatches=0;
+    int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint *> &vpMapPoints, const float th) {
+        int nmatches = 0;
 
-    const bool bFactor = th!=1.0;
-    //*Step 1 遍历有效的局部地图点
-    for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
-    {
-        MapPoint* pMP = vpMapPoints[iMP];
-        if(!pMP->mbTrackInView)
-            continue;
-
-        if(pMP->isBad())
-            continue;
-
-        const int &nPredictedLevel = pMP->mnTrackScaleLevel;
-
-        //*Step 2 设定搜索窗口大小 根据刚得到的观测夹角判断
-        // The size of the window will depend on the viewing direction
-        float r = RadiusByViewingCos(pMP->mTrackViewCos);
-
-        if(bFactor)
-            r*=th;
-
-        //*Step 3 找到搜索半径内的候选匹配点
-        const vector<size_t> vIndices =
-            F.GetFeaturesInArea(pMP->mTrackProjX, pMP->mTrackProjY,    //地图点投影到当前帧的坐标
-                                r * F.mvScaleFactors[nPredictedLevel], //搜索窗口的大小和该特征点被追踪到时所处的尺度也有关
-                                nPredictedLevel - 1, nPredictedLevel); //搜索的图层范围
-
-        if(vIndices.empty())
-            continue;
-
-        //*Step 4 最佳次佳匹配点
-        const cv::Mat MPdescriptor = pMP->GetDescriptor();
-
-        int bestDist=256;
-        int bestLevel= -1;
-        int bestDist2=256;
-        int bestLevel2 = -1;
-        int bestIdx =-1 ;
-
-        // Get best and second matches with near keypoints
-        for(vector<size_t>::const_iterator vit=vIndices.begin(), vend=vIndices.end(); vit!=vend; vit++)
-        {
-            const size_t idx = *vit;
-
-            if(F.mvpMapPoints[idx])
-                if(F.mvpMapPoints[idx]->Observations()>0)
-                    continue;
-
-            if(F.mvuRight[idx]>0)
-            {
-                const float er = fabs(pMP->mTrackProjXR-F.mvuRight[idx]);
-                if(er>r*F.mvScaleFactors[nPredictedLevel])
-                    continue;
-            }
-
-            const cv::Mat &d = F.mDescriptors.row(idx);
-
-            const int dist = DescriptorDistance(MPdescriptor,d);
-
-            if(dist<bestDist)
-            {
-                bestDist2=bestDist;
-                bestDist=dist;
-                bestLevel2 = bestLevel;
-                bestLevel = F.mvKeysUn[idx].octave;
-                bestIdx=idx;
-            }
-            else if(dist<bestDist2)
-            {
-                bestLevel2 = F.mvKeysUn[idx].octave;
-                bestDist2=dist;
-            }
-        }
-
-        //*Step 筛选最佳匹配点
-        // Apply ratio to second match (only if best and second are in the same scale level)
-        if(bestDist<=TH_HIGH)
-        {
-            if(bestLevel==bestLevel2 && bestDist>mfNNratio*bestDist2)
+        const bool bFactor = th != 1.0;
+        //*Step 1 遍历有效的局部地图点
+        for (size_t iMP = 0; iMP < vpMapPoints.size(); iMP++) {
+            MapPoint *pMP = vpMapPoints[iMP];
+            if (!pMP->mbTrackInView)
                 continue;
 
-            F.mvpMapPoints[bestIdx]=pMP;
-            nmatches++;
-        }
-    }
+            if (pMP->isBad())
+                continue;
 
-    return nmatches;
-}
+            const int &nPredictedLevel = pMP->mnTrackScaleLevel;
+
+            //*Step 2 设定搜索窗口大小 根据刚得到的观测夹角判断
+            // The size of the window will depend on the viewing direction
+            float r = RadiusByViewingCos(pMP->mTrackViewCos);
+
+            if (bFactor)
+                r *= th;
+
+            //*Step 3 找到搜索半径内的候选匹配点
+            const vector<size_t> vIndices =
+                    F.GetFeaturesInArea(pMP->mTrackProjX, pMP->mTrackProjY,    //地图点投影到当前帧的坐标
+                                        r * F.mvScaleFactors[nPredictedLevel], //搜索窗口的大小和该特征点被追踪到时所处的尺度也有关
+                                        nPredictedLevel - 1, nPredictedLevel); //搜索的图层范围
+
+            if (vIndices.empty())
+                continue;
+
+            //*Step 4 最佳次佳匹配点
+            const cv::Mat MPdescriptor = pMP->GetDescriptor();
+
+            int bestDist = 256;
+            int bestLevel = -1;
+            int bestDist2 = 256;
+            int bestLevel2 = -1;
+            int bestIdx = -1;
+
+            // Get best and second matches with near keypoints
+            for (vector<size_t>::const_iterator vit = vIndices.begin(), vend = vIndices.end(); vit != vend; vit++) {
+                const size_t idx = *vit;
+
+                if (F.mvpMapPoints[idx])
+                    if (F.mvpMapPoints[idx]->Observations() > 0)
+                        continue;
+
+                if (F.mvuRight[idx] > 0) {
+                    const float er = fabs(pMP->mTrackProjXR - F.mvuRight[idx]);
+                    if (er > r * F.mvScaleFactors[nPredictedLevel])
+                        continue;
+                }
+
+                const cv::Mat &d = F.mDescriptors.row(idx);
+
+                const int dist = DescriptorDistance(MPdescriptor, d);
+
+                if (dist < bestDist) {
+                    bestDist2 = bestDist;
+                    bestDist = dist;
+                    bestLevel2 = bestLevel;
+                    bestLevel = F.mvKeysUn[idx].octave;
+                    bestIdx = idx;
+                } else if (dist < bestDist2) {
+                    bestLevel2 = F.mvKeysUn[idx].octave;
+                    bestDist2 = dist;
+                }
+            }
+
+            //*Step 筛选最佳匹配点
+            // Apply ratio to second match (only if best and second are in the same scale level)
+            if (bestDist <= TH_HIGH) {
+                if (bestLevel == bestLevel2 && bestDist > mfNNratio * bestDist2)
+                    continue;
+
+                F.mvpMapPoints[bestIdx] = pMP;
+                nmatches++;
+            }
+        }
+
+        return nmatches;
+    }
 
 float ORBmatcher::RadiusByViewingCos(const float &viewCos)
 {
@@ -294,9 +286,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
                         nmatches++;
                     }
                 }
-
             }
-
             KFit++;
             Fit++;
         }
@@ -1891,4 +1881,450 @@ int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
     return dist;
 }
 
+///Added Module
+/*
+ * From lines0 to lines1
+ */
+int LineAndPlaneMatcher::LineMatching(vector<mLine> lines0, vector<mLine> lines1, cv::Mat descriptors0, cv::Mat descriptors1,
+                  vector<vector<int>> &resultMatches){
+        //Step 1 match by BinaryDescriptorMatcher
+        //Create a BinaryDescriptorMatcher object
+        cv::Ptr<cv::line_descriptor::BinaryDescriptorMatcher> matcher = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
+        std::vector<cv::DMatch> DescripMatcheScores;
+        matcher->match(descriptors0,descriptors1, DescripMatcheScores);
+        //find
+        float maxDistance = 0, minDistance = 65535;
+        for (auto & matche : DescripMatcheScores) {
+            if (matche.distance < minDistance)
+                minDistance = matche.distance;
+            if (matche.distance > maxDistance)
+                maxDistance = matche.distance;
+        }
+        double descripDisThres = minDistance+(maxDistance-minDistance)*0.5;
+        //cout<<"distance threshold "<<descripDisThres<<endl;
+        std::vector<cv::DMatch> goodDescriptorMatches;
+        for (auto & DescripMatcheScore : DescripMatcheScores) {
+            if (DescripMatcheScore.distance < descripDisThres) {
+                goodDescriptorMatches.push_back(DescripMatcheScore);
+            }
+        }
+        // Store the indices of the matched keylines with good scores
+        std::vector<int> goodIndices0, goodIndices1;
+        for (auto & goodMatche : goodDescriptorMatches) {
+            goodIndices0.push_back(goodMatche.queryIdx);
+            goodIndices1.push_back(goodMatche.trainIdx);
+        }
+        ///Step 2 by angle distance and length
+        // Loop through all pairs of keylines
+        for (int i = 0; i < goodIndices0.size(); i++) {
+            int index0 = goodIndices0[i];
+            int index1 = goodIndices1[i];
+
+            // Calculate angle difference between two keylines
+            double angleDiff = abs(lines0[index0].LSD.angle - lines1[index1].LSD.angle);
+            if (angleDiff >= M_PI)
+                angleDiff -= M_PI;
+            if (angleDiff < 0)
+                angleDiff += M_PI;
+
+            // Calculate relative length difference between two keylines
+            double lengthDiff = abs(lines0[index0].LSD.lineLength - lines1[index1].LSD.lineLength) /
+                                std::max(lines0[index0].LSD.lineLength, lines1[index1].LSD.lineLength);
+
+            // Calculate distance between midpoints of two keylines
+            cv::Point2f midpoint0 = lines0[index0].LSD.pt;
+            cv::Point2f midpoint1 = lines1[index1].LSD.pt;
+            double distance = cv::norm(midpoint0 - midpoint1);
+
+            //cout<<"index0 "<<index0<<" to "<<index1<<" : "<<angleDiff<<" "<<lengthDiff<<" "<<distance<<endl;
+            // Check if the keyline pair passes all the filtering criteria
+            if ((angleDiff <= lineAngleThreshold || angleDiff <= (M_PI - lineAngleThreshold))
+                && lengthDiff <= lineLengthThreshold
+                && distance <= lineMidDisThreshold
+                && lines0[index0].fit3DLine) {
+                //cout<<"qualify"<<endl;
+//            filterIndices0.push_back(index0);
+//            filterIndices1.push_back(index1);
+                vector<int> newPair;
+                newPair.push_back(index0);
+                newPair.push_back(index1);
+                resultMatches.push_back(newPair);
+            }
+        }
+        return resultMatches.size();
+}
+
+/*
+ * search the line match given current frame and reference keyframe
+ */
+int LineAndPlaneMatcher::LineMatchingByKeyframe(Frame *CurrentFrame, KeyFrame *pKF, vector<vector<int>> &resultMatches){
+        vector<mLine> curLines(CurrentFrame->mvLines);
+        vector<mLine> refLines(pKF->mvLines);
+        cv::Mat curLSDDescriptor = CurrentFrame->mlsdDescriptors.clone();
+        cv::Mat refLSDDescriptor = pKF->mlsdDescriptors.clone();
+        //Step 1 match by BinaryDescriptorMatcher
+        //Create a BinaryDescriptorMatcher object to find pairs
+        cv::Ptr<cv::line_descriptor::BinaryDescriptorMatcher> matcher = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
+        std::vector<cv::DMatch> descripMatcheScores;
+        matcher->match(curLSDDescriptor,refLSDDescriptor, descripMatcheScores);
+        //filter by descriptor distance
+        float maxDistance = 0, minDistance = 65535;
+        for (auto &matche: descripMatcheScores) {
+            if (matche.distance < minDistance)
+                minDistance = matche.distance;
+            if (matche.distance > maxDistance)
+                maxDistance = matche.distance;
+        }
+        double descripDisThres = minDistance + (maxDistance - minDistance) * 0.5;
+        //cout << "distance threshold " << descripDisThres << endl;
+        std::vector<cv::DMatch> goodDescriptorMatches;
+        for (auto &DescripMatcheScore: descripMatcheScores) {
+            if (DescripMatcheScore.distance < descripDisThres)
+                goodDescriptorMatches.push_back(DescripMatcheScore);
+        }
+        // Store the indices of the matched keylines with good scores
+        std::vector<int> goodIndices0, goodIndices1;
+        for (auto & goodMatche : goodDescriptorMatches) {
+            goodIndices0.push_back(goodMatche.queryIdx);
+            goodIndices1.push_back(goodMatche.trainIdx);
+        }
+        ///Step 2 filter by angle distance and length
+        // Loop through all pairs of keylines
+        for (int i = 0; i < goodIndices0.size(); i++) {
+            int index0 = goodIndices0[i];
+            int index1 = goodIndices1[i];
+            MapLine* mpl = pKF->mvpMapLines[index1];
+            if(!mpl)
+                continue;
+            if(mpl->isBad())
+                continue;
+            // Calculate angle difference between two lsd lines
+            double angleDiff = abs(curLines[index0].LSD.angle - refLines[index1].LSD.angle);
+            if (angleDiff >= M_PI)
+                angleDiff -= M_PI;
+            if (angleDiff < 0)
+                angleDiff += M_PI;
+
+            // Calculate relative length difference between two keylines
+            double lengthDiff = abs(curLines[index0].LSD.lineLength - refLines[index1].LSD.lineLength) /
+                                std::max(curLines[index0].LSD.lineLength, refLines[index1].LSD.lineLength);
+
+            // Calculate distance between midpoints of two keylines
+            cv::Point2f midpoint0 = curLines[index0].LSD.pt;
+            cv::Point2f midpoint1 = refLines[index1].LSD.pt;
+            double distance = cv::norm(midpoint0 - midpoint1);
+
+            //cout << "index0 " << index0 << " to " << index1 << " : " << angleDiff << " " << lengthDiff << " " << distance << endl;
+            // Check if the keyline pair passes all the filtering criteria
+            if ((angleDiff <= lineAngleThreshold || angleDiff <= (M_PI - lineAngleThreshold))
+                && lengthDiff <= lineLengthThreshold
+                && distance <= lineMidDisThreshold) {
+                //cout << "qualify" << endl;
+//            filterIndices0.push_back(index0);
+//            filterIndices1.push_back(index1);
+                vector<int> newPair;
+                newPair.push_back(index0);
+                newPair.push_back(index1);
+                resultMatches.push_back(newPair);
+            }
+        }
+        return resultMatches.size();
+    }
+
+    int LineAndPlaneMatcher::LineMatchingByProjection(Frame *CurrentFrame, Frame *LastFrame,
+                                                      vector<vector<int>> &resultMatches) {
+        vector <mLine> curLines(CurrentFrame->mvLines);
+        vector <mLine> refLines(LastFrame->mvLines);
+        cv::Mat curLSDDescriptor = CurrentFrame->mlsdDescriptors.clone();
+        cv::Mat refLSDDescriptor = LastFrame->mlsdDescriptors.clone();
+        //Step 1 match by BinaryDescriptorMatcher
+        //Create a BinaryDescriptorMatcher object to find pairs
+        cv::Ptr <cv::line_descriptor::BinaryDescriptorMatcher> matcher = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
+        std::vector <cv::DMatch> descripMatcheScores;
+        matcher->match(curLSDDescriptor, refLSDDescriptor, descripMatcheScores);
+        //filter by descriptor distance
+        float maxDistance = 0, minDistance = 65535;
+        for (auto &matche: descripMatcheScores) {
+            if (matche.distance < minDistance)
+                minDistance = matche.distance;
+            if (matche.distance > maxDistance)
+                maxDistance = matche.distance;
+        }
+        double descripDisThres = minDistance + (maxDistance - minDistance) * 0.5;
+        //cout << "distance threshold " << descripDisThres << endl;
+        std::vector <cv::DMatch> goodDescriptorMatches;
+        for (auto &DescripMatcheScore: descripMatcheScores) {
+            if (DescripMatcheScore.distance < descripDisThres)
+                goodDescriptorMatches.push_back(DescripMatcheScore);
+        }
+        // Store the indices of the matched keylines with good scores
+        std::vector<int> goodIndices0, goodIndices1;
+        for (auto &goodMatche: goodDescriptorMatches) {
+            goodIndices0.push_back(goodMatche.queryIdx);
+            goodIndices1.push_back(goodMatche.trainIdx);
+        }
+        //*Step 2 filter noise by angle different, length ratio and mid point distance
+        //*Step 2.1 计算当前帧和前一帧的平移向量
+        const cv::Mat Rcw = CurrentFrame->mTcw.rowRange(0,3).colRange(0,3);
+        const cv::Mat tcw = CurrentFrame->mTcw.rowRange(0,3).col(3);
+        const cv::Mat twc = -Rcw.t()*tcw;
+        const cv::Mat Rlw = LastFrame->mTcw.rowRange(0, 3).colRange(0, 3);
+        const cv::Mat tlw = LastFrame->mTcw.rowRange(0, 3).col(3);
+        const cv::Mat tlc = Rlw * twc + tlw;
+        //*Step 2.1.1 Project the matched lines from last frame to current frame image
+        for (size_t i = 0, iend = goodIndices0.size(); i < iend; i++) {
+            int curLineIndex = goodIndices0[i];
+            int lastLineIndex = goodIndices1[i];
+            MapLine * pML = LastFrame->mvpMapLines[lastLineIndex];
+            if(pML){//if last frame's ith lsd Line has a MapLine correspondences, and it is not outlier
+                if(!LastFrame->mvbOutlierLines[lastLineIndex]){
+                    //*Step 2.1.2 Transform matched last frame's MapLine to current frame and Project to image
+                    cv::Mat x3Dw = pML->GetWorldPos();
+                    cv::Mat x3Dw0 = x3Dw.rowRange(0,3).colRange(0,1);
+                    cv::Mat x3Dw1 = x3Dw.rowRange(0,3).colRange(1,2);
+                    cv::Mat x3Dc0 = Rcw * x3Dw0 + tcw;
+                    cv::Mat x3Dc1 = Rcw * x3Dw1 + tcw;
+                    const double xc0 = x3Dc0.at<float>(0,0);
+                    const double yc0 = x3Dc0.at<float>(1,0);
+                    const double invzc0 = x3Dc0.at<float>(2,0);
+                    const double xc1 = x3Dc1.at<float>(0,1);
+                    const double yc1 = x3Dc1.at<float>(1,1);
+                    const double invzc1 = x3Dc1.at<float>(2,1);
+                    if(invzc0<0||invzc1<0)
+                        continue;
+                    float u0 = CurrentFrame->fx * xc0 * invzc0 + CurrentFrame->cx;
+                    float v0 = CurrentFrame->fy * yc0 * invzc0 + CurrentFrame->cy;
+                    float u1 = CurrentFrame->fx * xc1 * invzc1 + CurrentFrame->cx;
+                    float v1 = CurrentFrame->fy * yc1 * invzc1 + CurrentFrame->cy;
+                    if (u0 < CurrentFrame->mnMinX || u0 > CurrentFrame->mnMaxX
+                        || u1 < CurrentFrame->mnMinX || u1 > CurrentFrame->mnMaxX)
+                        continue;
+                    if (v0 < CurrentFrame->mnMinY || v0 > CurrentFrame->mnMaxY
+                        || v1 < CurrentFrame->mnMinY || v1 > CurrentFrame->mnMaxY)
+                        continue;
+
+                    //*Step 2.2 compare with local matched lsd line
+                    // Calculate angle difference between two lsd lines
+                    double angleDiff = abs(curLines[curLineIndex].LSD.angle - refLines[lastLineIndex].LSD.angle);
+                    if (angleDiff >= M_PI)
+                        angleDiff -= M_PI;
+                    if (angleDiff < 0)
+                        angleDiff += M_PI;
+                    // Calculate relative length difference between two keylines
+                    double lengthDiff = abs(curLines[curLineIndex].LSD.lineLength - refLines[lastLineIndex].LSD.lineLength) /
+                                        std::max(curLines[curLineIndex].LSD.lineLength, refLines[lastLineIndex].LSD.lineLength);
+                    // Calculate distance between midpoints of two keylines
+                    cv::Point2f midpoint0 = curLines[curLineIndex].LSD.pt;
+                    cv::Point2f midpoint1 = refLines[lastLineIndex].LSD.pt;
+                    double distance = cv::norm(midpoint0 - midpoint1);
+                    //cout << "curFrame line index " << curLineIndex << " to lastFrame line index" << lastLineIndex << " : " << angleDiff << " " << lengthDiff << " " << distance << endl;
+                    // Check if the keyline pair passes all the filtering criteria
+                    if ((angleDiff <= lineAngleThreshold || angleDiff <= (M_PI - lineAngleThreshold))
+                        && lengthDiff <= lineLengthThreshold
+                        && distance <= lineMidDisThreshold) {
+                        //cout << "qualify" << endl;
+                        vector<int> newPair;
+                        newPair.push_back(curLineIndex);
+                        newPair.push_back(lastLineIndex);
+                        resultMatches.push_back(newPair);
+                    }
+                }
+            }
+        }
+        return resultMatches.size();
+    }
+
+    /**
+ * @brief local mappoint 的投影匹配, 往传进来的frame.mvpMapPoints里面塞mappoint
+ * 遍历有效的局部地图点
+ * 设定搜索窗口的大小
+ * 通过投影点，搜索窗口和预测尺度进行搜索，找到搜索半径内的候选匹配点进行索引
+ * 最佳和次佳匹配
+ * 筛选最佳匹配
+ */
+ //todo To TEST!
+//    int LineAndPlaneMatcher::SearchLineByProjection(Frame &F, const vector<MapLine *> &vpMapLines, const float th) {
+//        int nmatches = 0;
+//        const bool bFactor = th != 1.0;
+//        vector<mLine*> mapLSDs;
+//        //Step 1 get all descriptors of MapLine, from its lastObserved frame?
+//        //in the form of xx rows 32 cols
+//        cv::Mat mapLineDescriptors(vpMapLines.size(),32,CV_8UC1);//todo check ? or CV_8U?
+//        for (size_t iML = 0; iML < vpMapLines.size(); iML++) {
+//            //store corresponding LSD line --- default is NULL
+//            mapLSDs.push_back(static_cast<mLine*>(NULL));
+//            MapLine *pML = vpMapLines[iML];
+//            if (!pML->mbTrackInView)
+//                continue;
+//            if (pML->isBad())
+//                continue;
+//            //lastFrame saw this MapLine
+//            int lastFrameID = vpMapLines[iML]->mnLastFrameSeen;
+//            auto observations = vpMapLines[iML]->GetObservations();
+//            for (auto it = observations.begin(); it != observations.end(); it++) {
+//                //get the frame observed this line
+//                if (it->first->mnId == lastFrameID) {
+//                    //get the line indice
+//                    int lineIndice = it->second;
+//                    //get the line descriptor
+//                    cv::Mat lineDescript = it->first->mlsdDescriptors.row(lineIndice);
+//                    mapLineDescriptors.row(iML) = lineDescript;
+//                    //store corresponding LSD line
+//                    mapLSDs[mapLSDs.size()-1] = &it->first->mvLines[lineIndice];
+//                }
+//            }
+//        }
+//        cv::Mat curLSDDescriptor = F.mlsdDescriptors;
+//        auto curLines = F.mvLines;
+//        //Step 2 match by BinaryDescriptorMatcher
+//        //Create a BinaryDescriptorMatcher object to find pairs
+//        cv::Ptr <cv::line_descriptor::BinaryDescriptorMatcher> matcher = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
+//        std::vector <cv::DMatch> descripMatcheScores;
+//        matcher->match(curLSDDescriptor, mapLineDescriptors, descripMatcheScores);
+//        //filter by descriptor distance
+//        float maxDistance = 0, minDistance = 65535;
+//        for (auto &matche: descripMatcheScores) {
+//            if (matche.distance < minDistance)
+//                minDistance = matche.distance;
+//            if (matche.distance > maxDistance)
+//                maxDistance = matche.distance;
+//        }
+//        double descripDisThres = minDistance + (maxDistance - minDistance) * 0.5;
+//        cout << "distance threshold " << descripDisThres << endl;
+//        std::vector<cv::DMatch> goodDescriptorMatches;
+//        for (auto &DescripMatcheScore: descripMatcheScores) {
+//            if (DescripMatcheScore.distance < descripDisThres)
+//                goodDescriptorMatches.push_back(DescripMatcheScore);
+//        }
+//        // Store the indices of the matched keylines with good scores
+//        std::vector<int> goodIndices0, goodIndices1;
+//        for (auto &goodMatche: goodDescriptorMatches) {
+//            goodIndices0.push_back(goodMatche.queryIdx);
+//            goodIndices1.push_back(goodMatche.trainIdx);
+//        }
+//        ///Step 3 filter by angle distance and length
+//        // Loop through all pairs of keylines
+//        for (int i = 0; i < goodIndices0.size(); i++) {
+//            int index0 = goodIndices0[i];
+//            int index1 = goodIndices1[i];
+//            MapLine* mpl = vpMapLines[index1];
+//            if(!mpl)
+//                continue;
+//            if(mpl->isBad())
+//                continue;
+//
+//            // Calculate angle difference between two lsd lines
+//            double angleDiff = abs(curLines[index0].LSD.angle - mapLSDs[index1]->LSD.angle);
+//            if (angleDiff >= M_PI)
+//                angleDiff -= M_PI;
+//            if (angleDiff < 0)
+//                angleDiff += M_PI;
+//
+//            // Calculate relative length difference between two keylines
+//            double lengthDiff = abs(curLines[index0].LSD.lineLength - mapLSDs[index1]->LSD.lineLength) /
+//                                std::max(curLines[index0].LSD.lineLength, mapLSDs[index1]->LSD.lineLength);
+//
+//            // Calculate distance between midpoints of two keylines
+//            cv::Point2f midpoint0 = curLines[index0].LSD.pt;
+//            cv::Point2f midpoint1 = mapLSDs[index1]->LSD.pt;
+//            double distance = cv::norm(midpoint0 - midpoint1);
+//
+//            cout << "index0 " << index0 << " to " << index1 << " : " << angleDiff << " " << lengthDiff << " " << distance << endl;
+//            // Check if the keyline pair passes all the filtering criteria
+//            if ((angleDiff <= lineAngleThreshold || angleDiff <= (M_PI - lineAngleThreshold))
+//                && lengthDiff <= lineLengthThreshold
+//                && distance <= lineMidDisThreshold) {
+////                cout << "qualify" << endl;
+//////            filterIndices0.push_back(index0);
+//////            filterIndices1.push_back(index1);
+////                vector<int> newPair;
+////                newPair.push_back(index0);
+////                newPair.push_back(index1);
+////                resultMatches.push_back(newPair);
+//                F.mvpMapLines[index0] = vpMapLines[index1];
+//            }
+//        }
+//        return nmatches;
+//    }
+
+    /**
+ * @brief local mappoint 的投影匹配, 往传进来的frame.mvpMapPoints里面塞mappoint
+ * 遍历有效的局部地图点
+ * 设定搜索窗口的大小
+ * 通过投影点，搜索窗口和预测尺度进行搜索，找到搜索半径内的候选匹配点进行索引
+ * 最佳和次佳匹配
+ * 筛选最佳匹配
+ */
+    int LineAndPlaneMatcher::SearchLineByProjection(Frame &F, const vector<MapLine *> &vpMapLines, const float th) {
+        //Step 0 Prepare Local Frame's Line Data
+        int nmatches = 0;
+        vector<mLine> curLines = F.mvLines;
+        cv::Mat curLSDDescriptor = F.mlsdDescriptors;
+        //Create a BinaryDescriptorMatcher object to find pairs
+        cv::Ptr <cv::line_descriptor::BinaryDescriptorMatcher> matcher = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
+        //Step 1 遍历局部地图Line
+        for (size_t i = 0; i < vpMapLines.size(); i++) {
+            MapLine *pML = vpMapLines[i];
+            if(pML){
+                if(!pML->mbTrackInView)
+                    continue;
+                if(pML->isBad())
+                    continue;
+                //Step 1.1 Get MapLine's LSD information from lastObserved Frame
+                bool getDescript = false;
+                mLine lastObservedLSD;
+                cv::Mat lineDescript;
+                int lastFrameID = pML->mnLastFrameSeen;
+                auto observations = pML->GetObservations();
+                for (auto &observation: observations) {
+                    //get the frame that observes this line
+                    if (observation.first->mnId == lastFrameID) {
+                        //get the line indices
+                        int lineIndice = observation.second;
+                        //get the line descriptor
+                        lineDescript = observation.first->mlsdDescriptors.row(lineIndice);
+                        lastObservedLSD = observation.first->mvLines[lineIndice];
+                        getDescript = true;
+                        break;
+                    }
+                }
+                //Step 2 Matching with current Frame's LSD
+                if (getDescript) {
+                    std::vector<cv::DMatch> descripMatcheScores;
+                    //matcher->match(curLSDDescriptor, lineDescript, descripMatcheScores);//todo should I swap the match? N to 1 or 1 to N?
+                    matcher->match(lineDescript,curLSDDescriptor, descripMatcheScores);//for every queryDescript(input1), find a best match from train(input2).
+                    int mapIndex = descripMatcheScores[0].queryIdx;//always be 0?
+                    int curIndex = descripMatcheScores[0].trainIdx;
+                    //Step 2.1 check with other LSD attributions
+                    //Calculate angle difference between two lsd lines
+                    double angleDiff = abs(curLines[curIndex].LSD.angle - lastObservedLSD.LSD.angle);
+                    if (angleDiff >= M_PI)
+                        angleDiff -= M_PI;
+                    if (angleDiff < 0)
+                        angleDiff += M_PI;
+
+                    // Calculate relative length difference between two keylines
+                    double lengthDiff = abs(curLines[curIndex].LSD.lineLength - lastObservedLSD.LSD.lineLength) /
+                                        std::max(curLines[curIndex].LSD.lineLength, lastObservedLSD.LSD.lineLength);
+
+                    // Calculate distance between midpoints of two keylines
+                    cv::Point2f midpoint0 = curLines[curIndex].LSD.pt;
+                    cv::Point2f midpoint1 = lastObservedLSD.LSD.pt;
+                    double distance = cv::norm(midpoint0 - midpoint1);
+                    if ((angleDiff <= lineAngleThreshold || angleDiff <= (M_PI - lineAngleThreshold))
+                        && lengthDiff <= lineLengthThreshold
+                        && distance <= lineMidDisThreshold) {
+                        if(F.mvpMapPoints[curIndex]){
+                            if(F.mvpMapPoints[curIndex]->Observations()>0){
+                                continue;
+                            }
+                        }
+                        F.mvpMapLines[curIndex] = vpMapLines[mapIndex];
+                        nmatches++;
+                    }
+                }
+            }
+        }
+        return nmatches;
+    }
 } //namespace ORB_SLAM

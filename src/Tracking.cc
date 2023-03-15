@@ -124,20 +124,6 @@ Tracking::Tracking(System *pSys, //系统实例
     Tcl.at<double>(2,3) = fSettings["Tcl.3"];
     Tcl.copyTo(mTcamlid);
 
-    //init T^world_cur
-//    q_w_curr = Eigen::Quaterniond (1, 0, 0, 0);
-//    t_w_curr = Eigen::Vector3d (0, 0, 0);
-//    para_q[0] = 0; para_q[1] = 0; para_q[2] = 0; para_q[3] = 1; //{0, 0, 0, 1};
-//    para_t[0] = 0; para_t[1] = 0; para_t[2] = 0; //{0, 0, 0};
-//    q_last_curr = Eigen::Quaterniond (1, 0, 0, 0);
-//    t_last_curr = Eigen::Vector3d (0, 0, 0);
-////    q_last_curr = Eigen::Map<Eigen::Quaterniond> (para_q);
-////    t_last_curr = Eigen::Map<Eigen::Vector3d> (para_t);
-////    laserCloudCornerLast = new pcl::PointCloud<PointType>();
-////    laserCloudSurfLast = new pcl::PointCloud<PointType>();
-////    laserCloudFullRes = new pcl::PointCloud<PointType>();
-    ///-----
-
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
     mMaxFrames = fps;
@@ -174,6 +160,8 @@ Tracking::Tracking(System *pSys, //系统实例
 
     //tracking过程使用的是left实例作为特征提取器
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+    ///Added Module---monocular depth debug
+    mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     if(sensor==System::STEREO)
         mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
@@ -188,6 +176,10 @@ Tracking::Tracking(System *pSys, //系统实例
     cout << "- Scale Factor: " << fScaleFactor << endl;
     cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
     cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+
+    ///Added Module --- depth debug
+    mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
+    cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
 
     if(sensor==System::STEREO || sensor==System::RGBD)
     {
@@ -205,156 +197,6 @@ Tracking::Tracking(System *pSys, //系统实例
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 }
-
-//Tracking::Tracking(
-//            System *pSys,                       //系统实例
-//            ORBVocabulary* pVoc,                //BOW字典
-//            FrameDrawer *pFrameDrawer,          //帧绘制器
-//            MapDrawer *pMapDrawer,              //地图点绘制器
-//            Map *pMap,                          //地图句柄
-//            KeyFrameDatabase* pKFDB,            //关键帧产生的词袋数据库
-//            const string &strSettingPath,       //配置文件路径
-//            const int sensor):                  //传感器类型
-//            mState(NO_IMAGES_YET),                              //当前系统还没有准备好
-//            mSensor(sensor),
-//            mbOnlyTracking(false),                              //处于SLAM模式
-//            mbVO(false),                                        //当处于纯跟踪模式的时候，这个变量表示了当前跟踪状态的好坏
-//            mpORBVocabulary(pVoc),
-//            mpKeyFrameDB(pKFDB),
-//            mpInitializer(static_cast<Initializer*>(NULL)),     //暂时给地图初始化器设置为空指针
-//            mpSystem(pSys),
-//            mpViewer(NULL),                                     //注意可视化的查看器是可选的，因为ORB-SLAM2最后是被编译成为一个库，所以对方人拿过来用的时候也应该有权力说我不要可视化界面（何况可视化界面也要占用不少的CPU资源）
-//            mpFrameDrawer(pFrameDrawer),
-//            mpMapDrawer(pMapDrawer),
-//            mpMap(pMap),
-//            mnLastRelocFrameId(0)                               //恢复为0,没有进行这个过程的时候的默认值
-//    {
-//        // Load camera parameters from settings file
-//        // Step 1 从配置文件中加载相机参数
-//        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-//        float fx = fSettings["Camera.fx"];
-//        float fy = fSettings["Camera.fy"];
-//        float cx = fSettings["Camera.cx"];
-//        float cy = fSettings["Camera.cy"];
-//
-//        //     |fx  0   cx|
-//        // K = |0   fy  cy|
-//        //     |0   0   1 |
-//        //构造相机内参矩阵
-//        cv::Mat K = cv::Mat::eye(3,3,CV_32F);
-//        K.at<float>(0,0) = fx;
-//        K.at<float>(1,1) = fy;
-//        K.at<float>(0,2) = cx;
-//        K.at<float>(1,2) = cy;
-//        K.copyTo(mK);
-//
-//        // 图像矫正系数
-//        // [k1 k2 p1 p2 k3]
-//        cv::Mat DistCoef(4,1,CV_32F);
-//        DistCoef.at<float>(0) = fSettings["Camera.k1"];
-//        DistCoef.at<float>(1) = fSettings["Camera.k2"];
-//        DistCoef.at<float>(2) = fSettings["Camera.p1"];
-//        DistCoef.at<float>(3) = fSettings["Camera.p2"];
-//        const float k3 = fSettings["Camera.k3"];
-//        //有些相机的畸变系数中会没有k3项
-//        if(k3!=0)
-//        {
-//            DistCoef.resize(5);
-//            DistCoef.at<float>(4) = k3;
-//        }
-//        DistCoef.copyTo(mDistCoef);
-//
-//        // 双目摄像头baseline * fx 50
-//        mbf = fSettings["Camera.bf"];
-//
-//        float fps = fSettings["Camera.fps"];
-//        if(fps==0)
-//            fps=30;
-//
-//        // Max/Min Frames to insert keyframes and to check relocalisation
-//        mMinFrames = 0;
-//        mMaxFrames = fps;
-//
-//        //输出
-//        cout << endl << "Camera Parameters: " << endl;
-//        cout << "- fx: " << fx << endl;
-//        cout << "- fy: " << fy << endl;
-//        cout << "- cx: " << cx << endl;
-//        cout << "- cy: " << cy << endl;
-//        cout << "- k1: " << DistCoef.at<float>(0) << endl;
-//        cout << "- k2: " << DistCoef.at<float>(1) << endl;
-//        if(DistCoef.rows==5)
-//            cout << "- k3: " << DistCoef.at<float>(4) << endl;
-//        cout << "- p1: " << DistCoef.at<float>(2) << endl;
-//        cout << "- p2: " << DistCoef.at<float>(3) << endl;
-//        cout << "- fps: " << fps << endl;
-//
-//        // 1:RGB 0:BGR
-//        int nRGB = fSettings["Camera.RGB"];
-//        mbRGB = nRGB;
-//
-//        if(mbRGB)
-//            cout << "- color order: RGB (ignored if grayscale)" << endl;
-//        else
-//            cout << "- color order: BGR (ignored if grayscale)" << endl;
-//
-//        // Load ORB parameters
-//
-//        // Step 2 加载ORB特征点有关的参数,并新建特征点提取器
-//
-//        // 每一帧提取的特征点数 1000
-//        int nFeatures = fSettings["ORBextractor.nFeatures"];
-//        // 图像建立金字塔时的变化尺度 1.2
-//        float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
-//        // 尺度金字塔的层数 8
-//        int nLevels = fSettings["ORBextractor.nLevels"];
-//        // 提取fast特征点的默认阈值 20
-//        int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
-//        // 如果默认阈值提取不出足够fast特征点，则使用最小阈值 8
-//        int fMinThFAST = fSettings["ORBextractor.minThFAST"];
-//
-//        // tracking过程都会用到mpORBextractorLeft作为特征点提取器
-//        mpORBextractorLeft = new ORBextractor(
-//                nFeatures,      //参数的含义还是看上面的注释吧
-//                fScaleFactor,
-//                nLevels,
-//                fIniThFAST,
-//                fMinThFAST);
-//
-//        // 如果是双目，tracking过程中还会用用到mpORBextractorRight作为右目特征点提取器
-//        if(sensor==System::STEREO)
-//            mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-//
-//        // 在单目初始化的时候，会用mpIniORBextractor来作为特征点提取器
-//        if(sensor==System::MONOCULAR)
-//            mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-//
-//        cout << endl  << "ORB Extractor Parameters: " << endl;
-//        cout << "- Number of Features: " << nFeatures << endl;
-//        cout << "- Scale Levels: " << nLevels << endl;
-//        cout << "- Scale Factor: " << fScaleFactor << endl;
-//        cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
-//        cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
-//
-//        if(sensor==System::STEREO || sensor==System::RGBD)
-//        {
-//            // 判断一个3D点远/近的阈值 mbf * 35 / fx
-//            //ThDepth其实就是表示基线长度的多少倍
-//            mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
-//            cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
-//        }
-//
-//        if(sensor==System::RGBD)
-//        {
-//            // 深度相机disparity转化为depth时的因子
-//            mDepthMapFactor = fSettings["DepthMapFactor"];
-//            if(fabs(mDepthMapFactor)<1e-5)
-//                mDepthMapFactor=1;
-//            else
-//                mDepthMapFactor = 1.0f/mDepthMapFactor;
-//        }
-//
-//    }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
 {
@@ -477,12 +319,12 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp,
     if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
         //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBVocabulary, mK, mTcamlid,
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBextractorRight, mpORBVocabulary, mK, mTcamlid,
                               mDistCoef, mbf, mThDepth);
     else
         //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
         ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBVocabulary, mK, mTcamlid,
+        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBextractorRight,mpORBVocabulary, mK, mTcamlid,
                               mDistCoef, mbf, mThDepth);
 
     Track();
@@ -744,11 +586,11 @@ void Tracking::Track()
                                        << " " << mCurrentFrame.mvLines[tmpLineID].pt3dEnd.z << " ";
                             }
                             if (mCurrentFrame.mvORBAttributions[i].depthSource == 3) {
-                                int tmpLiDARID = mCurrentFrame.mvORBAttributions[i].LiDARPtID;
-                                writer << mCurrentFrame.mvORBAttributions[i].LiDARPtID
-                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.x
-                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.y
-                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.z << " ";
+//                                int tmpLiDARID = mCurrentFrame.mvORBAttributions[i].LiDARPtID;
+//                                writer << mCurrentFrame.mvORBAttributions[i].LiDARPtID
+//                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.x
+//                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.y
+//                                       << " " << mCurrentFrame.mvORBAttributions[i].LiDARPt->pt3d.z << " ";
                             }
                             writer<<endl;
                         }
@@ -806,6 +648,16 @@ void Tracking::Track()
                         mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
                     }
             }
+            ///Added Module 清除观测不到的地图Line
+            // Clean VO matches
+            for (int i = 0; i < mCurrentFrame.N_lines; i++) {
+                MapLine *pML = mCurrentFrame.mvpMapLines[i];
+                if (pML)
+                    if (pML->Observations() < 1) {
+                        mCurrentFrame.mvbOutlierLines[i] = false;
+                        mCurrentFrame.mvpMapLines[i] = static_cast<MapLine *>(NULL);
+                    }
+            }
 
             //*Step 7 清除恒速模型中 upDateLastFrame中临时添加的mapPoints（仅stereo和rgbd）
             // Delete temporal MapPoints
@@ -815,6 +667,14 @@ void Tracking::Track()
                 delete pMP;
             }
             mlpTemporalPoints.clear();
+            //todo if we use Stereo and Rgbd mode
+//            ///Added Module Delete temporal MapLines
+//            for(list<MapLine*>::iterator lit = mlpTemporalLine.begin(), lend =  mlpTemporalPoints.end(); lit!=lend; lit++)
+//            {
+//                MapPoint* pMP = *lit;
+//                delete pMP;
+//            }
+//            mlpTemporalPoints.clear();
 
             //*Step 8 检测并插入关键帧，对于stereo和rgbd会产生新的地图点
             // Check if we need to insert a new keyframe
@@ -826,10 +686,14 @@ void Tracking::Track()
             // pass to the new keyframe, so that bundle adjustment will finally decide
             // if they are outliers or not. We don't want next frame to estimate its position
             // with those points so we discard them in the frame.
-            for(int i=0; i<mCurrentFrame.N;i++)
-            {
-                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-                    mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
+            for (int i = 0; i < mCurrentFrame.N; i++) {
+                if (mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
+            }
+            ///Added module
+            for (int i = 0; i < mCurrentFrame.N_lines; i++) {
+                if (mCurrentFrame.mvpMapLines[i] && mCurrentFrame.mvbOutlierLines[i])
+                    mCurrentFrame.mvpMapLines[i] = static_cast<MapLine *>(NULL);
             }
         }
 
@@ -878,395 +742,6 @@ void Tracking::Track()
     }
 
 }//Tracking
-
-
-/**
- * LiDAR Mode Init first, then Camera Mode Init
- * Because we need depth infor for Mono Feature Points
- */
- /*
-void Tracking::LiDARInit()
-{
-    //Step 1 mpInitializer不存在时，创建一个实例
-    if (!mpInitializer) {
-        // Set Reference Frame
-        if (mCurrentFrame.mvKeys.size() > 100) {
-            //把当前帧赋给初始化帧
-            mInitialFrame = Frame(mCurrentFrame);
-            //把当前帧赋给上一帧
-            mLastFrame = Frame(mCurrentFrame);
-            //记录上一帧的特征点 //not in use in LiDAR mode
-            mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
-            for (size_t i = 0; i < mCurrentFrame.mvKeysUn.size(); i++)
-                mvbPrevMatched[i] = mCurrentFrame.mvKeysUn[i].pt;
-
-            //This will never work
-            if (mpInitializer)
-                delete mpInitializer;
-
-            mpInitializer = new Initializer(mCurrentFrame, 1.0, 200);
-
-            //初始化匹配结果 -1
-            fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
-
-            //函数返回，下次进来执行else部分
-            return;
-        }
-    } else {
-        //Try to initital
-        ///Step 2.1 get LiDAR feature from last frame, set up KdTree for it
-        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
-        cornerPointsLessSharp->clear();
-        surfPointsLessFlat->clear();
-        int lastCornerNum = mInitialFrame.mLaserLessCorner_cam.size();
-        int lastSurfNum = mInitialFrame.mLaserLessFlat_cam.size();
-        cornerPointsLessSharp->resize(lastCornerNum);
-        surfPointsLessFlat->resize(lastSurfNum);
-        for (size_t i = 0; i < lastCornerNum; i++) {
-            cornerPointsLessSharp->points[i].x = mInitialFrame.mLaserLessCorner_cam[i].pt3d.x;
-            cornerPointsLessSharp->points[i].y = mInitialFrame.mLaserLessCorner_cam[i].pt3d.y;
-            cornerPointsLessSharp->points[i].z = mInitialFrame.mLaserLessCorner_cam[i].pt3d.z;
-            cornerPointsLessSharp->points[i].intensity = mInitialFrame.mLaserLessCorner_cam[i].intensity;
-        }
-        cout<<"cornerPointsLessSharp init "<<cornerPointsLessSharp->size()<<endl;
-        for (size_t i = 0; i < lastSurfNum; i++) {
-            surfPointsLessFlat->points[i].x = mInitialFrame.mLaserLessFlat_cam[i].pt3d.x;
-            surfPointsLessFlat->points[i].y = mInitialFrame.mLaserLessFlat_cam[i].pt3d.y;
-            surfPointsLessFlat->points[i].z = mInitialFrame.mLaserLessFlat_cam[i].pt3d.z;
-            surfPointsLessFlat->points[i].intensity = mInitialFrame.mLaserLessFlat_cam[i].intensity;
-        }
-        cout<<"surfPointsLessFlat init "<<surfPointsLessFlat->size()<<endl;
-//        pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeCornerLast(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-//        pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeSurfLast(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
-        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
-        ///Step 2.2 get LiDAR feature from current frame
-        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
-        cornerPointsSharp->clear();
-        surfPointsFlat->clear();
-        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
-        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
-        cornerPointsSharp->resize(curCornerNum);
-        surfPointsFlat->resize(curSurfNum);
-        for (size_t i = 0; i < lastCornerNum; i++) {
-            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
-            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
-            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
-            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
-        }
-        cout<<"cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
-        for (size_t i = 0; i < lastSurfNum; i++) {
-            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
-            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
-            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
-            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
-        }
-        cout<<"surfPointsFlat "<<surfPointsFlat->size()<<endl;
-
-        //for test/
-        pcl::PointXYZI pointSel;
-        std::vector<int> pointSearchInd;
-        std::vector<float> pointSearchSqDis;
-        pointSel.x = 5;pointSel.y = 1;pointSel.z = -1.5;
-        kdtreeCornerLast.nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
-
-        ///Step 3 time to init!
-//        cereInit(cornerPointsLessSharp, surfPointsLessFlat,
-//                 &kdtreeCornerLast, &kdtreeSurfLast,
-//                 cornerPointsSharp, surfPointsFlat);
-    }
-}
-*/
-
-///**
-// * Should be switch to G2O in the future
-// */
-/*
-    bool Tracking::cereLiDAR(pcl::PointCloud<PointType>::Ptr laserCloudCornerLast,
-                            pcl::PointCloud<PointType>::Ptr laserCloudSurfLast,
-                            pcl::PointCloud<PointType>::Ptr cornerPointsSharp,
-                            pcl::PointCloud<PointType>::Ptr surfPointsFlat) {
-
-        //Step1 fill up the kdtree
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-        kdtreeCornerLast.setInputCloud(laserCloudCornerLast);
-        kdtreeSurfLast.setInputCloud(laserCloudSurfLast);
-
-        int cornerPointsSharpNum = cornerPointsSharp->points.size();
-        int surfPointsFlatNum = surfPointsFlat->points.size();
-        TicToc t_opt;
-        // q_curr_last(x, y, z, w), t_curr_last
-        double para_q[4] = {0, 0, 0, 1};
-        double para_t[3] = {0, 0, 0};
-//        cout<<"LiDAR para_q "<<para_q[0]<<" "<<para_q[1]<<" "<<para_q[2]<<" "<<para_q[3]<<endl;
-//        cout<<"LiDAR para_t "<<para_t[0]<<" "<<para_t[1]<<" "<<para_t[2]<<" "<<para_t[3]<<endl;
-
-        for (size_t opti_counter = 0; opti_counter < 2; ++opti_counter) {
-            int corner_correspondence = 0;
-            int plane_correspondence = 0;
-
-            //ceres::LossFunction *loss_function = NULL;
-            // 定义一下ceres的核函数
-            ceres::LossFunction *loss_function = new ceres::HuberLoss(0.1);
-            // 由于旋转不满足一般意义的加法，因此这里使用ceres自带的local param
-            ceres::LocalParameterization *q_parameterization =
-                    new ceres::EigenQuaternionParameterization();
-            ceres::Problem::Options problem_options;
-
-            ceres::Problem problem(problem_options);
-            // 待优化的变量是帧间位姿，平移和旋转，这里旋转使用四元数来表示
-            problem.AddParameterBlock(para_q, 4, q_parameterization);
-            problem.AddParameterBlock(para_t, 3);
-
-            pcl::PointXYZI pointSel;
-            std::vector<int> pointSearchInd;
-            std::vector<float> pointSearchSqDis;
-
-            TicToc t_data;
-            // find correspondence for corner features
-            // 寻找角点的约束
-            for (int i = 0; i < cornerPointsSharpNum; ++i) //select one sharp point from current frame
-            {
-                // 运动补偿
-                TransformToStart(&(cornerPointsSharp->points[i]),
-                                 &pointSel); //project the sharp point to frame start time
-                // cout<<pointSel<<endl;
-                // 在上一帧所有角点构成的kdtree中寻找距离当前帧最近的一个点
-                kdtreeCornerLast.nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
-//                cout<<"pointSel "<<pointSel.x<<" "<<pointSel.y<<" "<<pointSel.z<<" to "
-//                        <<laserCloudCornerLast->points[pointSearchInd[0]].x<<" "<<laserCloudCornerLast->points[pointSearchInd[0]].y<<" "<<laserCloudCornerLast->points[pointSearchInd[0]].z
-//                        <<" dis "<<pointSearchSqDis[0]<<endl;
-                int closestPointInd = -1, minPointInd2 = -1;
-                // 只有小于给定门限才认为是有效约束
-                if (pointSearchSqDis[0] < DISTANCE_SQ_THRESHOLD) {
-                    closestPointInd = pointSearchInd[0];    // 对应的最近距离的索引取出来
-                    // 找到其所在线束id，线束信息藏在intensity的整数部分
-                    int closestPointScanID = int(laserCloudCornerLast->points[closestPointInd].intensity);
-
-                    double minPointSqDis2 = DISTANCE_SQ_THRESHOLD;
-                    // search in the direction of increasing scan line
-                    // 寻找角点，在刚刚角点id上下分别继续寻找，目的是找到最近的角点，由于其按照线束进行排序，所以就是向上找
-                    for (int j = closestPointInd + 1; j < (int) laserCloudCornerLast->points.size(); ++j) {
-                        // if in the same scan line, continue
-                        // 不找同一根线束的
-                        if (int(laserCloudCornerLast->points[j].intensity) <= closestPointScanID)
-                            continue;
-
-                        // if not in nearby scans, end the loop
-                        // 要求找到的线束距离当前线束不能太远
-                        if (int(laserCloudCornerLast->points[j].intensity) > (closestPointScanID + NEARBY_SCAN))
-                            break;
-                        // 计算和当前找到的角点之间的距离
-                        double pointSqDis = (laserCloudCornerLast->points[j].x - pointSel.x) *
-                                            (laserCloudCornerLast->points[j].x - pointSel.x) +
-                                            (laserCloudCornerLast->points[j].y - pointSel.y) *
-                                            (laserCloudCornerLast->points[j].y - pointSel.y) +
-                                            (laserCloudCornerLast->points[j].z - pointSel.z) *
-                                            (laserCloudCornerLast->points[j].z - pointSel.z);
-                        // 寻找距离最小的角点及其索引
-                        if (pointSqDis < minPointSqDis2) {
-                            // find nearer point
-                            // 记录其索引
-                            minPointSqDis2 = pointSqDis;
-                            minPointInd2 = j;
-                        }
-                    }
-
-                    // search in the direction of decreasing scan line
-                    // 同样另一个方向寻找对应角点
-                    for (int j = closestPointInd - 1; j >= 0; --j) {
-                        // if in the same scan line, continue
-                        if (int(laserCloudCornerLast->points[j].intensity) >= closestPointScanID)
-                            continue;
-
-                        // if not in nearby scans, end the loop
-                        if (int(laserCloudCornerLast->points[j].intensity) < (closestPointScanID - NEARBY_SCAN))
-                            break;
-
-                        double pointSqDis = (laserCloudCornerLast->points[j].x - pointSel.x) *
-                                            (laserCloudCornerLast->points[j].x - pointSel.x) +
-                                            (laserCloudCornerLast->points[j].y - pointSel.y) *
-                                            (laserCloudCornerLast->points[j].y - pointSel.y) +
-                                            (laserCloudCornerLast->points[j].z - pointSel.z) *
-                                            (laserCloudCornerLast->points[j].z - pointSel.z);
-
-                        if (pointSqDis < minPointSqDis2) {
-                            // find nearer point
-                            minPointSqDis2 = pointSqDis;
-                            minPointInd2 = j;
-                        }
-                    }
-                }
-                // 如果这个角点是有效的角点
-                if (minPointInd2 >= 0) // both closestPointInd and minPointInd2 is valid
-                {
-                    // 取出当前点和上一帧的两个角点
-                    Eigen::Vector3d curr_point(cornerPointsSharp->points[i].x,
-                                               cornerPointsSharp->points[i].y,
-                                               cornerPointsSharp->points[i].z);
-                    Eigen::Vector3d last_point_a(laserCloudCornerLast->points[closestPointInd].x,
-                                                 laserCloudCornerLast->points[closestPointInd].y,
-                                                 laserCloudCornerLast->points[closestPointInd].z);
-                    Eigen::Vector3d last_point_b(laserCloudCornerLast->points[minPointInd2].x,
-                                                 laserCloudCornerLast->points[minPointInd2].y,
-                                                 laserCloudCornerLast->points[minPointInd2].z);
-
-                    double s;
-                    if (DISTORTION)
-                        s = (cornerPointsSharp->points[i].intensity - int(cornerPointsSharp->points[i].intensity)) /
-                            SCAN_PERIOD;
-                    else
-                        s = 1.0;
-                    ceres::CostFunction *cost_function = LidarEdgeFactor::Create(curr_point, last_point_a, last_point_b,
-                                                                                 s);
-                    problem.AddResidualBlock(cost_function, loss_function, para_q, para_t);
-                    corner_correspondence++;
-                }
-            }
-            // find correspondence for plane features
-            for (int i = 0; i < surfPointsFlatNum; ++i) {
-                TransformToStart(&(surfPointsFlat->points[i]), &pointSel);
-                // 先寻找上一帧距离这个面点最近的面点
-                kdtreeSurfLast.nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
-
-                int closestPointInd = -1, minPointInd2 = -1, minPointInd3 = -1;
-                // 距离必须小于给定阈值
-                if (pointSearchSqDis[0] < DISTANCE_SQ_THRESHOLD) {
-                    // 取出找到的上一帧面点的索引
-                    closestPointInd = pointSearchInd[0];
-
-                    // get closest point's scan ID
-                    // 取出最近的面点在上一帧的第几根scan上面
-                    int closestPointScanID = int(laserCloudSurfLast->points[closestPointInd].intensity);
-                    double minPointSqDis2 = DISTANCE_SQ_THRESHOLD, minPointSqDis3 = DISTANCE_SQ_THRESHOLD;
-                    // 额外在寻找两个点，要求，一个点和最近点同一个scan，另一个是不同scan
-                    // search in the direction of increasing scan line
-                    // 按照增量方向寻找其他面点
-                    for (int j = closestPointInd + 1; j < (int) laserCloudSurfLast->points.size(); ++j) {
-                        // if not in nearby scans, end the loop
-                        // 不能和当前找到的上一帧面点线束距离太远
-                        if (int(laserCloudSurfLast->points[j].intensity) > (closestPointScanID + NEARBY_SCAN))
-                            break;
-                        // 计算和当前帧该点距离
-                        double pointSqDis = (laserCloudSurfLast->points[j].x - pointSel.x) *
-                                            (laserCloudSurfLast->points[j].x - pointSel.x) +
-                                            (laserCloudSurfLast->points[j].y - pointSel.y) *
-                                            (laserCloudSurfLast->points[j].y - pointSel.y) +
-                                            (laserCloudSurfLast->points[j].z - pointSel.z) *
-                                            (laserCloudSurfLast->points[j].z - pointSel.z);
-
-                        // if in the same or lower scan line
-                        // 如果是同一根scan且距离最近
-                        if (int(laserCloudSurfLast->points[j].intensity) <= closestPointScanID &&
-                            pointSqDis < minPointSqDis2) {
-                            minPointSqDis2 = pointSqDis;
-                            minPointInd2 = j;
-                        }
-                            // if in the higher scan line
-                            // 如果是其他线束点
-                        else if (int(laserCloudSurfLast->points[j].intensity) > closestPointScanID &&
-                                 pointSqDis < minPointSqDis3) {
-                            minPointSqDis3 = pointSqDis;
-                            minPointInd3 = j;
-                        }
-                    }
-
-                    // search in the direction of decreasing scan line
-                    // 同样的方式，去按照降序方向寻找这两个点
-                    for (int j = closestPointInd - 1; j >= 0; --j) {
-                        // if not in nearby scans, end the loop
-                        if (int(laserCloudSurfLast->points[j].intensity) < (closestPointScanID - NEARBY_SCAN))
-                            break;
-
-                        double pointSqDis = (laserCloudSurfLast->points[j].x - pointSel.x) *
-                                            (laserCloudSurfLast->points[j].x - pointSel.x) +
-                                            (laserCloudSurfLast->points[j].y - pointSel.y) *
-                                            (laserCloudSurfLast->points[j].y - pointSel.y) +
-                                            (laserCloudSurfLast->points[j].z - pointSel.z) *
-                                            (laserCloudSurfLast->points[j].z - pointSel.z);
-
-                        // if in the same or higher scan line
-                        if (int(laserCloudSurfLast->points[j].intensity) >= closestPointScanID &&
-                            pointSqDis < minPointSqDis2) {
-                            minPointSqDis2 = pointSqDis;
-                            minPointInd2 = j;
-                        } else if (int(laserCloudSurfLast->points[j].intensity) < closestPointScanID &&
-                                   pointSqDis < minPointSqDis3) {
-                            // find nearer point
-                            minPointSqDis3 = pointSqDis;
-                            minPointInd3 = j;
-                        }
-                    }
-                    // 如果另外找到的两个点是有效点，就取出他们的3d坐标
-                    if (minPointInd2 >= 0 && minPointInd3 >= 0) {
-
-                        Eigen::Vector3d curr_point(surfPointsFlat->points[i].x,
-                                                   surfPointsFlat->points[i].y,
-                                                   surfPointsFlat->points[i].z);
-                        Eigen::Vector3d last_point_a(laserCloudSurfLast->points[closestPointInd].x,
-                                                     laserCloudSurfLast->points[closestPointInd].y,
-                                                     laserCloudSurfLast->points[closestPointInd].z);
-                        Eigen::Vector3d last_point_b(laserCloudSurfLast->points[minPointInd2].x,
-                                                     laserCloudSurfLast->points[minPointInd2].y,
-                                                     laserCloudSurfLast->points[minPointInd2].z);
-                        Eigen::Vector3d last_point_c(laserCloudSurfLast->points[minPointInd3].x,
-                                                     laserCloudSurfLast->points[minPointInd3].y,
-                                                     laserCloudSurfLast->points[minPointInd3].z);
-
-                        double s;
-                        if (DISTORTION)
-                            s = (surfPointsFlat->points[i].intensity - int(surfPointsFlat->points[i].intensity)) /
-                                SCAN_PERIOD;
-                        else
-                            s = 1.0;
-                        // 构建点到面的约束
-                        ceres::CostFunction *cost_function = LidarPlaneFactor::Create(curr_point, last_point_a,
-                                                                                      last_point_b, last_point_c, s);
-                        problem.AddResidualBlock(cost_function, loss_function, para_q, para_t);
-                        plane_correspondence++;
-                    }
-                }
-            }
-            //printf("coner_correspondance %d, plane_correspondence %d \n", corner_correspondence, plane_correspondence);
-            printf("data association time %f ms \n", t_data.toc());
-            cout<<"corner_corres "<<corner_correspondence<<" plane_corre "<<plane_correspondence<<endl;
-            // 如果总的约束太少，就打印一下
-            if ((corner_correspondence + plane_correspondence) < 10)
-            {
-                printf("less correspondence! *************************************************\n");
-                return false;
-            }
-            // 调用ceres求解器求解
-            TicToc t_solver;
-            ceres::Solver::Options options;
-            options.linear_solver_type = ceres::DENSE_QR;
-            options.max_num_iterations = 4;
-            options.minimizer_progress_to_stdout = false;
-            ceres::Solver::Summary summary;
-            ceres::Solve(options, &problem, &summary);
-            printf("solver time %f ms \n", t_solver.toc());
-        }
-        printf("optimization twice time %f \n", t_opt.toc());
-        //map the cere parameter to member
-        q_last_curr = Eigen::Map<Eigen::Quaterniond> (para_q);
-        t_last_curr = Eigen::Map<Eigen::Vector3d> (para_t);
-//        cout<<"LiDAR para_q "<<para_q[0]<<" "<<para_q[1]<<" "<<para_q[2]<<" "<<para_q[3]<<endl;
-//        cout<<"LiDAR para_t "<<para_t[0]<<" "<<para_t[1]<<" "<<para_t[2]<<" "<<para_t[3]<<endl;
-        // 这里的w_curr 实际上是 w_last
-        t_w_curr = t_w_curr + q_w_curr * t_last_curr;
-        q_w_curr = q_w_curr * q_last_curr;
-        cout<<"LiDAR init Trans "<<endl<<t_w_curr<<endl;
-        cout<<"LiDAr init Quate "<<endl;
-        cout<<q_w_curr.toRotationMatrix()<<endl;
-        return true;
-    }
-    */
-
 
 void Tracking::StereoInitialization()
 {
@@ -1412,21 +887,28 @@ void Tracking::StereoInitialization()
                 //Question index larger than 1000 could not be matched by second frame? why?
 //                //Print point with depth and point pair with second frame
 //                //index larger than 1000 could not be matched by second frame? why?
-//                for(int i=0;i<mInitialFrame.mvORBAttributions.size();i++){
-//                    if(mInitialFrame.mvORBAttributions[i].depthSource>-1){
-//                        cout<<i<<endl;
-//                    }
-//                }
-//                cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
-//                for(int i=0;i<mvIniMatches.size();i++){
-//                    if(mvIniMatches[i]>-1){
-//                        cout<<i<<endl;
-//                    }
-//                }
+//                for (int i = 0; i < mInitialFrame.mvORBAttributions.size(); i++)
+//                    if (mInitialFrame.mvORBAttributions[i].depthSource > -1)
+//                        cout << i << endl;
+//                cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+//                for (int i = 0; i < mvIniMatches.size(); i++)
+//                    if (mvIniMatches[i] > -1)
+//                        cout << i << endl;
+
+                //Step Fusion 0 Pair Up LiDAR and Plane from initial Frame
+                LineAndPlaneMatcher lpmatcher;
+                lpmatcher.lineAngleThreshold = 20.0 / 180.0 * M_PI;
+                lpmatcher.lineLengthThreshold = 50;
+                lpmatcher.lineMidDisThreshold = 50;
+                //vector<vector<int>> lineMatches;
+
+                lpmatcher.LineMatching(mInitialFrame.mvLines, mCurrentFrame.mvLines,
+                                       mInitialFrame.mlsdDescriptors, mCurrentFrame.mlsdDescriptors, mvIniMatchedLines);
+
                 /**
                 * Store key points used for initialization
                 */
-                ofstream outer1, outer2,outer3;
+                ofstream outer1, outer2, outer3;
                 string fileName1 = to_string(mInitialFrame.mnId), fileName2 = to_string(mCurrentFrame.mnId);
                 cout<<endl<<"init by frame "<<fileName1<<" "<<fileName2<<endl;
                 outer1.open(fileName1 + ".txt",ios::out);
@@ -1445,79 +927,25 @@ void Tracking::StereoInitialization()
                 outer2.close();
                 outer3.close();
 
-                ///Added Module ------ After triangulated 3d map points. now LiDAR information get involves
-                ///Step Fusion 1 --- if a point, in initial frame, successfully triangulated, and has depth from LiDAR
-                //cout<<"mInitialFrame.mvORBAttributions.size() "<<mInitialFrame.mvORBAttributions.size()<<" mvIniMatches.size "<<mvIniMatches.size()<<endl;
+                ///Added Module ------ After triangulated 3d map points. now LiDAR information getting involves
+                ///Step Fusion 1 --- if a point, in initial frame, successfully triangulated, && and has depth from LiDAR
                 vector<vector<double>> ratiosXYZ;
                 ///Step Fusion 1.1 store ratios over each axis
-                int count1  = 0, count2 = 0;
-                for(int i=0;i<mInitialFrame.mvORBAttributions.size();i++){
-                    if(mInitialFrame.mvORBAttributions[i].depthSource>-1)
+                int count1 = 0, count2 = 0;
+                for (int i = 0; i < mInitialFrame.mvORBAttributions.size(); i++)
+                    if (mInitialFrame.mvORBAttributions[i].depthSource > -1)
                         count1++;
-                }
-                cout<<"init frame with depth point num "<<count1<<endl;
-                for(int i=0;i<mCurrentFrame.mvORBAttributions.size();i++){
-                    if(mCurrentFrame.mvORBAttributions[i].depthSource>-1)
+                cout << "init frame with depth point num " << count1 << endl;
+                for (int i = 0; i < mCurrentFrame.mvORBAttributions.size(); i++)
+                    if (mCurrentFrame.mvORBAttributions[i].depthSource > -1)
                         count2++;
-                }
-
-//                cv::Mat image0 = cv::imread("000000.png", CV_LOAD_IMAGE_UNCHANGED);
-//                cv::Mat im_clone = image0.clone();//note this is image two
-//                cv::cvtColor(image0, im_clone, CV_GRAY2BGR);
-//                for (int i = 0; i < mvIniMatches.size(); i++) {
-//                    if (mvIniMatches[i] > -1) {//this is a ORB feature
-//                        cv::circle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x,
-//                                                       mInitialFrame.mvORBAttributions[i].keyPt.pt.y), 1,
-//                                   cv::Scalar(0, 0, 255), -1);//red
-//                        if (mInitialFrame.mvORBAttributions[i].depthSource == 1) {
-//                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
-//                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
-//                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
-//                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
-//                                          cv::Scalar(0, 255, 0), -1);//green
-//                        }
-//                        if (mInitialFrame.mvORBAttributions[i].depthSource == 2) {
-//                            int lineID = mInitialFrame.mvORBAttributions[i].LSDlineID;
-//                            float sx = mInitialFrame.mvLines[lineID].LSD.startPointX;
-//                            float sy = mInitialFrame.mvLines[lineID].LSD.startPointY;
-//                            float ex = mInitialFrame.mvLines[lineID].LSD.endPointX;
-//                            float ey = mInitialFrame.mvLines[lineID].LSD.endPointY;
-//                            cv::line(im_clone, cv::Point(sx,sy),cv::Point(ex,ey),cv::Scalar(255,153,255),1);
-//                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
-//                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
-//                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
-//                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
-//                                          cv::Scalar(255, 0, 127), -1);//purple
-//                        }
-//                        if (mInitialFrame.mvORBAttributions[i].depthSource == 3) {
-//                            cv::rectangle(im_clone, cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x - 2,
-//                                                              mInitialFrame.mvORBAttributions[i].keyPt.pt.y - 2),
-//                                          cv::Point(mInitialFrame.mvORBAttributions[i].keyPt.pt.x + 2,
-//                                                    mInitialFrame.mvORBAttributions[i].keyPt.pt.y + 2),
-//                                          cv::Scalar(255, 255, 0), -1);//light blue
-//                        }
-//                    }
-//                }
-//                for (int i = 0; i < mInitialFrame.mLaserPt_cam.size(); i++) {
-//                    cv::circle(im_clone, cv::Point(mInitialFrame.mLaserPt_cam[i].pt2d.x,
-//                                                   mInitialFrame.mLaserPt_cam[i].pt2d.y), 1,
-//                               cv::Scalar(0, 255, 255));
-//                }
-//                string windowName = "check fusion " + mInitialFrame.mnId;
-//                cv::imshow(windowName, im_clone);
-//                cv::waitKey(0);
 
                 cout<<"feature number, ini "<<mInitialFrame.mvORBAttributions.size()<<" cur "<<mCurrentFrame.mvORBAttributions.size()<<endl;
-                cout<<"init frame with depth point num "<<count1<<endl;
-                cout<<"current frame with depth point num "<<count2<<endl;
+                cout<<"init frame with depth point num "<<count1<<" current frame with depth point num "<<count2<<endl;
                 int matchNum = 0;
                 for (int i = 0; i < mvIniMatches.size(); i++) {
                     int curIndex = mvIniMatches[i];
                     if (curIndex >= 0) {
-//                        cout<<i<<" match to "<<curIndex<<" with estimated "<<mInitialFrame.mvORBAttributions[i].p3d_est.x<<" "
-//                        <<mInitialFrame.mvORBAttributions[i].p3d_est.y<<" "
-//                        <<mInitialFrame.mvORBAttributions[i].p3d_est.z<<" triangulated "
-//                        <<mvIniP3D[i].x<<" "<<mvIniP3D[i].y<<" "<<mvIniP3D[i].z<<endl;
                         matchNum++;
                     }
                 }
@@ -1533,14 +961,6 @@ void Tracking::StereoInitialization()
                                 depthLinCounter++;
                             if (mInitialFrame.mvORBAttributions[i].depthSource == 3)
                                 depthPtCounter++;
-//                            cout << "ID " << mInitialFrame.mvORBAttributions[i].ID
-//                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.x
-//                                 << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
-//                                 << " " << mInitialFrame.mvORBAttributions[i].depthSource
-//                                 << " " << mInitialFrame.mvORBAttributions[i].p3d_est
-//                                 << " ORBSLAM2 : "
-//                                 //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
-//                                 << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
                             vector<double> thisRatio;
                             thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.x / mvIniP3D[i].x);
                             thisRatio.push_back(mInitialFrame.mvORBAttributions[i].p3d_est.y / mvIniP3D[i].y);
@@ -1559,7 +979,7 @@ void Tracking::StereoInitialization()
                                  << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
                                  << " " << mInitialFrame.mvORBAttributions[i].depthSource
                                  << " " << mInitialFrame.mvORBAttributions[i].p3d_est
-                                 << " ORBSLAM2 : "
+                                 << " ORBSLAM2 Initial : "
                                  //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
                                  << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
                         }
@@ -1574,7 +994,7 @@ void Tracking::StereoInitialization()
                                  << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
                                  << " " << mInitialFrame.mvORBAttributions[i].depthSource
                                  << " " << mInitialFrame.mvORBAttributions[i].p3d_est
-                                 << " ORBSLAM2 : "
+                                 << " ORBSLAM2 Initial : "
                                  //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
                                  << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
                         }
@@ -1589,17 +1009,17 @@ void Tracking::StereoInitialization()
                                  << " " << mInitialFrame.mvORBAttributions[i].keyPt.pt.y
                                  << " " << mInitialFrame.mvORBAttributions[i].depthSource
                                  << " " << mInitialFrame.mvORBAttributions[i].p3d_est
-                                 << " ORBSLAM2 : "
+                                 << " ORBSLAM2 Initial : "
                                  //<< mInitialFrame.mvORBAttributions[i].p3d_tri << endl;
                                  << mvIniP3D[i].x << " " << mvIniP3D[i].y << " " << mvIniP3D[i].z << endl;
                         }
                     }
                 }
                 cout<<"matched "<<matchNum<<" match with depth num "<<matchwithdepthnum<<endl;
-                cout<<"plane point "<<depthPlnCounter<<" line point "<<depthLinCounter<<" point point "<<depthPtCounter<<endl;
+                cout<<"plane-point "<<depthPlnCounter<<" line-point "<<depthLinCounter<<" point-point "<<depthPtCounter<<endl;
                 size_t ratiosNum = ratiosXYZ.size();
                 ///Step Fusion 1.2 select ratios with small variance
-                double meanXratio=0,meanYratio=0,meanZratio=0;
+                double meanXratio = 0, meanYratio = 0, meanZratio = 0;
                 int validRatioNum = 0;
                 for(int i=0;i<ratiosNum;i++){
                     double variance = -1, mean = 0;
@@ -1625,12 +1045,13 @@ void Tracking::StereoInitialization()
                     int curIndex = mvIniMatches[i];
                     if(curIndex>-1){
                         if (mInitialFrame.mvORBAttributions[i].depthSource > -1) {
-//                        mvIniP3D[i].x = mInitialFrame.mvORBAttributions[i].p3d_est.x;
-//                        mvIniP3D[i].y = mInitialFrame.mvORBAttributions[i].p3d_est.y;
-//                        mvIniP3D[i].z = mInitialFrame.mvORBAttributions[i].p3d_est.z;
-                            mvIniP3D[i].x = mvIniP3D[i].x * meanXratio;
-                            mvIniP3D[i].y = mvIniP3D[i].y * meanYratio;
-                            mvIniP3D[i].z = mvIniP3D[i].z * meanZratio;
+                            //note : apply the ratio or using the depth from LiDAR?
+                            mvIniP3D[i].x = mInitialFrame.mvORBAttributions[i].p3d_est.x;
+                            mvIniP3D[i].y = mInitialFrame.mvORBAttributions[i].p3d_est.y;
+                            mvIniP3D[i].z = mInitialFrame.mvORBAttributions[i].p3d_est.z;
+//                            mvIniP3D[i].x = mvIniP3D[i].x * meanXratio;
+//                            mvIniP3D[i].y = mvIniP3D[i].y * meanYratio;
+//                            mvIniP3D[i].z = mvIniP3D[i].z * meanZratio;
                         } else {
                             mvIniP3D[i].x = mvIniP3D[i].x * meanXratio;
                             mvIniP3D[i].y = mvIniP3D[i].y * meanYratio;
@@ -1842,7 +1263,8 @@ void Tracking::CreateInitialMapMonocular()
         cv::Mat worldPos(mvIniP3D[i]);
         // * Step 3.1 用3D点构造MapPoint
         MapPoint* pMP = new MapPoint(worldPos,pKFcur,mpMap);
-
+        //question why pKFcur?
+        //note: Because, worldPos is under init Frame, this line is trying to record a local observed MapPoint and its world pose
         //* Step 3.2 为这个MapPoint增加一些属性
         //关键帧instance增加地图点和相应的索引
         pKFini->AddMapPoint(pMP,i);
@@ -1864,6 +1286,43 @@ void Tracking::CreateInitialMapMonocular()
         //Add to Map
         mpMap->AddMapPoint(pMP);
     }
+
+    ///Added Module --- Add line to Map
+    for(size_t i=0; i<mvIniMatchedLines.size();i++){
+        //Step 1 Construct a Map Line
+        int indexi = mvIniMatchedLines[i][0];
+        int indexj = mvIniMatchedLines[i][1];
+        cv::Mat worldPosLine(3,2, CV_32F); //todo to check pose has been changed to CV_32F everywhere
+        worldPosLine.at<float>(0,0) = mInitialFrame.mvLines[indexi].pt3dStart.x;
+        worldPosLine.at<float>(1,0) = mInitialFrame.mvLines[indexi].pt3dStart.y;
+        worldPosLine.at<float>(2,0) = mInitialFrame.mvLines[indexi].pt3dStart.z;
+        worldPosLine.at<float>(0,1) = mInitialFrame.mvLines[indexi].pt3dEnd.x;
+        worldPosLine.at<float>(1,1) = mInitialFrame.mvLines[indexi].pt3dEnd.y;
+        worldPosLine.at<float>(2,1) = mInitialFrame.mvLines[indexi].pt3dEnd.z;
+        MapLine* pML = new MapLine(worldPosLine,pKFcur,mpMap);
+        //cout<<"line world pose "<<endl<<pML->GetWorldPos()<<endl;
+        //* Step 3.2 Add some attributions for this Line
+        //关键帧instance增加地图点和相应的索引
+        pKFini->AddMapLine(pML,indexi);
+        pKFcur->AddMapLine(pML,indexj);
+        //地图点增加关键帧和对应的索引
+        pML->AddObservation(pKFini,indexi);
+        pML->AddObservation(pKFcur,indexj);
+        //todo 从众多观测中挑选一个最具代表的描述子
+        //pML->ComputeDistinctiveDescriptors();
+        //todo 更新该地图点的平均观测方向和观测距离的范围
+        //pML->UpdateNormalAndDepth();
+
+        //Fill Current Frame structure
+        //当前帧实例的Mappoints更新 Outlier更新
+        mCurrentFrame.mvpMapLines[indexj] = pML;
+        mCurrentFrame.mvbOutlierLines[indexj] = false;
+
+        //把地图点加入地图
+        //Add to Map
+        mpMap->AddMapLine(pML);
+    }
+
 
     // Update Connections
     //* Step 3.3 更新关键帧之间的关系
@@ -1967,78 +1426,81 @@ void Tracking::CheckReplacedInLastFrame()
  * 4.根据姿态剔除错误匹配
  * @return 如果匹配数目大于10，返回True
 */
-bool Tracking::TrackReferenceKeyFrame()
-{
-    //*STEP1 讲当前帧的描述子转化为BoW向量
-    // Compute Bag of Words vector
-    mCurrentFrame.ComputeBoW();
+    bool Tracking::TrackReferenceKeyFrame() {
+        //*STEP1 讲当前帧的描述子转化为BoW向量
+        // Compute Bag of Words vector
+        mCurrentFrame.ComputeBoW();
 
-    // We perform first an ORB matching with the reference keyframe
-    // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.7,true);
-    vector<MapPoint*> vpMapPointMatches;
+        // We perform first an ORB matching with the reference keyframe
+        // If enough matches are found we setup a PnP solver
+        ORBmatcher matcher(0.7, true);
+        vector<MapPoint *> vpMapPointMatches;
 
-    int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
-    ///Added for check
-//    int monoMatchNum = 0, planeMatchNum = 0, lineMatchNum = 0, pointMatchNum = 0;
-//    for (int i = 0; i < vpMapPointMatches.size(); i++) {
-//        if (mCurrentFrame.mvORBAttributions[i].depthSource == 1 && vpMapPointMatches[i]) {
-//            planeMatchNum++;
-//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
+        int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
+
+        ///Added Module - match line
+        int nmatches_l = 0;
+//        LineAndPlaneMatcher matcherl(30.0 / 180.0 * M_PI, 75, 0.5);
+//        vector<vector<int>> matchResults;
+//        int nmatches_l = matcherl.LineMatchingByKeyframe(&mCurrentFrame, mpReferenceKF, matchResults);
+        vector<MapLine *> vpMapLineMatches = vector<MapLine *>(mCurrentFrame.N_lines, static_cast<MapLine *>(NULL));
+//        for (int i = 0; i < matchResults.size(); i++) {
+//            int index0 = matchResults[i][0];//cur
+//            int index1 = matchResults[i][1];//ref
+//            vpMapLineMatches[index0] = mpReferenceKF->mvpMapLines[index1];
 //        }
-//        if (mCurrentFrame.mvORBAttributions[i].depthSource == 2 && vpMapPointMatches[i]) {
-//            lineMatchNum++;
-//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
-//        }
-//        if (mCurrentFrame.mvORBAttributions[i].depthSource == 3 && vpMapPointMatches[i]) {
-//            pointMatchNum++;
-//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
-//        }
-//        if (mCurrentFrame.mvORBAttributions[i].depthSource == -1 && vpMapPointMatches[i]) {
-//            monoMatchNum++;
-//            cout<<"curF "<<i<<" depth source "<<mCurrentFrame.mvORBAttributions[i].depthSource<<" to keyF "<<vpMapPointMatches[i]<<endl;
-//        }
-//    }
-//    cout<<"normal "<<monoMatchNum<<" planematch "<<planeMatchNum<<" lineMatch "<<lineMatchNum<<" pointMatch "<<pointMatchNum<<endl;
 
-    if(nmatches<15)
-        return false;
+        if (nmatches + nmatches_l < 15)
+            return false;
 
-    //存储当前帧的特征点和3D地图点的匹配关系
-    mCurrentFrame.mvpMapPoints = vpMapPointMatches;
-    //* Step3 将上一帧的位姿作为当前帧位姿的初始值 加速poseoptimization
-    mCurrentFrame.SetPose(mLastFrame.mTcw);
+        //存储当前帧的特征点和3D地图点的匹配关系
+        mCurrentFrame.mvpMapPoints = vpMapPointMatches;
+        //* Step3 将上一帧的位姿作为当前帧位姿的初始值 加速pose optimization
+        mCurrentFrame.SetPose(mLastFrame.mTcw);
+        ///Added Module
+        mCurrentFrame.mvpMapLines = vpMapLineMatches;
 
-    //*Step4 优化重投影误差来（3D-2D）获得位姿
-    //Optimizer::PoseOptimization(&mCurrentFrame);//Just optimize current Frame.
-    Optimizer::FusionPoseOptimization(&mCurrentFrame);//Just optimize current Frame.
+        //*Step4 优化重投影误差来（3D-2D）获得位姿
+        //Optimizer::PoseOptimization(&mCurrentFrame);//Just optimize current Frame.
+        Optimizer::FusionPoseOptimization(&mCurrentFrame);//Just optimize current Frame.
 
 //    cout<<"mCurrentFrame : "<<mCurrentFrame.mnId<<" "<<endl<<mCurrentFrame.mTcw<<endl;
-    //*Step 5 剔除outlier
-    // Discard outliers
-    int nmatchesMap = 0;
-    for(int i =0; i<mCurrentFrame.N; i++)
-    {
-        if(mCurrentFrame.mvpMapPoints[i])
-        {
-            if(mCurrentFrame.mvbOutlier[i])
-            {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-
-                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                mCurrentFrame.mvbOutlier[i]=false;
-                pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                nmatches--;
+        //*Step 5 剔除outlier
+        // Discard outliers
+        int nmatchesMap = 0;
+        for (int i = 0; i < mCurrentFrame.N; i++) {
+            if (mCurrentFrame.mvpMapPoints[i]) {
+                if (mCurrentFrame.mvbOutlier[i]) {
+                    MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
+                    mCurrentFrame.mvbOutlier[i] = false;//Question why set back to false?
+                    pMP->mbTrackInView = false;
+                    pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                    nmatches--;
+                } else if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
+                    nmatchesMap++;
             }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
-                nmatchesMap++;
         }
-    }
+        ///Added Module --- discard line outlier
+        int nmatchsMapLines = 0;
+        for (int i = 0; i < mCurrentFrame.N_lines; i++) {
+            if (mCurrentFrame.mvpMapLines[i]) {
+                if (mCurrentFrame.mvbOutlierLines[i]) {
+                    MapLine *pML = mCurrentFrame.mvpMapLines[i];
+                    mCurrentFrame.mvpMapLines[i] = static_cast<MapLine *>(NULL);
+                    mCurrentFrame.mvbOutlierLines[i] = false;
+                    pML->mbTrackInView = false;
+                    pML->mnLastFrameSeen = mCurrentFrame.mnId;
+                    nmatches_l--;
+                } else if (mCurrentFrame.mvpMapLines[i]->Observations() > 0)
+                    nmatchsMapLines++;
+            }
+        }
 
-    cout<<"frame "<<mCurrentFrame.mnId<<" TrackReferenceKeyFrame() nmatchesMap "<<nmatchesMap<<endl;
-    return nmatchesMap>=10;
-}
+        cout << "frame " << mCurrentFrame.mnId
+             << " TrackReferenceKeyFrame() nmatchesMap + nmatchsMapLines : " << (nmatchesMap + nmatchsMapLines) << endl;
+        return (nmatchesMap + nmatchsMapLines) >= 10;
+    }
 
 void Tracking::UpdateLastFrame()
 {
@@ -2132,149 +1594,106 @@ void Tracking::UpdateLastFrame()
  * Step 4 剔除outlier
  * @return 如果匹配数大于10，返回true
 */
-bool Tracking::TrackWithMotionModel()
-{
-    //初始化matcher 0.9 是 最小距离小于次小距离0.9 | 检查旋转
-    ORBmatcher matcher(0.9,true);
+    bool Tracking::TrackWithMotionModel() {
+        //初始化matcher 0.9 是 最小距离小于次小距离0.9 | 检查旋转
+        ORBmatcher matcher(0.9, true);
 
-    //* Step 1 更新上一帧的位姿
-    //1. Update last frame pose according to its reference keyframe
-    //2. Create "visual odometry" points for RGBD/Sterep mode, if in Localization Mode
-    UpdateLastFrame();
+        //* Step 1 更新上一帧的位姿
+        //1. Update last frame pose according to its reference keyframe
+        //2. Create "visual odometry" points for RGBD/Sterep mode, if in Localization Mode
+        UpdateLastFrame();
 
-    //当前帧位姿=速度*上一帧位姿 //Tcw = Tcl * Tlw;
-    mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
+        //当前帧位姿=速度*上一帧位姿 //Tcw = Tcl * Tlw;
+        mCurrentFrame.SetPose(mVelocity * mLastFrame.mTcw);
 
-    //清空当前帧的地图点
-    //?why？不应该本来就是空的？
-    fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
+        //清空当前帧的地图点
+        //?why？不应该本来就是空的？
+        fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(NULL));
 
-    // Project points seen in previous frame
-    int th;
-    if(mSensor!=System::STEREO)
-        th=30;//th=15;
-    else
-        th=7;
-    //*Step 2 根据上一帧的特征点对应地图点进行投影匹配
-    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
+        // Project points seen in previous frame
+        int th;
+        if (mSensor != System::STEREO)
+            th = 30;//th=15;
+        else
+            th = 7;
+        //*Step 2 根据上一帧的特征点对应地图点进行投影匹配
+        int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
+        ///Added Module - match line
+        int nmatches_l = 0;
+//        LineAndPlaneMatcher matcherl(20.0 / 180.0 * M_PI, 50, 0.4);
+//        vector<vector<int>> matchResults;
+//        int nmatches_l = matcherl.LineMatchingByProjection(&mCurrentFrame, &mLastFrame, matchResults);
+//        vector<MapLine *> vpMapLineMatches = vector<MapLine *>(mCurrentFrame.N_lines, static_cast<MapLine *>(NULL));
+//        for (int i = 0; i < matchResults.size(); i++) {
+//            int index0 = matchResults[i][0];//cur
+//            int index1 = matchResults[i][1];//ref
+//            vpMapLineMatches[index0] = mpReferenceKF->mvpMapLines[index1];
+//        }
 
-    // If few matches, uses a wider window search
-    if(nmatches<5)//20
-    {
-        fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
-        nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,2*th,mSensor==System::MONOCULAR);
-    }
-
-    if(nmatches<5){//20
-        cout<<"TrackWithMotionModel() nmatches : "<<nmatches<<endl;
-        return false;
-    }
-
-
-    //*Step 3 优化当前位姿
-    // Optimize frame pose with all matches
-//    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::FusionPoseOptimization(&mCurrentFrame);
-
-    //*Step 4 剔除ouliter
-    // Discard outliers
-    int nmatchesMap = 0;
-    for(int i =0; i<mCurrentFrame.N; i++)
-    {
-        if(mCurrentFrame.mvpMapPoints[i])
+        // If few matches, uses a wider window search
+        if ((nmatches + nmatches_l) < 5)//20
         {
-            if(mCurrentFrame.mvbOutlier[i])
-            {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-
-                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                mCurrentFrame.mvbOutlier[i]=false;
-                pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                nmatches--;
-            }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
-                nmatchesMap++;
+            fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(NULL));
+            nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
         }
-    }    
 
-    //纯跟踪模式以匹配数目来判断是否跟踪成功
-    if(mbOnlyTracking)
-    {
-        //?mbVO是啥？
-        mbVO = nmatchesMap<10;
-        return nmatches>20;
+        if ((nmatches + nmatches_l) < 5) {//20
+            cout << "TrackWithMotionModel() nmatches : " << nmatches << endl;
+            return false;
+        }
+
+
+        //*Step 3 优化当前位姿
+        // Optimize frame pose with all matches
+//    Optimizer::PoseOptimization(&mCurrentFrame);
+        Optimizer::FusionPoseOptimization(&mCurrentFrame);
+
+        //*Step 4 剔除ouliter
+        // Discard outliers
+        int nmatchesMap = 0;
+        for (int i = 0; i < mCurrentFrame.N; i++) {
+            if (mCurrentFrame.mvpMapPoints[i]) {
+                if (mCurrentFrame.mvbOutlier[i]) {
+                    MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
+                    mCurrentFrame.mvbOutlier[i] = false;
+                    pMP->mbTrackInView = false;
+                    pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                    nmatches--;
+                } else if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
+                    nmatchesMap++;
+            }
+        }
+        ///Added Module --- discard line outliers
+        int nmatchesMapLine = 0;
+        for (int i = 0; i < mCurrentFrame.N_lines; i++) {
+            if (mCurrentFrame.mvpMapLines[i]) {
+                if (mCurrentFrame.mvbOutlierLines[i]) {
+                    MapLine *pML = mCurrentFrame.mvpMapLines[i];
+
+                    mCurrentFrame.mvpMapLines[i] = static_cast<MapLine *>(NULL);
+                    mCurrentFrame.mvbOutlierLines[i] = false;
+                    pML->mbTrackInView = false;
+                    pML->mnLastFrameSeen = mCurrentFrame.mnId;
+                    nmatches_l--;
+                } else if (mCurrentFrame.mvpMapLines[i]->Observations() > 0)
+                    nmatchesMapLine++;
+            }
+        }
+
+        //纯跟踪模式以匹配数目来判断是否跟踪成功
+        if (mbOnlyTracking) {
+            //?mbVO是啥？
+            mbVO = (nmatchesMap + nmatchesMapLine) < 10;
+            return (nmatches + nmatches_l) > 20;
+        }
+        //*Step return
+        cout << "frame ID " << mCurrentFrame.mnId
+             << " TrackWithMotionModel() nmatchesMappoint + nmatchesMapLine " << nmatchesMap + nmatchesMapLine << endl;
+        return (nmatchesMap + nmatches_l) >= 5; //10
+
     }
-    //*Step return
-    cout<<"frame ID "<<mCurrentFrame.mnId<<" TrackWithMotionModel() nmatchesMap "<<nmatchesMap<<endl;
-    return nmatchesMap>=5; //10
-
-}
-
-/**
- * @brief Track LiDAR motion with 10hz fequencey
- * should be same function as LiDAR init
- * @return
- */
-//bool Tracking::TrackLiDAR(){
-//
-//        ///Step 1 get LiDAR feature from last frame, set up KdTree for it
-//        pcl::PointCloud<PointType>::Ptr cornerPointsLessSharp(new pcl::PointCloud<PointType>());
-//        pcl::PointCloud<PointType>::Ptr surfPointsLessFlat(new pcl::PointCloud<PointType>());
-//        cornerPointsLessSharp->clear();
-//        surfPointsLessFlat->clear();
-//        int lastCornerNum = mLastFrame.mLaserLessCorner_cam.size();
-//        int lastSurfNum = mLastFrame.mLaserLessFlat_cam.size();
-//        cornerPointsLessSharp->resize(lastCornerNum);
-//        surfPointsLessFlat->resize(lastSurfNum);
-//        for (size_t i = 0; i < lastCornerNum; i++) {
-//            cornerPointsLessSharp->points[i].x = mLastFrame.mLaserLessCorner_cam[i].pt3d.x;
-//            cornerPointsLessSharp->points[i].y = mLastFrame.mLaserLessCorner_cam[i].pt3d.y;
-//            cornerPointsLessSharp->points[i].z = mLastFrame.mLaserLessCorner_cam[i].pt3d.z;
-//            cornerPointsLessSharp->points[i].intensity = mLastFrame.mLaserLessCorner_cam[i].intensity;
-//        }
-//        cout<<"last cornerPointsLessSharp "<<cornerPointsLessSharp->size()<<endl;
-//        for (size_t i = 0; i < lastSurfNum; i++) {
-//            surfPointsLessFlat->points[i].x = mLastFrame.mLaserLessFlat_cam[i].pt3d.x;
-//            surfPointsLessFlat->points[i].y = mLastFrame.mLaserLessFlat_cam[i].pt3d.y;
-//            surfPointsLessFlat->points[i].z = mLastFrame.mLaserLessFlat_cam[i].pt3d.z;
-//            surfPointsLessFlat->points[i].intensity = mLastFrame.mLaserLessFlat_cam[i].intensity;
-//        }
-//        cout<<"last surfPointsLessFlat "<<surfPointsLessFlat->size()<<endl;
-//
-//        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeCornerLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-//        pcl::KdTreeFLANN<pcl::PointXYZI> kdtreeSurfLast; //(new pcl::KdTreeFLANN<pcl::PointXYZI>());
-//        kdtreeCornerLast.setInputCloud(cornerPointsLessSharp);
-//        kdtreeSurfLast.setInputCloud(surfPointsLessFlat);
-//        ///Step 2 get LiDAR feature from current frame
-//        pcl::PointCloud<PointType>::Ptr cornerPointsSharp(new pcl::PointCloud<PointType>());
-//        pcl::PointCloud<PointType>::Ptr surfPointsFlat(new pcl::PointCloud<PointType>());
-//        cornerPointsSharp->clear();
-//        surfPointsFlat->clear();
-//        int curCornerNum = mCurrentFrame.mLaserCorner_cam.size();
-//        int curSurfNum = mCurrentFrame.mLaserFlat_cam.size();
-//        cornerPointsSharp->resize(curCornerNum);
-//        surfPointsFlat->resize(curSurfNum);
-//        for (size_t i = 0; i < curCornerNum; i++) {
-//            cornerPointsSharp->points[i].x = mCurrentFrame.mLaserCorner_cam[i].pt3d.x;
-//            cornerPointsSharp->points[i].y = mCurrentFrame.mLaserCorner_cam[i].pt3d.y;
-//            cornerPointsSharp->points[i].z = mCurrentFrame.mLaserCorner_cam[i].pt3d.z;
-//            cornerPointsSharp->points[i].intensity = mCurrentFrame.mLaserCorner_cam[i].intensity;
-//        }
-//        cout<<"cur cornerPointsSharp "<<cornerPointsSharp->size()<<endl;
-//        for (size_t i = 0; i < curSurfNum; i++) {
-//            surfPointsFlat->points[i].x = mCurrentFrame.mLaserFlat_cam[i].pt3d.x;
-//            surfPointsFlat->points[i].y = mCurrentFrame.mLaserFlat_cam[i].pt3d.y;
-//            surfPointsFlat->points[i].z = mCurrentFrame.mLaserFlat_cam[i].pt3d.z;
-//            surfPointsFlat->points[i].intensity = mCurrentFrame.mLaserFlat_cam[i].intensity;
-//        }
-//        cout<<"cur surfPointsFlat "<<surfPointsFlat->size()<<endl;
-//
-//        ///Step 3 time to solve it!
-//        //KDtree put outside
-//        cereLiDAR(cornerPointsLessSharp, surfPointsLessFlat,
-//                  cornerPointsSharp, surfPointsFlat);
-//}
 
 /**
  * @brief 对local map 的mappoints进行跟踪
@@ -2293,51 +1712,68 @@ bool Tracking::TrackLocalMap()
 
     ///*Step 2 匹配局部地图中 与 当前帧 匹配的Mappoints
     SearchLocalPoints();
+    //todo Check SearchLocalLines()
+    //SearchLocalLines();
 
     ///*Step 3 更新局部地图点后 更新位姿
     // Optimize Pose
     //Optimizer::PoseOptimization(&mCurrentFrame);
     Optimizer::FusionPoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
+    mnMatchesInliersLine = 0;
 
     ///*Step 4 更新当前帧的mappoints被观测程度
     // Update MapPoints Statistics
-    for(int i=0; i<mCurrentFrame.N; i++)
-    {
-        if(mCurrentFrame.mvpMapPoints[i])
-        {
+    for (int i = 0; i < mCurrentFrame.N; i++) {
+        if (mCurrentFrame.mvpMapPoints[i]) {
             //当前帧的mappoints可以被当前帧观测到 被观测次数+1
             //*刚updatelocalmap做过一次+1了吧？ 这里加的是found，前面加的是visible
-            if(!mCurrentFrame.mvbOutlier[i])
-            {
+            if (!mCurrentFrame.mvbOutlier[i]) {
                 mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
-                if(!mbOnlyTracking)
-                {
-                    if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
+                if (!mbOnlyTracking) {
+                    if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
                         mnMatchesInliers++;
-                }
-                else
+                } else
                     mnMatchesInliers++;
             }
-            //? 是outlier并且是双目，就删除这个点
-            else if(mSensor==System::STEREO)
-                mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
+                //? 是outlier并且是双目，就删除这个点
+            else if (mSensor == System::STEREO)
+                mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
             //question monocular do nothing?
-
         }
     }
 
-    cout<<"track localmap mnMatchesInliers "<<mnMatchesInliers<<endl;
+
+    ///Added Module 更新当前帧的maplines被观测程度
+    // Update MapPoints Statistics
+    for (int i = 0; i < mCurrentFrame.N_lines; i++) {
+        if (mCurrentFrame.mvpMapLines[i]) {
+            //当前帧的maplines可以被当前帧观测到 被观测次数+1
+            //*刚updatelocalmap做过一次+1了吧？ 这里加的是found，前面加的是visible
+            if (!mCurrentFrame.mvbOutlierLines[i]) {
+                mCurrentFrame.mvpMapLines[i]->IncreaseFound();
+                if (!mbOnlyTracking) {
+                    if (mCurrentFrame.mvpMapLines[i]->Observations() > 0)
+                        mnMatchesInliersLine++;
+                } else
+                    mnMatchesInliersLine++;
+            } else if (mSensor == System::STEREO)//? 是outlier并且是双目，就删除这个点
+                mCurrentFrame.mvpMapLines[i] = static_cast<MapLine *>(NULL);
+            //question monocular do nothing?
+        }
+    }
+
+    cout<<"track localmap mnMatchesInliers "<<mnMatchesInliers<<" line "<<mnMatchesInliersLine<<endl;
 
     ///*Step 5 根据匹配点数目和回环情况决定是否跟踪成功
     // Decide if the tracking was successful
     // More restrictive if there was a relocalization recently
-    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<20) //50
+    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && (mnMatchesInliers + mnMatchesInliersLine)<20) //50
         return false;
 
-    if(mnMatchesInliers<5) //30
+    if((mnMatchesInliers + mnMatchesInliersLine)<5) //30
     {
-        cout<<"TrackLocalMap() "<<mnMatchesInliers<<endl;
+        cout<<"TrackLocalMap() "<<mnMatchesInliers<<" line "<<mnMatchesInliersLine<<endl;
         return false;
     }
 
@@ -2560,222 +1996,120 @@ void Tracking::CreateNewKeyFrame()
     mpLastKeyFrame = pKF;
 }
 
-///Added Module
-/**
- * @brief Based on Velocity captured from VO
- * Undistort LiDAR point cloud
-*/
-//    void Tracking::UndisLiDAR() {
-//        //laser time, start time, end time
-//        double t_l = mCurrentFrame.mLaserTimes[0];
-//        double t_ls = mCurrentFrame.mLaserTimes[1];
-//        double t_le = mCurrentFrame.mLaserTimes[2];
-//        //last vision frame time, current frame time.
-//        double t_last = mLastFrame.mTimeStamp;
-//        double t_cur = mCurrentFrame.mTimeStamp;
-//        //vision frame delta time.
-//        double deltaTime = t_cur - t_last;
-//        cv::Mat V = cv::Mat::zeros(3, 1, CV_64F);
-//        V.at<double>(0, 0) = mVelocity.at<float>(0, 3) / deltaTime;
-//        V.at<double>(1, 0) = mVelocity.at<float>(1, 3) / deltaTime;
-//        V.at<double>(2, 0) = mVelocity.at<float>(2, 3) / deltaTime;
-//        //cout << "Velocity " <<endl<< V << endl;
-//        double timeToProj = t_cur - t_l;
-//        cv::Mat timeToProjM = cv::Mat::zeros(3, 1, CV_64F);
-//        timeToProjM.at<double>(0, 0) = timeToProj;
-//        timeToProjM.at<double>(1, 0) = timeToProj;
-//        timeToProjM.at<double>(2, 0) = timeToProj;
-//        //cout << "timeToProjM " <<endl<< timeToProjM << endl;
-//        cv::Mat P_undis = cv::Mat::zeros(3, 1, CV_64F);
-//        cv::Mat P_distor = cv::Mat::zeros(3, 1, CV_64F);
-//        for (int i = 0; i < mCurrentFrame.mLaserPt_cam.size(); i++) {
-//            P_distor.at<double>(0, 0) = mCurrentFrame.mLaserPt_cam[i][0];
-//            P_distor.at<double>(1, 0) = mCurrentFrame.mLaserPt_cam[i][1];
-//            P_distor.at<double>(2, 0) = mCurrentFrame.mLaserPt_cam[i][2];
-//            //cout << "P_distor " <<endl<< P_distor << endl;
-//            if (t_l < t_cur)
-//                ///t_last ---> t_ls ---> t_l ---> t_cur ---> t_le
-//                ///forward from t_1 to t_cur
-//                P_undis = P_distor + V.mul(timeToProjM);
-//            else
-//                ///t_last ---> t_ls ---> t_cur ---> t_l ---> t_le
-//                ///backward from t_1 to t_cur
-//            if (t_l > t_cur)
-//                P_undis = P_distor - V.mul(timeToProjM);
-//            else
-//                ///t_l==t_cur
-//                P_undis = P_distor;
-//            //cout << "P_undis " << endl << P_undis << endl;
-//            vector<double> undisPoint{P_undis.at<double>(0, 0), P_undis.at<double>(1, 0), P_undis.at<double>(2, 0)};
-//            mCurrentFrame.mLaserPtsUndis.push_back(undisPoint);
-//        }
-//    }
-
-//void Tracking::LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation)
-//{
-//    int numInit = 30000;
-//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>);
-//    cloud1->points.resize(numInit);
-//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZ>);
-//    cloud2->points.resize(numInit);
-//    int actualNum = 0;
-//    for (int plnIndex1 = 0; plnIndex1 < inputFrame1.mvPlanes.size(); plnIndex1++) {
-//        for (int ptIndex = 0; ptIndex < inputFrame1.mvPlanes[plnIndex1].pointList.size(); ptIndex++) {
-//            cloud1->points[actualNum].x = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].x;
-//            cloud1->points[actualNum].y = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].y;
-//            cloud1->points[actualNum].z = inputFrame1.mvPlanes[plnIndex1].pointList[ptIndex].z;
-//            actualNum++;
-//        }
-//    }
-//    cloud1->points.resize(actualNum);
-//    int actualNum2 = 0;
-//    for (int plnIndex2 = 0; plnIndex2 < inputFrame2.mvPlanes.size(); plnIndex2++) {
-//        for (int ptIndex = 0; ptIndex < inputFrame2.mvPlanes[plnIndex2].pointList.size(); ptIndex++) {
-//            cloud2->points[actualNum2].x = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].x;
-//            cloud2->points[actualNum2].y = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].y;
-//            cloud2->points[actualNum2].z = inputFrame2.mvPlanes[plnIndex2].pointList[ptIndex].z;
-//            actualNum2++;
-//        }
-//    }
-//    cloud2->points.resize(actualNum2);
-//    ///ICP
-////    Eigen::Matrix4f init;
-////    cv::Mat pose2 = inputFrame2.GetPose();
-////    //Todo float or double?
-////    init << pose2.at<float>(0,0), pose2.at<float>(0,1), pose2.at<float>(0,2), pose2.at<float>(0,3),
-////            pose2.at<float>(1,0), pose2.at<float>(1,1), pose2.at<float>(1,2), pose2.at<float>(1,3),
-////            pose2.at<float>(2,0), pose2.at<float>(2,1), pose2.at<float>(2,2), pose2.at<float>(2,3),
-////            pose2.at<float>(3,0), pose2.at<float>(3,1), pose2.at<float>(3,2), pose2.at<float>(3,3);
-//    pcl::PointCloud<pcl::PointXYZ> cloudRegistered;
-//    cloudRegistered.points.resize(actualNum);
-//    pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> ICPer;
-//    ICPer.setInputSource(cloud1);
-//    ICPer.setInputTarget(cloud2);
-//    //icper.setMaxCorrespondenceDistance(1);
-//    //icper.setTransformationEpsilon(1e-8);//?
-//    //icper.setEuclideanFitnessEpsilon(0.01);
-//    ICPer.setMaximumIterations(100);
-//    ICPer.align(cloudRegistered);
-//    Eigen::Matrix4f Tc1c2 = ICPer.getFinalTransformation();
-//    transformation.at<float>(0,0) = Tc1c2(0,0);transformation.at<float>(0,1) = Tc1c2(0,1);transformation.at<float>(0,2) = Tc1c2(0,2);transformation.at<float>(0,3) = Tc1c2(0,3);
-//    transformation.at<float>(1,0) = Tc1c2(1,0);transformation.at<float>(1,1) = Tc1c2(1,1);transformation.at<float>(1,2) = Tc1c2(1,2);transformation.at<float>(1,3) = Tc1c2(1,3);
-//    transformation.at<float>(2,0) = Tc1c2(2,0);transformation.at<float>(2,1) = Tc1c2(2,1);transformation.at<float>(2,2) = Tc1c2(2,2);transformation.at<float>(2,3) = Tc1c2(2,3);
-//    transformation.at<float>(3,0) = Tc1c2(3,0);transformation.at<float>(3,1) = Tc1c2(3,1);transformation.at<float>(3,2) = Tc1c2(3,2);transformation.at<float>(3,3) = Tc1c2(3,3);
-//}
-
-/**
- * This function will associate the ORB feature and Plane
- * TODO: what if a vision feature point is close to two plane?
- * TODO: what if a plane contains no ORB feature?
- */
-//    bool Tracking::associateVisionLiDAR() {
-//        //Step 1 : associate in 2D
-//        int keyPtNum = mCurrentFrame.mvKeysUn.size();
-//        int planeNum = mCurrentFrame.mvPlanes.size();
-//        for (int kpIndex = 0; kpIndex < keyPtNum; kpIndex++) {
-//            double minDis = 65535;
-//            int foundPlaneIndex = -1;
-//            int foundLiDARPtIndex = -1;
-//            for (int plnIndex = 0; plnIndex < planeNum; plnIndex++) {
-//                int planePtNum = mCurrentFrame.mvPlanes[plnIndex].pointList2D.size();//todo check if the 3D num match 2D num (sometime projection out of boundires)
-//                for (int ldPtIndex = 0; ldPtIndex < planePtNum; ldPtIndex++) {
-//                    double xdiff = mCurrentFrame.mvKeysUn[kpIndex].pt.x -
-//                                   mCurrentFrame.mvPlanes[plnIndex].pointList2D[ldPtIndex].x;
-//                    double ydiff = mCurrentFrame.mvKeysUn[kpIndex].pt.y -
-//                                   mCurrentFrame.mvPlanes[plnIndex].pointList2D[ldPtIndex].y;
-//                    double distance = sqrt(xdiff * xdiff + ydiff * ydiff);
-//                    if (distance < 5 && distance < minDis) {
-//                        minDis = distance;
-//                        foundPlaneIndex = plnIndex;
-//                        foundLiDARPtIndex = ldPtIndex;
-//                    }
-//                }
-//            }
-//            //Step 2: associate in 3D
-//            if(mCurrentFrame.mvpMapPoints[kpIndex]!=NULL)//todo 是这么用的吗？
-//            {
-//                mCurrentFrame.mvPlanes[foundPlaneIndex].vpMapPointMatches.push_back(mCurrentFrame.mvpMapPoints[kpIndex]);
-//                mCurrentFrame.mvPlanes[foundPlaneIndex].mindices.push_back(kpIndex);
-//            }
-//        }
-//        //test distance to plane
-//        for(int plnIndex = 0; plnIndex < planeNum; plnIndex++)
-//        {
-//            int mpNum = mCurrentFrame.mvPlanes[plnIndex].vpMapPointMatches.size();
-//            double fenmu = sqrt(mCurrentFrame.mvPlanes[plnIndex].A * mCurrentFrame.mvPlanes[plnIndex].A
-//                                + mCurrentFrame.mvPlanes[plnIndex].B * mCurrentFrame.mvPlanes[plnIndex].B
-//                                + mCurrentFrame.mvPlanes[plnIndex].C * mCurrentFrame.mvPlanes[plnIndex].C);
-//            for(int mpIndex = 0; mpIndex < mpNum; mpIndex++)
-//            {
-//                //todo establish plane world pose.
-//                //mCurrentFrame.mvPlanes[plnIndex].A*mCurrentFrame.mvPlanes[plnIndex].vpMapPointMatches[mpIndex]->GetWorldPos())
-//            }
-//        }
-//    }
-//
-void Tracking::SearchLocalPoints()
-{
-    ///*Step1 遍历当前帧的mappoints，标记这些点不参与之后的搜索
-    // Do not search map points already matched
-    for(vector<MapPoint*>::iterator vit=mCurrentFrame.mvpMapPoints.begin(), vend=mCurrentFrame.mvpMapPoints.end(); vit!=vend; vit++)
-    {
-        MapPoint* pMP = *vit;
-        if(pMP)
-        {
-            if(pMP->isBad())
-            {
-                *vit = static_cast<MapPoint*>(NULL);
+    void Tracking::SearchLocalPoints() {
+        ///*Step1 遍历当前帧的mappoints，标记这些点不参与之后的搜索
+        // Do not search map points already matched
+        for (vector<MapPoint *>::iterator vit = mCurrentFrame.mvpMapPoints.begin(), vend = mCurrentFrame.mvpMapPoints.end();
+             vit != vend; vit++) {
+            MapPoint *pMP = *vit;
+            if (pMP) {
+                if (pMP->isBad()) {
+                    *vit = static_cast<MapPoint *>(NULL);
+                } else {
+                    //该点被当前帧观测到了，观测次数+1
+                    pMP->IncreaseVisible();
+                    //记录当前帧ID
+                    pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                    //该点将来不用于投影，因为已经匹配过
+                    //指的是之前的关键帧tracking，速度模型tracking和重定位tracking
+                    pMP->mbTrackInView = false;
+                }
             }
-            else
-            {
-                //该点被当前帧观测到了，观测次数+1
+        }
+
+        int nToMatch = 0;
+
+        //*Step 2 将所有的局部地图点 投影到当前帧
+        // Project points in frame and check its visibility
+        for (vector<MapPoint *>::iterator vit = mvpLocalMapPoints.begin(), vend = mvpLocalMapPoints.end();
+             vit != vend; vit++) {
+            MapPoint *pMP = *vit;
+            if (pMP->mnLastFrameSeen == mCurrentFrame.mnId)
+                continue;
+            if (pMP->isBad())
+                continue;
+            //是否在视野中
+            // Project (this fills MapPoint variables for matching)
+            if (mCurrentFrame.isInFrustum(pMP, 0.5)) {
+                //增加被观测的次数
                 pMP->IncreaseVisible();
-                //记录当前帧ID
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                //该点将来不用于投影，因为已经匹配过
-                //指的是之前的关键帧tracking，速度模型tracking和重定位tracking
-                pMP->mbTrackInView = false;
+                //记录投影匹配的数目
+                nToMatch++;
             }
         }
-    }
 
-    int nToMatch=0;
-
-    //*Step 2 将所有的局部地图点 投影到当前帧 
-    // Project points in frame and check its visibility
-    for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++)
-    {
-        MapPoint* pMP = *vit;
-        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
-            continue;
-        if(pMP->isBad())
-            continue;
-        //是否在视野中
-        // Project (this fills MapPoint variables for matching)
-        if(mCurrentFrame.isInFrustum(pMP,0.5))
-        {
-            //增加被观测的次数
-            pMP->IncreaseVisible();
-            //记录投影匹配的数目
-            nToMatch++;
+        //*Step 3 投影匹配
+        if (nToMatch > 0) {
+            ORBmatcher matcher(0.8);
+            int th = 1;
+            if (mSensor == System::RGBD)
+                th = 3;
+            // If the camera has been relocalised recently, perform a coarser search
+            if (mCurrentFrame.mnId < mnLastRelocFrameId + 2)
+                th = 5;
+            //对局部地图点中新增的地图点进行投影匹配
+            int matchNum = matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th);
+            cout << "frame ID " << mCurrentFrame.mnId << " TrackLocalMap()->SearchByProjection() match result "
+                 << matchNum << endl;
         }
     }
 
-    //*Step 3 投影匹配
-    if(nToMatch>0)
-    {
-        ORBmatcher matcher(0.8);
-        int th = 1;
-        if(mSensor==System::RGBD)
-            th=3;
-        // If the camera has been relocalised recently, perform a coarser search
-        if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
-            th=5;
+    ///Added Module
+    void Tracking::SearchLocalLines() {
+        ///*Step 1 遍历当前帧的maplines，标记这些点不参与之后的搜索
+        // Do not search map points already matched
+        for (vector<MapLine *>::iterator vit = mCurrentFrame.mvpMapLines.begin(), vend = mCurrentFrame.mvpMapLines.end();
+             vit != vend; vit++) {
+            MapLine *pML = *vit;
+            if (pML) {
+                if (pML->isBad()) {
+                    *vit = static_cast<MapLine *>(NULL);
+                } else {
+                    //该点被当前帧观测到了，观测次数+1
+                    pML->IncreaseVisible();
+                    //记录当前帧ID
+                    pML->mnLastFrameSeen = mCurrentFrame.mnId;
+                    //该点将来不用于投影，因为已经匹配过
+                    //指的是之前的关键帧tracking，速度模型tracking和重定位tracking
+                    pML->mbTrackInView = false;
+                }
+            }
+        }
+        int nToMatch = 0;
+        //*Step 2 将所有的 local mapLine 投影到当前帧
+        // Project points in frame and check its visibility
+        for (vector<MapLine *>::iterator vit = mvpLocalMapLines.begin(), vend = mvpLocalMapLines.end();
+             vit != vend; vit++) {
+            MapLine *pML = *vit;
+            if (pML->mnLastFrameSeen == mCurrentFrame.mnId)
+                continue;
+            if (pML->isBad())
+                continue;
+            //是否在视野中
+            // Project (this fills MapPoint variables for matching)
+            if (mCurrentFrame.isInFrustumLine(pML, 0.5)) {
+                //增加被观测的次数
+                pML->IncreaseVisible();
+                //记录投影匹配的数目
+                nToMatch++;
+            }
+        }
+
+        //*Step 3 投影匹配
+        if (nToMatch > 0) {
+            LineAndPlaneMatcher lineMatcher(20.0 / 180.0 * M_PI, 50, 0.4);
+            int th = 1;
+            if (mSensor == System::RGBD)
+                th = 3;
+            // If the camera has been relocalised recently, perform a coarser search
+            if (mCurrentFrame.mnId < mnLastRelocFrameId + 2)
+                th = 5;
             //对局部地图点中新增的地图点进行投影匹配
-        int matchNum = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
-        cout<<"frame ID "<<mCurrentFrame.mnId<<" TrackLocalMap()->SearchByProjection() match result "<<matchNum<<endl;
+            int matchNum = lineMatcher.SearchLineByProjection(mCurrentFrame, mvpLocalMapLines, th);
+            cout << "frame ID " << mCurrentFrame.mnId << " TrackLocalMap()->SearchByProjection() match result "
+                 << matchNum << endl;
+        }
     }
-}
 
 /**
  *@brief 更新localmap
@@ -2791,36 +2125,63 @@ void Tracking::UpdateLocalMap()
     // Update
     UpdateLocalKeyFrames();
     UpdateLocalPoints();
+    ///Added Module
+    UpdateLocalLines();
 }
 
-void Tracking::UpdateLocalPoints()
-{
-    //*Step1 清空局部mappoints
-    mvpLocalMapPoints.clear();
+    void Tracking::UpdateLocalPoints() {
+        //*Step1 清空局部mappoints
+        mvpLocalMapPoints.clear();
 
-    //*Step1 遍历局部关键帧,将这些帧的地图点插入进来
-    for(vector<KeyFrame*>::const_iterator itKF=mvpLocalKeyFrames.begin(), itEndKF=mvpLocalKeyFrames.end(); itKF!=itEndKF; itKF++)
-    {
-        KeyFrame* pKF = *itKF;
-        const vector<MapPoint*> vpMPs = pKF->GetMapPointMatches();
+        //*Step1 遍历局部关键帧,将这些帧的地图点插入进来
+        for (vector<KeyFrame *>::const_iterator itKF = mvpLocalKeyFrames.begin(), itEndKF = mvpLocalKeyFrames.end();
+             itKF != itEndKF; itKF++) {
+            KeyFrame *pKF = *itKF;
+            const vector<MapPoint *> vpMPs = pKF->GetMapPointMatches();
 
-        for(vector<MapPoint*>::const_iterator itMP=vpMPs.begin(), itEndMP=vpMPs.end(); itMP!=itEndMP; itMP++)
-        {
-            MapPoint* pMP = *itMP;
-            if(!pMP)
-                continue;
-            //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了,避免重复添加
-            if(pMP->mnTrackReferenceForFrame==mCurrentFrame.mnId)
-                continue;
-            if(!pMP->isBad())
-            {
-                mvpLocalMapPoints.push_back(pMP);
-                //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了。
-                pMP->mnTrackReferenceForFrame=mCurrentFrame.mnId;
+            for (vector<MapPoint *>::const_iterator itMP = vpMPs.begin(), itEndMP = vpMPs.end();
+                 itMP != itEndMP; itMP++) {
+                MapPoint *pMP = *itMP;
+                if (!pMP)
+                    continue;
+                //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了,避免重复添加
+                if (pMP->mnTrackReferenceForFrame == mCurrentFrame.mnId)
+                    continue;
+                if (!pMP->isBad()) {
+                    mvpLocalMapPoints.push_back(pMP);
+                    //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了。
+                    pMP->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+                }
             }
         }
     }
-}
+
+    void Tracking::UpdateLocalLines() {
+        //*Step1 清空局部mappoints
+        mvpLocalMapLines.clear();
+
+        //*Step1 遍历局部关键帧,将这些帧的地图点插入进来
+        for (vector<KeyFrame *>::const_iterator itKF = mvpLocalKeyFrames.begin(), itEndKF = mvpLocalKeyFrames.end();
+             itKF != itEndKF; itKF++) {
+            KeyFrame *pKF = *itKF;
+            const vector<MapLine *> vpMLs = pKF->GetMapLineMatches();
+
+            for (vector<MapLine *>::const_iterator itML = vpMLs.begin(), itEndML = vpMLs.end();
+                 itML != itEndML; itML++) {
+                MapLine *pML = *itML;
+                if (!pML)
+                    continue;
+                //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了,避免重复添加
+                if (pML->mnTrackReferenceForFrame == mCurrentFrame.mnId)
+                    continue;
+                if (!pML->isBad()) {
+                    mvpLocalMapLines.push_back(pML);
+                    //类似参考关键帧的id记录，这里地图点也要记录自己被哪个帧参考了。
+                    pML->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+                }
+            }
+        }
+    }
 
 /**
  *@brief 更新局部关键帧

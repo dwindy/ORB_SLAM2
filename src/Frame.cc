@@ -59,7 +59,8 @@ namespace ORB_SLAM2
              mLaserCorner_cam(frame.mLaserCorner_cam),mLaserLessCorner_cam(frame.mLaserLessCorner_cam),
              mLaserFlat_cam(frame.mLaserFlat_cam),mLaserLessFlat_cam(frame.mLaserLessFlat_cam),
              mvPlanes(frame.mvPlanes),mvLines(frame.mvLines),mvORBAttributions(frame.mvORBAttributions),//why this keypt wrong?
-             givenDepthNum(frame.givenDepthNum)
+             givenDepthNum(frame.givenDepthNum),mlsdDescriptors(frame.mlsdDescriptors),
+             mvpMapLines(frame.mvpMapLines),N_lines(frame.N_lines),mvbOutlierLines(frame.mvbOutlierLines)
     {
         for(int i=0;i<FRAME_GRID_COLS;i++)
             for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -201,12 +202,13 @@ namespace ORB_SLAM2
  * @param[int]thDepth //区分远近点的深度阈值
  */
     Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
+                 ORBextractor *extractor, ORBextractor *extractor1, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
                  const float &bf, const float &thDepth)
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
-              mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
+              mpORBextractorRight(extractor1),//static_cast<ORBextractor *>(NULL)
               mTimeStamp(timeStamp), mLaserPoints(lasers), mK(K.clone()),
               mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
+
         // Frame ID
         //Step 1 帧ID增加
         mnId=nNextId++;
@@ -225,7 +227,6 @@ namespace ORB_SLAM2
         //Step 3 提取特征点 0 左图 1 右图
         //提取ORB特征
         ExtractORB(0,imGray);
-
         N = mvKeys.size();
 
         if(mvKeys.empty())
@@ -239,10 +240,30 @@ namespace ORB_SLAM2
         mvuRight = vector<float>(N,-1);
         mvDepth = vector<float>(N,-1);
 
+        ///Added Module
+        string image1AddressHead = "/home/xin/Downloads/DATASET/KITTI/data_odometry_gray/dataset/sequences/09/image_1/";
+        stringstream ss;
+        ss<<image1AddressHead;
+        if (mnId < 10)
+            ss << "00000" << mnId;
+        else if (mnId >= 10 && mnId < 100)
+            ss << "0000" << mnId;
+        else if (mnId >= 100 && mnId < 1000)
+            ss << "000" << mnId;
+        ss<<".png";
+        string image1Address = ss.str();
+        cout<<image1Address<<endl;
+        cv::Mat image1 = cv::imread(image1Address,CV_LOAD_IMAGE_UNCHANGED);
+        ExtractORB(1,image1);
+        //特征点匹配，计算深度放进mvDpeth
+        ComputeStereoMatches();
+        ///---------------------------------------
+
         //初始化本帧的地图点-给null
         mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
         //初始化outlier，给false
         mvbOutlier = vector<bool>(N,false);
+        ///Line related things initialized later after Lines has been detected
 
         // This is done only for the first Frame (or after a change in the calibration)
         //标志位，只在第一帧或者相机标定参数变化后执行
@@ -299,7 +320,15 @@ namespace ORB_SLAM2
         start = clock();
         PairLaserVisionFeatures(imGray);
         end = clock();
+        ///Compare depth with Stereo way
+        CompareWithStereo(imGray, image1);
         //cout<<"PairLaserVisionFeatures costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        ///Restore depth to stereo
+        ComputeStereoFromFusion(mvORBAttributions);
+        ///init lines related things
+        N_lines = mvLines.size();
+        mvpMapLines = vector<MapLine*>(N_lines,static_cast<MapLine*>(NULL));
+        mvbOutlierLines = vector<bool>(N_lines,false);
         float wait = 0;
     }
 
@@ -1693,9 +1722,6 @@ int pause = 1;
  */
     void Frame::ORBdepthFromPointPatch(vector<PtLsr> &LiDARInputs, vector<mORBAttribution> &ORBinputs, double threshold, cv::Mat im){
         for(auto &pt:ORBinputs){
-            if(pt.ID==75){
-                int pause = 1;
-            }
             if(pt.depthSource>0)
                 continue;
 
@@ -1705,25 +1731,19 @@ int pause = 1;
             = pcl::PointCloud<pcl::PointXYZ>::Ptr (new pcl::PointCloud<pcl::PointXYZ>);
             double minDistance = 999;
             int minID = -1;
-            for(auto lidPT:LiDARInputs){
-//            double distance = sqrt((lidPT.pt2D.x - pt.keyPt.x)*(lidPT.pt2D.x - pt.keyPt.x) + (lidPT.pt2D.y - pt.keyPt.y)*(lidPT.pt2D.y - pt.keyPt.y));
-//            if(distance<threshold){
-//                localPatch->points.push_back(lidPT.p3DonCam);
-//            }
+            for(const auto& lidPT:LiDARInputs){
                 bool xok, yok;
-                xok = abs(lidPT.pt2d.x - pt.keyPt.pt.x) <= 5?true:false;
-                yok = abs(lidPT.pt2d.y - pt.keyPt.pt.y) <= 5?true:false;
+                xok = abs(lidPT.pt2d.x - pt.keyPt.pt.x) <= threshold;
+                yok = abs(lidPT.pt2d.y - pt.keyPt.pt.y) <= threshold;
                 if(xok&&yok)
-                    localPatch->points.push_back(pcl::PointXYZ(lidPT.pt3d.x,lidPT.pt3d.y,lidPT.pt3d.z));
+                    localPatch->points.emplace_back(lidPT.pt3d.x,lidPT.pt3d.y,lidPT.pt3d.z);
             }
             if(localPatch->points.size()>=3){
-                //Divide into frontend backend by histogram
+                //Divide into frontend, backend by histogram
                 pcl::PointXYZ min_pt, max_pt;
                 pcl::getMinMax3D(*localPatch, min_pt, max_pt);
                 // Compute the bin number
-                //cout<<"min_pt"<<min_pt<<" max_pt "<<max_pt<<endl;
                 int num_bins = ceil((max_pt.z - min_pt.z)/0.3);
-                //cout<<"nun_bins "<<num_bins<<endl;
                 // Create a histogram with num_bins bins
                 std::vector<std::vector<int>> histogram;
                 for (int i = 0; i < num_bins; i++) {
@@ -1736,7 +1756,6 @@ int pause = 1;
                     int bin_index = floor(num_bins * (localPatch->points[i].z - min_pt.z) / (max_pt.z - min_pt.z));
                     if(localPatch->points[i].z==max_pt.z)
                         bin_index = num_bins -1;
-                    //cout<<" bin_index "<<bin_index<<" add "<<i<<endl;
                     // Add the point to the appropriate histogram bin
                     histogram[bin_index].push_back(i);
                 }
@@ -1744,19 +1763,21 @@ int pause = 1;
                 int numThreshold = localPatch->points.size() * 0.2;
                 int selectedBinIndex = -1;
                 for(int i=0;i<num_bins;i++){
-                    if(histogram[i].size()>0){
-                        //cout<<"histogram "<<i<<" has z ";
-                        for(int j=0;j<histogram[i].size();j++){
-                            int index = histogram[i][j];
-                            //cout<<localPatch->points[index].z<<" ";
-                        }
-                        //cout<<endl;
-                    }
+//                    if(histogram[i].size()>0){
+//                        cout<<"histogram "<<i<<" has z ";
+//                        for(int j=0;j<histogram[i].size();j++){
+//                            int index = histogram[i][j];
+//                            cout<<localPatch->points[index].z<<" ";
+//                        }
+//                        cout<<endl;
+//                    }
                     //find the nearest bin
                     if(histogram[i].size()>=numThreshold){
                         selectedBinIndex = i;
+                        break;
                     }
                 }
+//                cout<<"selectedBinIndex "<<selectedBinIndex<<endl;
                 if(selectedBinIndex>-1&&histogram[selectedBinIndex].size()>=3){
                     //Step 2 fit a plane by those points
                     pcl::PointCloud<pcl::PointXYZ>::Ptr localPointCloud =
@@ -1780,14 +1801,14 @@ int pause = 1;
                     //cout<<"option 2 "<<endl;
                     //cout<<"u "<<u<<" v "<<v<<" A "<<A<<" B "<<B<<" C "<<C<<" D "<<D<<" fx "<<fx<<" fy "<<fy<<" cx "<<cx<<" cy "<<cy<<" ---------------------------------------------------------------------"<<endl;
                     double Z = -D / (A*(u-cx)/fx + B*(v-cy)/fy + C); //from Ax+By+Cz + D =0;
-                    if(abs(Z-localPointCloud->points[0].z)<=1){
+//                    if(abs(Z-localPointCloud->points[0].z)<=1){
                         pt.depth = Z;
                         pt.depthSource = 3;
                         double X = (u - cx) * Z / fx, Y = (v - cy) * Z / fy;
                         pt.p3d_est.x = X, pt.p3d_est.y = Y, pt.p3d_est.z = Z;
-                    }else{
-                        //cout<<"estimated Z "<<Z<<" far away from candidates Z "<<localPointCloud->points[0].z<<endl;
-                    }
+//                    }else{
+//                        //cout<<"estimated Z "<<Z<<" far away from candidates Z "<<localPointCloud->points[0].z<<endl;
+//                    }
 
                 }
             }
@@ -1842,9 +1863,9 @@ int pause = 1;
 //        cv::waitKey(1);
         //cv::Mat descriptors;
         bd->compute(im, selectedKeyLines, descriptors);
+        mlsdDescriptors = descriptors.clone();
         end = clock();
         //cout << "Search for LSD and LiDAR line costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
-
 
         ///Step 4.2 LSD and LiDAR
         start = clock();
@@ -2485,8 +2506,7 @@ int pause = 1;
  * @param[in] viewingCosLimit 余弦阈值
  * @return true false
 */
-    bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
-    {
+    bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) {
         //mbTrackInView decide if a mappoint is going to be projected into some frame
         pMP->mbTrackInView = false;
 
@@ -2495,25 +2515,25 @@ int pause = 1;
         cv::Mat P = pMP->GetWorldPos();
 
         // 3D in camera coordinates
-        const cv::Mat Pc = mRcw*P+mtcw;
+        const cv::Mat Pc = mRcw * P + mtcw;
         const float &PcX = Pc.at<float>(0);
-        const float &PcY= Pc.at<float>(1);
+        const float &PcY = Pc.at<float>(1);
         const float &PcZ = Pc.at<float>(2);
 
         ///*Step 1 深度判断 (局部地图点来自于局部关键帧，它有一些可能在当前视角的背面。
         // Check positive depth
-        if(PcZ<0.0f)
+        if (PcZ < 0.0f)
             return false;
 
         ///*Step 2 成像平面内判断
         // Project in image and check it is not outside
-        const float invz = 1.0f/PcZ;
-        const float u=fx*PcX*invz+cx;
-        const float v=fy*PcY*invz+cy;
+        const float invz = 1.0f / PcZ;
+        const float u = fx * PcX * invz + cx;
+        const float v = fy * PcY * invz + cy;
 
-        if(u<mnMinX || u>mnMaxX)
+        if (u < mnMinX || u > mnMaxX)
             return false;
-        if(v<mnMinY || v>mnMaxY)
+        if (v < mnMinY || v > mnMaxY)
             return false;
 
         ///*Step 3 地图点到相机中心的距离 在尺度变化内
@@ -2521,10 +2541,10 @@ int pause = 1;
         const float maxDistance = pMP->GetMaxDistanceInvariance();
         const float minDistance = pMP->GetMinDistanceInvariance();
         //mOW 当前相机光心在世界坐标系下的坐标
-        const cv::Mat PO = P-mOw;//a vector (from camera centre) points to P
+        const cv::Mat PO = P - mOw;//a vector (from camera centre) points to P
         const float dist = cv::norm(PO);
 
-        if(dist<minDistance || dist>maxDistance)
+        if (dist < minDistance || dist > maxDistance)
             return false;
 
         ///*Step 4 相机视角 和 地图点平均观测方向 的夹角的余弦
@@ -2533,28 +2553,125 @@ int pause = 1;
         cv::Mat Pn = pMP->GetNormal();//the average direction of this mappoint(a mappoint could be observed by may keyframes)
 
         //the cos of current view vector and normal observe vector.
-        const float viewCos = PO.dot(Pn)/dist; //cos = a.dot(b)/(|a||b|)
+        const float viewCos = PO.dot(Pn) / dist; //cos = a.dot(b)/(|a||b|)
         //question is the formula above right?
 
-        if(viewCos<viewingCosLimit)
+        if (viewCos < viewingCosLimit)
             return false;
 
         ///*Step 根据地图点到光心的距离预测一个尺度
         // Predict scale in the image
-        const int nPredictedLevel = pMP->PredictScale(dist,this);
+        const int nPredictedLevel = pMP->PredictScale(dist, this);
 
         // Data used by the tracking
         pMP->mbTrackInView = true;
         //像素横坐标 左图
         pMP->mTrackProjX = u;
         //bf/z视察 即得到像素右视图坐标
-        pMP->mTrackProjXR = u - mbf*invz;
+        pMP->mTrackProjXR = u - mbf * invz;
         //像素纵坐标 左图
         pMP->mTrackProjY = v;
         //预测到的层级
-        pMP->mnTrackScaleLevel= nPredictedLevel;
+        pMP->mnTrackScaleLevel = nPredictedLevel;
         //包留视角和平均观测方向的夹角
         pMP->mTrackViewCos = viewCos;
+
+        return true;
+    }
+
+    /**
+    * @brief 地图Line是否在视野内
+    * 0 计算该地图Line的世界坐标
+    * 1 该点在当前相机的深度>0
+    * 2 投影到像素平面，要在范围内
+    * 3 endpoints到相机中心的距离，是否在尺度变化的距离内
+    * 4 当前视角和平均观测方向的夹角的余弦值，要大于阈值
+    * 5 地图点到光心的距离来预测一个尺度（仿造特征点金字塔层级）
+    * 6 记录一些参数
+    * @param[in] pML 当前地图line
+    * @param[in] viewingCosLimit 余弦阈值
+    * @return true false
+    */
+    bool Frame::isInFrustumLine(MapLine *pML, float viewingCosLimit) {
+        //mbTrackInView decide if a mapline is going to be projected into some frame
+        pML->mbTrackInView = false;
+        ///*Step 0 获得地图点世界坐标
+        // 3D in absolute coordinates
+        cv::Mat P = pML->GetWorldPos();
+        //cout<<"P"<<endl<<P<<endl;
+        cv::Mat P0 = P.rowRange(0, 3).colRange(0, 1);
+        //cout<<"P0"<<endl<<P0<<endl;
+        cv::Mat P1 = P.rowRange(0, 3).colRange(1, 2);
+        //cout<<"P1"<<endl<<P1<<endl;
+        // 3D in camera coordinates
+        //cout<<"mRcw tyoe"<<endl<<mRcw.type()<<endl;
+        //cout<<"P1 tyoe"<<endl<<P1.type()<<endl;
+        const cv::Mat Pc0 = mRcw * P0 + mtcw;
+        const float &PcX0 = Pc0.at<float>(0);
+        const float &PcY0 = Pc0.at<float>(1);
+        const float &PcZ0 = Pc0.at<float>(2);
+        const cv::Mat Pc1 = mRcw * P1 + mtcw;
+        const float &PcX1 = Pc1.at<float>(0);
+        const float &PcY1 = Pc1.at<float>(1);
+        const float &PcZ1 = Pc1.at<float>(2);
+        ///*Step 1 深度判断 (局部地图点来自于局部关键帧，它有一些可能在当前视角的背面。
+        // Check positive depth
+        if (PcZ0 < 0.0f || PcZ1 < 0.0f)
+            return false;
+
+        ///*Step 2 成像平面内判断
+        // Project in image and check it is not outside
+        const float invz0 = 1.0f / PcZ0;
+        const float u0 = fx * PcX0 * invz0 + cx;
+        const float v0 = fy * PcY0 * invz0 + cy;
+        if (u0 < mnMinX || u0 > mnMaxX)
+            return false;
+        if (v0 < mnMinY || v0 > mnMaxY)
+            return false;
+        const float invz1 = 1.0f / PcZ1;
+        const float u1 = fx * PcX1 * invz1 + cx;
+        const float v1 = fy * PcY1 * invz1 + cy;
+        if (u1 < mnMinX || u1 > mnMaxX)
+            return false;
+        if (v1 < mnMinY || v1 > mnMaxY)
+            return false;
+
+//        ///*Step 3 地图点到相机中心的距离 在尺度变化内
+//        // Check distance is in the scale invariance region of the MapPoint
+//        const float maxDistance = pMP->GetMaxDistanceInvariance();
+//        const float minDistance = pMP->GetMinDistanceInvariance();
+//        //mOW 当前相机光心在世界坐标系下的坐标
+//        const cv::Mat PO = P - mOw;//a vector (from camera centre) points to P
+//        const float dist = cv::norm(PO);
+//        if (dist < minDistance || dist > maxDistance)
+//            return false;
+//
+//        ///*Step 4 相机视角 和 地图点平均观测方向 的夹角的余弦
+//        // Check viewing angle
+//        //在UpdateNormAndDepth中更新
+//        cv::Mat Pn = pMP->GetNormal();//the average direction of this mappoint(a mappoint could be observed by may keyframes)
+//        //the cos of current view vector and normal observe vector.
+//        const float viewCos = PO.dot(Pn) / dist; //cos = a.dot(b)/(|a||b|)
+//        //question is the formula above right?
+//        if (viewCos < viewingCosLimit)
+//            return false;
+//
+//        ///*Step 根据地图点到光心的距离预测一个尺度
+//        // Predict scale in the image
+//        const int nPredictedLevel = pMP->PredictScale(dist, this);
+
+        // Data used by the tracking
+        pML->mbTrackInView = true;
+//        //像素横坐标 左图
+//        pMP->mTrackProjX = u;
+//        //bf/z视察 即得到像素右视图坐标
+//        pMP->mTrackProjXR = u - mbf * invz;
+//        //像素纵坐标 左图
+//        pMP->mTrackProjY = v;
+//        //预测到的层级
+//        pMP->mnTrackScaleLevel = nPredictedLevel;
+//        //包留视角和平均观测方向的夹角
+//        pMP->mTrackViewCos = viewCos;
 
         return true;
     }
@@ -2777,7 +2894,7 @@ int pause = 1;
         }
 
         //Step 2->3 粗匹配and精匹配
-        // Set limits for search
+        //Set limits for search
         //不会在整行里面找，只在pi.x左右找
         //Z = f * b / d
         //Depth = focal * baseline / disparity | disparity = Ul-Ur
@@ -2958,7 +3075,6 @@ int pause = 1;
         }
     }
 
-
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
     {
         mvuRight = vector<float>(N,-1);
@@ -2982,6 +3098,32 @@ int pause = 1;
         }
     }
 
+    void Frame::ComputeStereoFromFusion(const vector<mORBAttribution> ORBAttributions)
+    {
+        mvuRight = vector<float>(N,-1);
+        mvDepth = vector<float>(N,-1);
+
+        for(int i=0; i<N; i++)
+        {
+            const cv::KeyPoint &kp = mvKeys[i];
+            const cv::KeyPoint &kpU = mvKeysUn[i];
+
+            const float &v = kp.pt.y;
+            const float &u = kp.pt.x;
+
+            //const float d = imDepth.at<float>(v,u);
+            if(ORBAttributions[i].depthSource>-1){
+                const float d = ORBAttributions[i].depth;
+                if(d>0)
+                {
+                    mvDepth[i] = d;
+                    mbf = 0;
+                    mvuRight[i] = kpU.pt.x-mbf/d;
+                }
+            }
+        }
+    }
+
     cv::Mat Frame::UnprojectStereo(const int &i)
     {
         const float z = mvDepth[i];
@@ -2996,6 +3138,65 @@ int pause = 1;
         }
         else
             return cv::Mat();
+    }
+
+    /*
+     * A debug function, Compare my aid-depth with stereo depth
+     */
+    void Frame::CompareWithStereo(cv::Mat im0, cv::Mat im1) {
+        float minDiffer = 999, maxDiffer = -999;
+        float binGap = 0.3;
+        for (int i = 0; i < N; i++) {
+            float stereoDepth = mvDepth[i];
+            float fusionDepth = mvORBAttributions[i].depth;
+            if (stereoDepth > -1 && fusionDepth > -1) {
+                int fusionDepthSource = mvORBAttributions[i].depthSource;
+                float depthDifferent = stereoDepth - fusionDepth;
+                //cout << mvKeysUn[i].pt.x << " , " << mvKeysUn[i].pt.y << " : " << stereoDepth
+                //     << " - " << fusionDepth << " = " << depthDifferent << endl;
+                if (abs(depthDifferent) < minDiffer)
+                    minDiffer = abs(depthDifferent);
+                if (abs(depthDifferent) > maxDiffer)
+                    maxDiffer = abs(depthDifferent);
+            }
+        }
+        int binNum = ceil((maxDiffer-minDiffer)/binGap);
+        //cout<<"max "<<maxDiffer<<" min "<<minDiffer<<" bin number "<<binNum<<endl;
+        vector<vector<int>> binContainer;
+        for (int i = 0; i < binNum; i++) {
+            vector<int> thisBin;
+            binContainer.push_back(thisBin);
+        }
+        for (int i = 0; i < N; i++) {
+            float stereoDepth = mvDepth[i];
+            float fusionDepth = mvORBAttributions[i].depth;
+            if (stereoDepth > -1 && fusionDepth > -1) {
+                int fusionDepthSource = mvORBAttributions[i].depthSource;
+                float depthDifferent = abs(stereoDepth - fusionDepth);
+                int binIndex = int(depthDifferent - minDiffer) / binGap;
+                binContainer[binIndex].push_back(i);
+            }
+        }
+//        for (int i = 0; i < binNum; i++) {
+//            if(binContainer[i].size()>0)
+//                cout<<"from "<<minDiffer+binGap*i<<" to "<<minDiffer+binGap*(i+1)<<" has "<<binContainer[i].size()<<endl;
+//        }
+        for (int i = 0; i < N; i++) {
+            float stereoDepth = mvDepth[i];
+            float fusionDepth = mvORBAttributions[i].depth;
+            if (stereoDepth > -1 && fusionDepth > -1) {
+                int fusionDepthSource = mvORBAttributions[i].depthSource;
+                float depthDifferent = abs(stereoDepth - fusionDepth);
+                if (abs(depthDifferent) > 1.0) {
+                    mvORBAttributions[i].depthSource = -1;
+                    mvORBAttributions[i].depth = -1;
+                }
+            }
+            if (stereoDepth == -1 && fusionDepth > -1) {
+                    mvORBAttributions[i].depthSource = -1;
+                    mvORBAttributions[i].depth = -1;
+            }
+        }
     }
 
 } //namespace ORB_SLAM

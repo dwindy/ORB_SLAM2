@@ -72,7 +72,6 @@ private:
 
     void DecomposeE(const cv::Mat &E, cv::Mat &R1, cv::Mat &R2, cv::Mat &t);
 
-
     // Keypoints from Reference Frame (Frame 1)
     vector<cv::KeyPoint> mvKeys1;
 

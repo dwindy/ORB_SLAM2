@@ -32,6 +32,7 @@
 
 #include <opencv2/opencv.hpp>
 ///Added module
+#include "MapLine.h"
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
@@ -60,6 +61,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+///Added module
+class MapLine;
 
 ///added module
     struct mLine {
@@ -172,7 +175,7 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     ///added module
-    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+    Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, ORBextractor *extractor, ORBextractor *extractor1, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
           cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
@@ -202,6 +205,9 @@ public:
     // and fill variables of the MapPoint to be used by the tracking
     bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
 
+    ///Added Module
+    bool isInFrustumLine(MapLine *pML, float viewingCosLimit);
+
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
@@ -213,7 +219,8 @@ public:
 
     // Associate a "right" coordinate to a keypoint if there is valid depth in the depthmap.
     void ComputeStereoFromRGBD(const cv::Mat &imDepth);
-
+    ///Added Module
+    void ComputeStereoFromFusion(const vector<mORBAttribution> ORBAttributions);
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
 
@@ -237,6 +244,7 @@ public:
     void ExtractLiDARFeature();
     void ProjectLiDARFeaturetoImg(cv::Mat, int cols, int rows);
     void PairLaserVisionFeatures(const cv::Mat &im);
+    void CompareWithStereo(cv::Mat im0, cv::Mat im1);
     void connectLSD2LiDAR(vector<mLine> &mLSDLinesIN, vector<PtLsr> &LiDARPtIN, cv::Mat im);
     void connectORB2Plane(vector<PtLsr> &LiDARPoints, std::vector<cv::KeyPoint> &ORBFeatures, vector<ORB_SLAM2::mPlane> &extractedPlanes, double threshold, cv::Mat im);
     void connectORB2LSD(vector<mLine> &mLSDLinesIN, vector<cv::KeyPoint> &ORBin, cv::Mat im);
@@ -259,7 +267,7 @@ public:
     vector<ORB_SLAM2::mPlane> mvPlanes;
     vector<mLine> mvLines;
     vector<mORBAttribution> mvORBAttributions; //size init at undistortion function
-
+    cv::Mat mlsdDescriptors;
 
 
     // Calibration matrix and OpenCV distortion parameters.
@@ -284,6 +292,8 @@ public:
 
     // Number of KeyPoints.
     int N;
+    ///Added Module
+    int N_lines;
 
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     // In the stereo case, mvKeysUn is redundant as images must be rectified.
@@ -305,9 +315,13 @@ public:
 
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;
+    ///Added Module
+    std::vector<MapLine*> mvpMapLines;
 
     // Flag to identify outlier associations.
     std::vector<bool> mvbOutlier;
+    ///Added Module
+    std::vector<bool> mvbOutlierLines;
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
     static float mfGridElementWidthInv;

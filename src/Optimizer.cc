@@ -34,8 +34,169 @@
 
 #include<mutex>
 
-namespace ORB_SLAM2
-{
+namespace ORB_SLAM2 {
+
+    /*
+* error should be two dimension, each dimension is the sum of two end points to line distanece
+* one is projecting 3d line endpoint to image, calc the distance of projected endpoints to observed 2d line.
+* another is observed 2d lines endpoints to the projected 3d line.
+*/
+    class EdgeSE3LineOnlyPose : public g2o::BaseUnaryEdge<2, Eigen::Vector4d, g2o::VertexSE3Expmap> {
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        virtual void computeError() override {
+            const g2o::VertexSE3Expmap *v = static_cast<const g2o::VertexSE3Expmap *>(_vertices[0]);
+            //Step 1 distance of projected 3D endpoint to observed 2d lines
+            //1.1 transform two 3D endpoints from world to camera frame
+            Eigen::Matrix4d Tcw = v->estimate().to_homogeneous_matrix();
+            Eigen::Vector4d P_end0_homo(Pend0[0], Pend0[1], Pend0[2], 1);
+            Eigen::Vector4d P_end1_homo(Pend1[0], Pend1[1], Pend1[2], 1);
+            Eigen::Vector4d P_cam_end0 = Tcw * P_end0_homo;
+            Eigen::Vector4d P_cam_end1 = Tcw * P_end1_homo;
+            //project to image
+            Eigen::Vector2d p_end0_pjt((fx * P_cam_end0[0] + cx * P_cam_end0[2]) / P_cam_end0[2],
+                                       (fy * P_cam_end0[1] + cy * P_cam_end0[2]) / P_cam_end0[2]);
+            Eigen::Vector2d p_end1_pjt((fx * P_cam_end1[0] + cx * P_cam_end1[2]) / P_cam_end1[2],
+                                       (fy * P_cam_end1[1] + cy * P_cam_end1[2]) / P_cam_end1[2]);
+            //1.2 distance of observed line
+            float x1 = _measurement[0], y1 = _measurement[1];
+            float x2 = _measurement[2], y2 = _measurement[3];
+            float A = y2 - y1, B = x1 - x2,
+            C = x2 * y1 - x1 *y2;//https://math.stackexchange.com/questions/422602/convert-two-points-to-line-eq-ax-by-c-0
+            double dis_end0 = abs(A * p_end0_pjt[0] + B * p_end0_pjt[1] + C) / sqrt(A * A + B * B);
+            double dis_end1 = abs(A * p_end1_pjt[0] + B * p_end1_pjt[1] + C) / sqrt(A * A + B * B);
+            //Step 2 distance of observed 2d endpoints to projected 3D line
+            float A_pjt = p_end1_pjt[1] - p_end0_pjt[1];
+            float B_pjt = p_end0_pjt[0] - p_end1_pjt[0];
+            float C_pjt = p_end1_pjt[0] * p_end0_pjt[1] - p_end0_pjt[0] * p_end1_pjt[1];
+            double dis_pjt0 = abs(A_pjt * x1 + B_pjt * y1 + C_pjt) / sqrt(A_pjt * A_pjt + B_pjt * B_pjt);
+            double dis_pjt1 = abs(A_pjt * x2 + B_pjt * y2 + C_pjt) / sqrt(A_pjt * A_pjt + B_pjt * B_pjt);
+            //Step 3 rest process
+            _error[0] = dis_end0 + dis_end1;
+            _error[1] = dis_pjt0 + dis_pjt1;
+        }
+
+        // use numeric derivatives
+        virtual bool read(istream &in) {}
+
+        virtual bool write(ostream &out) const {}
+
+        Eigen::Vector3d Pend0, Pend1;//Endpoints in the world
+        double fx, fy, cx, cy;
+    };
+
+    typedef Eigen::Matrix<double, 6, 1> Vector6d;
+    class LineVertex : public g2o::BaseVertex<6, Vector6d> {
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+        LineVertex(){}
+
+        virtual void oplusImpl(const double *update) override {
+            Vector6d v(update);
+            _estimate += v;
+        }
+
+        virtual void setToOriginImpl() override{ _estimate.setZero(); }
+
+        virtual bool read(istream &in) {}
+
+        virtual bool write(ostream &out) const {}
+    };
+//
+//    class  EdgeStereoSE3ProjectXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>{
+//    public:
+//        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+//
+//        EdgeStereoSE3ProjectXYZ();
+//
+//        bool read(std::istream& is);
+//
+//        bool write(std::ostream& os) const;
+//
+//        void computeError()  {
+//            const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+//            const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+//            Vector3d obs(_measurement);
+//            _error = obs - cam_project(v1->estimate().map(v2->estimate()),bf);
+//        }
+//
+//        bool isDepthPositive() {
+//            const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+//            const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+//            return (v1->estimate().map(v2->estimate()))(2)>0.0;
+//        }
+//
+//
+//        virtual void linearizeOplus();
+//
+//        Vector3d cam_project(const Vector3d & trans_xyz, const float &bf) const;
+//
+//        double fx, fy, cx, cy, bf;
+//    };
+
+    //<error dimension, obser dimension, vertex, vertex>
+    class EdgeSE3ProjectLine
+            : public g2o::BaseBinaryEdge<2, Eigen::Vector4d, g2o::VertexSE3Expmap, LineVertex> {
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        virtual void computeError() override {
+            //world to cam
+            const g2o::VertexSE3Expmap *v0 = static_cast<const g2o::VertexSE3Expmap *>(_vertices[0]);
+            //Line
+            const LineVertex *v1 = static_cast<const LineVertex *>(_vertices[1]);
+            Eigen::Vector3d Ps = v1->estimate().head(3);//3d Start Point
+            Eigen::Vector3d Pe = v1->estimate().tail(3);//3d End Point
+            //transform world Line to Cam by transform point, then project to image
+            Eigen::Vector2d ps_2d = cam_project(v0->estimate().map(Ps));//estimated 2d start point
+            Eigen::Vector2d pe_2d = cam_project(v0->estimate().map(Pe));//estimated 2d end point
+            //Step 1 distance of projected 3D endpoint to observed 2d lines
+            //1.2 distance of observed line
+            float x1 = _measurement[0], y1 = _measurement[1];
+            float x2 = _measurement[2], y2 = _measurement[3];
+            float A = y2 - y1, B = x1 - x2, C = x2 * y1 - x1 *
+                                                          y2; //https://math.stackexchange.com/questions/422602/convert-two-points-to-line-eq-ax-by-c-0
+            double dis_end0 = abs(A * ps_2d[0] + B * ps_2d[1] + C) / sqrt(A * A + B * B);
+            double dis_end1 = abs(A * pe_2d[0] + B * pe_2d[1] + C) / sqrt(A * A + B * B);
+            //Step 2 distance of observed 2d endpoints to projected 3D line
+            float A_pjt = pe_2d[1] - ps_2d[1];
+            float B_pjt = ps_2d[0] - pe_2d[0];
+            float C_pjt = pe_2d[0] * ps_2d[1] - ps_2d[0] * pe_2d[1];
+            double dis_pjt0 = abs(A_pjt * x1 + B_pjt * y1 + C_pjt) / sqrt(A_pjt * A_pjt + B_pjt * B_pjt);
+            double dis_pjt1 = abs(A_pjt * x2 + B_pjt * y2 + C_pjt) / sqrt(A_pjt * A_pjt + B_pjt * B_pjt);
+            //Step 3 rest process
+            _error[0] = dis_end0 + dis_end1;
+            _error[1] = dis_pjt0 + dis_pjt1;
+        }
+
+        Eigen::Vector2d cam_project(const Eigen::Vector3d &trans_xyz) const;
+
+        Eigen::Vector2d project2d(const Eigen::Vector3d &v) const;
+
+
+        virtual bool read(std::istream &is){}
+
+        virtual bool write(std::ostream &os) const{}
+
+        double fx, fy, cx, cy;
+    };
+
+
+    Eigen::Vector2d EdgeSE3ProjectLine::project2d(const Eigen::Vector3d &v) const {
+        Eigen::Vector2d res;
+        res(0) = v(0) / v(2);
+        res(1) = v(1) / v(2);
+        return res;
+    }
+
+    Eigen::Vector2d EdgeSE3ProjectLine::cam_project(const Eigen::Vector3d &trans_xyz) const {
+        Eigen::Vector2d proj = project2d(trans_xyz);
+        Eigen::Vector2d res;
+        res[0] = proj[0] * fx + cx;
+        res[1] = proj[1] * fy + cy;
+        return res;
+    }
 
 /**
  * @brief BA for all pMap MapPints and keyframes.
@@ -47,12 +208,454 @@ namespace ORB_SLAM2
  * @param nLoopKF
  * @param bRobust
  */
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
-{
-    vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
-    vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
-}
+    void Optimizer::GlobalBundleAdjustemnt(Map *pMap, int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
+                                           const bool bRobust) {
+        vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
+        vector<MapPoint *> vpMP = pMap->GetAllMapPoints();
+        vector<MapLine *> vpML = pMap->GetAllMapLines();
+
+        BundleAdjustment(vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
+        //BundleAdjustment(vpKFs, vpMP, vpML, nIterations, pbStopFlag, nLoopKF, bRobust);
+    }
+
+/**
+ * Global Bundle Adjustment function - with Lines
+ * @param vpKFs : vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+ * @param vpMP : vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
+ * @param vpML : vector<MapLine*> vpML = pMap->GetAllMapLines();
+ * @param nIterations : iteration times, default 5
+ * @param pbStopFlag : stop Flag, default NULL
+ * @param nLoopKF : default 0
+ * @param bRobust : default true
+ */
+    void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
+                                     const vector<MapLine *> &vpML,
+                                     int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
+                                     const bool bRobust) {
+        ///Step 1 preparation
+        //Flag to tell if this MP not included
+        vector<bool> vbNotIncludedMP;
+        vbNotIncludedMP.resize(vpMP.size());
+        ///Added Module --- Lines
+        vector<bool> vbNotIncludedML;
+        vbNotIncludedML.resize(vpML.size());
+
+        //define a sparse optimizer and define a (linear) block solver
+        g2o::SparseOptimizer optimizer;
+        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
+        linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+        //define a ptr to solver
+        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+        //define the solver function, passing solver ptr to it.
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+        optimizer.setAlgorithm(solver);
+        //optimizer.setVerbose(true);
+
+        if (pbStopFlag)
+            optimizer.setForceStopFlag(pbStopFlag);
+
+        vector<g2o::SE3Quat > initPoses;
+        vector<g2o::VertexSE3Expmap *> vpSE3s;
+        long unsigned int maxKFid = 0;
+        ///Step 2 add Vertex keyframe, vertex mappoint and related edges
+//    //write down Tcw---init BA only has one keyframe
+//    ofstream writer;
+//    writer.open("initBATcw.txt", ios::out);
+        // Set KeyFrame vertices
+        //Step 2.1 add vertex keyframe
+        for (size_t i = 0; i < vpKFs.size(); i++) {
+            KeyFrame *pKF = vpKFs[i];
+            if (pKF->isBad())
+                continue;
+            //new a VertexSE3 for this KeyFrame
+            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+            vSE3->setEstimate(Converter::toSE3Quat(pKF->GetPose()));//Tcw
+
+            vSE3->setId(pKF->mnId);//Vertex ID is KeyFrame ID
+            //cout<<"add pose vertex "<<pKF->mnId<<endl;
+            vSE3->setFixed(pKF->mnId == 0);//Fix first Keyframe
+            optimizer.addVertex(vSE3);
+            if (pKF->mnId > maxKFid)//record the Largest Keyframe ID.
+                maxKFid = pKF->mnId;
+
+            initPoses.push_back(Converter::toSE3Quat(pKF->GetPose()));//store it for later
+            vpSE3s.push_back(vSE3);
+
+//        writer << pKF->GetPose() << endl;
+//        cout<<"wrote "<<pKF->mnId<<endl;
+//        cout<<pKF->GetPose()<<endl;
+        }
+//    writer.close();
+
+        const float thHuber2D = sqrt(5.99);
+        const float thHuber3D = sqrt(7.815);
+
+        //write down monocular vertices
+        ofstream writer1;
+        writer1.open("vertices.txt", ios::out);
+        ofstream writer2;
+        writer2.open("edges.txt", ios::out);
+
+        const float deltaMono = sqrt(5.991);
+        const float deltaStereo = sqrt(78.15);//sqrt(7.815);
+        vector<g2o::EdgeSE3ProjectXYZ*> vpEdgesMonos;
+        vector<g2o::EdgeStereoSE3ProjectXYZ*> vpEdgesStereos;
+
+        long unsigned int maxPtid = 0;
+        // Set MapPoint vertices
+        //Step 2.2 add map points
+        for (size_t i = 0; i < vpMP.size(); i++) {
+            MapPoint *pMP = vpMP[i];
+            if (pMP->isBad())
+                continue;
+            //new a VertexSBAPointXYZ for Mappoint
+            g2o::VertexSBAPointXYZ *vPoint = new g2o::VertexSBAPointXYZ();
+            vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));//T^world
+            const int id = pMP->mnId + maxKFid + 1;//id continuous from above Pose Vertext ID + mappoint ID
+            vPoint->setId(id);
+            //cout<<"Add map point vertex "<<id<<" ";
+            //When G2O do BA, need schur all mapPoints, otherwise error
+            //because of using g2o::LinearSolver<BalBlockSolver::PoseMatrixType> type of linearsolver
+            //其中模板参数当中的位姿矩阵类型在程序中未相机姿态参数的维度，于是BA当中schur消元后解得线性方程组必须是只含相机姿态变量。
+            //ceres没有这个限制。
+            vPoint->setMarginalized(true);
+            optimizer.addVertex(vPoint);
+            if(pMP->mnId > maxPtid)
+                maxPtid = pMP->mnId;
+            //write down vertex
+            writer1 << id << " " << Converter::toVector3d(pMP->GetWorldPos()).transpose() << endl;
+//        cout<<id<<" "<<Converter::toVector3d(pMP->GetWorldPos()).transpose()<<endl;
+
+            //return map<KeyFrame*,size_t>
+            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+            int nEdges = 0;
+            //SET EDGES
+            //Step 3: add edges
+            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(); mit != observations.end(); mit++) {
+                //get the keyframe that oberserved this mappoint
+                KeyFrame *pKF = mit->first;
+                if (pKF->isBad() || pKF->mnId > maxKFid)
+                    continue;
+
+                nEdges++;
+                //get the related keypoint by index
+                const cv::KeyPoint &kpUn = pKF->mvKeysUn[mit->second];
+
+                if (pKF->mvuRight[mit->second] < 0)//if monocular observation
+                {
+                    Eigen::Matrix<double, 2, 1> obs;
+                    obs << kpUn.pt.x, kpUn.pt.y;
+                    //new a EdgeSE3ProjectXYZ edge for this observation
+                    g2o::EdgeSE3ProjectXYZ *e = new g2o::EdgeSE3ProjectXYZ();
+
+                    e->setVertex(0,
+                                 dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));//id given above
+                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(
+                            pKF->mnId)));//vertex id is keyframe id
+                    e->setMeasurement(obs);
+                    const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);//using sigma^2 avoid negative number
+
+                    //write down edges
+                    writer2 << id << " " << pKF->mnId << " " << obs.transpose() << endl;
+//                cout<<id<<" "<<pKF->mnId<<" "<<obs.transpose()<<endl;
+
+                    if (bRobust) {
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(thHuber2D);
+                    }
+
+                    e->fx = pKF->fx;
+                    e->fy = pKF->fy;
+                    e->cx = pKF->cx;
+                    e->cy = pKF->cy;
+
+                    optimizer.addEdge(e);
+                    vpEdgesMonos.push_back(e);
+                } else//if stereo observation
+                {
+                    Eigen::Matrix<double, 3, 1> obs;
+                    const float kp_ur = pKF->mvuRight[mit->second];
+                    obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+                    //new a EdgeStereoSE3ProjectXYZ edge
+                    g2o::EdgeStereoSE3ProjectXYZ *e = new g2o::EdgeStereoSE3ProjectXYZ();
+
+                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
+                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKF->mnId)));
+                    e->setMeasurement(obs);
+                    const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+                    Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+                    e->setInformation(Info);
+
+                    if (bRobust) {
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(thHuber3D);
+                    }
+
+                    e->fx = pKF->fx;
+                    e->fy = pKF->fy;
+                    e->cx = pKF->cx;
+                    e->cy = pKF->cy;
+                    e->bf = pKF->mbf;//additional mbf parameter
+
+                    optimizer.addEdge(e);
+                    vpEdgesStereos.push_back(e);
+                }
+            }
+
+            if (nEdges == 0)//if no observation remove this Vertex
+            {
+                optimizer.removeVertex(vPoint);
+                vbNotIncludedMP[i] = true;//i-th Mappoint is not included
+            } else {
+                vbNotIncludedMP[i] = false;
+            }
+        }
+
+        vector<EdgeSE3ProjectLine*> vpEdgesLines;
+        long unsigned int maxLnid = 0;
+        //Step 2.3 add map lines
+        for (size_t i = 0; i < vpML.size(); i++) {
+            //Step 2.3.1 add Line Vertex
+            cv::Mat LineWP = vpML[i]->GetWorldPos();
+            Vector6d lwp = Vector6d(LineWP.at<float>(0, 0), LineWP.at<float>(1, 0), LineWP.at<float>(2, 0),
+                                    LineWP.at<float>(0, 1), LineWP.at<float>(1, 1), LineWP.at<float>(2, 1));
+            LineVertex *vLine = new LineVertex();
+            vLine->setEstimate(lwp);
+            long unsigned int vertexID = maxKFid + maxPtid + vpML[i]->mnId + 1 + 1;
+            vLine->setId(vertexID);
+            //cout<<"add line vertex "<<vertexID<<" "<<endl;
+            if (vpML[i]->mnId > maxLnid)
+                maxLnid = vpML[i]->mnId;
+            optimizer.addVertex(vLine);
+            //cout << "with estimate " << lwp.transpose() << endl;
+            //Step 2.3.2 add Line Project Edge
+            int nEdges = 0;
+            //return map<KeyFrame*,size_t>
+            const map<KeyFrame *, size_t> observations = vpML[i]->GetObservations();
+            for (auto oit = observations.begin();oit!=observations.end();oit++) {
+                //get the keyframe that observes this mapline
+                KeyFrame *pKF = oit->first;
+                if (pKF->isBad() || pKF->mnId > maxKFid)
+                    continue;
+                nEdges++;
+                //get the related keypoint by index
+                const mLine & thisLine = pKF->mvLines[oit->second];
+                Eigen::Vector4d measureEndPts{thisLine.LSD.startPointX,thisLine.LSD.startPointY,
+                                              thisLine.LSD.endPointX,thisLine.LSD.endPointY};
+
+                EdgeSE3ProjectLine *eline = new EdgeSE3ProjectLine();
+                eline->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKF->mnId)));
+                eline->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(vertexID)));
+                eline->setMeasurement(measureEndPts);
+                Eigen::Matrix2d Info = Eigen::Matrix2d::Identity();
+                eline->setInformation(Info);
+                if (bRobust) {
+                    g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                    eline->setRobustKernel(rk);
+                    rk->setDelta(thHuber3D*2);
+                }
+                //cout<<"add a edge connecting vertex "<<pKF->mnId<<" and "<<vertexID<<endl;
+                //cout<<"with measurement "<<measureEndPts.transpose()<<endl;
+
+                eline->fx = pKF->fx;
+                eline->fy = pKF->fy;
+                eline->cx = pKF->cx;
+                eline->cy = pKF->cy;
+                optimizer.addEdge(eline);
+                vpEdgesLines.push_back(eline);
+            }
+            if (nEdges == 0)//if no observation remove this Vertex
+            {
+                optimizer.removeVertex(vLine);
+                vbNotIncludedML[i] = true;//i-th Mappoint is not included
+            } else {
+                vbNotIncludedML[i] = false;
+            }
+        }
+
+        writer1.close();
+        writer2.close();
+
+        ///Step 2.2 run optimization
+        // Optimize!
+//        optimizer.initializeOptimization();
+//        optimizer.optimize(nIterations);//nIterations
+        //Added Module -
+        int nBad = 0;
+        for (int i = 0; i < 5; i++) {
+            //cout << "iteration " << i << endl;
+            //reset the Verte SE3 poses
+            for (int j = 0; j < vpSE3s.size(); j++) {
+                vpSE3s[j]->setEstimate(initPoses[j]);
+            }
+            optimizer.initializeOptimization(0);
+            optimizer.optimize(nIterations);
+            //cout<<"result "<<endl;
+//            for (int j = 0; j < vpSE3s.size(); j++) {
+//                cout<<vpSE3s[j]->estimate().inverse();
+//            }
+            nBad = 0;
+            //check for outlier
+            int monoOutlierNum  = 0, stereoOutlierNum = 0,lineOutlierNum = 0, planeOutlierNum = 0;
+            for(int j=0;j<vpEdgesMonos.size();j++){
+                g2o::EdgeSE3ProjectXYZ *e = vpEdgesMonos[j];
+                e->computeError();
+                const float chi2 = e->chi2();//error * infomatrix * error
+                if(sqrt(chi2)>thHuber2D){
+                    e->setLevel(1);
+                    nBad++;
+                    //cout<<"outlier mono edge index "<<j<<" chi "<<chi2<<endl;
+                    monoOutlierNum++;
+                }else
+                    e->setLevel(0);
+            }
+            for(int j=0;j<vpEdgesStereos.size();j++){
+                g2o::EdgeStereoSE3ProjectXYZ *e = vpEdgesStereos[j];
+                e->computeError();
+                const float chi2 = e->chi2();//error * infomatrix * error
+                if(sqrt(chi2)>thHuber3D){
+                    e->setLevel(1);
+                    nBad++;
+                    //cout<<"outlier mono edge index "<<j<<" chi "<<chi2<<endl;
+                    stereoOutlierNum++;
+                }else
+                    e->setLevel(0);
+            }
+            for(int j=0;j<vpEdgesLines.size();j++){
+                EdgeSE3ProjectLine *e = vpEdgesLines[j];
+                e->computeError();
+                const float chi2 = e->chi2();//error * infomatrix * error
+                if(sqrt(chi2)>thHuber3D*2){
+                    e->setLevel(1);
+                    nBad++;
+                    //cout<<"outlier mono edge index "<<j<<" chi "<<chi2<<endl;
+                    lineOutlierNum++;
+                }else
+                    e->setLevel(0);
+            }
+//            cout<<"mono outlier num "<<monoOutlierNum<<"/"<<vpEdgesMonos.size()
+//                <<" stereo outlier num "<<stereoOutlierNum<<"/"<<vpEdgesStereos.size()
+//                <<" line outlier num "<<lineOutlierNum<<"/"<<vpEdgesLines.size()<<endl;
+        }
+
+            //check for outlier
+            int monoOutlierNum  = 0, stereoOutlierNum = 0,lineOutlierNum = 0, planeOutlierNum = 0;
+            for(int j=0;j<vpEdgesMonos.size();j++){
+                g2o::EdgeSE3ProjectXYZ *e = vpEdgesMonos[j];
+                e->computeError();
+                const float chi2 = e->chi2();//error * infomatrix * error
+                if(sqrt(chi2)>thHuber2D){
+                    e->setLevel(1);
+                    nBad++;
+                    monoOutlierNum++;
+                }else
+                    e->setLevel(0);
+                //cout<<"mono edge index "<<j<<" chi "<<chi2<<endl;
+            }
+            for(int j=0;j<vpEdgesStereos.size();j++){
+                g2o::EdgeStereoSE3ProjectXYZ *e = vpEdgesStereos[j];
+                e->computeError();
+                const float chi2 = e->chi2();//error * infomatrix * error
+                if(sqrt(chi2)>thHuber2D*2){
+                    e->setLevel(1);
+                    nBad++;
+                    //cout<<"outlier mono edge index "<<j<<" chi "<<chi2<<endl;
+                    stereoOutlierNum++;
+                }else
+                    e->setLevel(0);
+                //cout<<"stereo edge index "<<j<<" chi "<<chi2<<endl;
+            }
+            for(int j=0;j<vpEdgesLines.size();j++){
+                EdgeSE3ProjectLine *e = vpEdgesLines[j];
+                e->computeError();
+                const float chi2 = e->chi2();//error * infomatrix * error
+                if(sqrt(chi2)>thHuber2D*2){
+                    e->setLevel(1);
+                    nBad++;
+                    //cout<<"outlier mono edge index "<<j<<" chi "<<chi2<<endl;
+                    lineOutlierNum++;
+                }else
+                    e->setLevel(0);
+                //cout<<"line edge index "<<j<<" chi "<<chi2<<endl;
+            }
+
+        ///Step 3 Recover optimized data
+        //Recover optimized data
+
+        //Keyframes
+        for (size_t i = 0; i < vpKFs.size(); i++) {
+            KeyFrame *pKF = vpKFs[i];
+            if (pKF->isBad())
+                continue;
+            //locate the Vertex by index which is the Keyframe ID
+            g2o::VertexSE3Expmap *vSE3 = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
+            g2o::SE3Quat SE3quat = vSE3->estimate();//then get the estimate
+            if (nLoopKF == 0) {// only when initmap
+                pKF->SetPose(Converter::toCvMat(SE3quat));
+                cout <<"KeyFrame ID "<<pKF->mnId<<" GBA result " << endl << Converter::toCvMat(SE3quat).inv() << endl;
+            } else {
+                //normal case. write otpmized pose into mTcwGBA
+                pKF->mTcwGBA.create(4, 4, CV_32F);//return the same data unless creating a larger matrix, return all 0,
+                Converter::toCvMat(SE3quat).copyTo(pKF->mTcwGBA);//store the estimate in that member
+                pKF->mnBAGlobalForKF = nLoopKF;//store the number of nLoopKF
+            }
+        }
+
+        //Points
+        for (size_t i = 0; i < vpMP.size(); i++) {
+            if (vbNotIncludedMP[i])
+                continue;
+
+            MapPoint *pMP = vpMP[i];
+
+            if (pMP->isBad())
+                continue;
+
+            g2o::VertexSBAPointXYZ *vPoint = static_cast<g2o::VertexSBAPointXYZ *>(optimizer.vertex(
+                    pMP->mnId + maxKFid + 1));
+
+            if (nLoopKF == 0) {
+                pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
+                pMP->UpdateNormalAndDepth();
+            } else {
+                pMP->mPosGBA.create(3, 1, CV_32F);
+                Converter::toCvMat(vPoint->estimate()).copyTo(pMP->mPosGBA);
+                pMP->mnBAGlobalForKF = nLoopKF;
+            }
+        }
+
+        //Line
+        for (size_t i = 0; i < vpML.size(); i++) {
+            if (vbNotIncludedML[i])
+                continue;
+
+            MapLine *pML = vpML[i];
+            if (pML->isBad())
+                continue;
+
+            LineVertex *vLine = static_cast<LineVertex *>(optimizer.vertex(maxKFid + maxPtid + vpML[i]->mnId + 1 + 1));
+            if (nLoopKF == 0) {
+                cv::Mat worldPose(3,2,CV_32F);
+                worldPose.at<float>(0,0) = vLine->estimate()[0];worldPose.at<float>(1,0) = vLine->estimate()[1];worldPose.at<float>(2,0) = vLine->estimate()[2];
+                worldPose.at<float>(0,1) = vLine->estimate()[3];worldPose.at<float>(1,1) = vLine->estimate()[4];worldPose.at<float>(2,1) = vLine->estimate()[5];
+                pML->SetWorldPos(worldPose);
+                //pML->UpdateNormalAndDepth();
+            } else {
+                pML->mPosGBA.create(3, 2, CV_32F);
+                cv::Mat worldPose(3,2,CV_32F);
+                worldPose.at<float>(0,0) = vLine->estimate()[0];worldPose.at<float>(1,0) = vLine->estimate()[1];worldPose.at<float>(2,0) = vLine->estimate()[2];
+                worldPose.at<float>(0,1) = vLine->estimate()[3];worldPose.at<float>(1,1) = vLine->estimate()[4];worldPose.at<float>(2,1) = vLine->estimate()[5];
+                //Converter::toCvMat(vLine->estimate()).copyTo(pML->mPosGBA);
+                worldPose.copyTo(pML->mPosGBA);
+                pML->mnBAGlobalForKF = nLoopKF;
+            }
+        }
+
+    }
+
 
 /**
  * Global Bundle Adjustment function
@@ -63,238 +666,231 @@ void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopF
  * @param nLoopKF : default 0
  * @param bRobust : default true
  */
-void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
-                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
-{
-    ///Step 1 preparation
-    //Flag to tell if this MP not included
-    vector<bool> vbNotIncludedMP;
-    vbNotIncludedMP.resize(vpMP.size());
+    void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
+                                     int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
+                                     const bool bRobust) {
+        ///Step 1 preparation
+        //Flag to tell if this MP not included
+        vector<bool> vbNotIncludedMP;
+        vbNotIncludedMP.resize(vpMP.size());
 
-    //define a sparse optimizer and define a (linear) block solver
-    g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
+        //define a sparse optimizer and define a (linear) block solver
+        g2o::SparseOptimizer optimizer;
+        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
 
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-    //define a ptr to solver
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-    //define the solver function, passing solver ptr to it.
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
-    optimizer.setAlgorithm(solver);
+        linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+        //define a ptr to solver
+        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+        //define the solver function, passing solver ptr to it.
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+        optimizer.setAlgorithm(solver);
 
-    if(pbStopFlag)
-        optimizer.setForceStopFlag(pbStopFlag);
+        if (pbStopFlag)
+            optimizer.setForceStopFlag(pbStopFlag);
 
-    long unsigned int maxKFid = 0;
+        long unsigned int maxKFid = 0;
 
-    ///Step 2 add Vertex keyframe, vertex mappoint and related edges
+        ///Step 2 add Vertex keyframe, vertex mappoint and related edges
 //    //write down Tcw---init BA only has one keyframe
 //    ofstream writer;
 //    writer.open("initBATcw.txt", ios::out);
-    // Set KeyFrame vertices
-    //Step 2.1 add vertex keyframe
-    for(size_t i=0; i<vpKFs.size(); i++)
-    {
-        KeyFrame* pKF = vpKFs[i];
-        if(pKF->isBad())
-            continue;
-        //new a VertexSE3 for this KeyFrame
-        g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pKF->GetPose()));//Tcw
-        vSE3->setId(pKF->mnId);//Vertex ID is KeyFrame ID
-        vSE3->setFixed(pKF->mnId==0);//Fix first Keyframe
-        optimizer.addVertex(vSE3);
-        if(pKF->mnId>maxKFid)//record the Largest Keyframe ID.
-            maxKFid=pKF->mnId;
+        // Set KeyFrame vertices
+        //Step 2.1 add vertex keyframe
+        for (size_t i = 0; i < vpKFs.size(); i++) {
+            KeyFrame *pKF = vpKFs[i];
+            if (pKF->isBad())
+                continue;
+            //new a VertexSE3 for this KeyFrame
+            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+            vSE3->setEstimate(Converter::toSE3Quat(pKF->GetPose()));//Tcw
+            vSE3->setId(pKF->mnId);//Vertex ID is KeyFrame ID
+            vSE3->setFixed(pKF->mnId == 0);//Fix first Keyframe
+            optimizer.addVertex(vSE3);
+            if (pKF->mnId > maxKFid)//record the Largest Keyframe ID.
+                maxKFid = pKF->mnId;
 
 //        writer << pKF->GetPose() << endl;
 //        cout<<"wrote "<<pKF->mnId<<endl;
 //        cout<<pKF->GetPose()<<endl;
 
-    }
+        }
 //    writer.close();
 
-    const float thHuber2D = sqrt(5.99);
-    const float thHuber3D = sqrt(7.815);
+        const float thHuber2D = sqrt(5.99);
+        const float thHuber3D = sqrt(7.815);
 
 
-    //write down monocular vertices
-    ofstream writer1;
-    writer1.open("vertices.txt",ios::out);
-    ofstream writer2;
-    writer2.open("edges.txt", ios::out);
+        //write down monocular vertices
+        ofstream writer1;
+        writer1.open("vertices.txt", ios::out);
+        ofstream writer2;
+        writer2.open("edges.txt", ios::out);
 
-    // Set MapPoint vertices
-    //Step 2.2 add mappoints
-    for(size_t i=0; i<vpMP.size(); i++)
-    {
-        MapPoint* pMP = vpMP[i];
-        if(pMP->isBad())
-            continue;
-        //new a VertexSBAPointXYZ for Mappoint
-        g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
-        vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));//T^world
-        const int id = pMP->mnId+maxKFid+1;//id continuous from above Pose Vertext ID + mappoint ID
-        vPoint->setId(id);
-        //When G2O do BA, need schur all mapPoints, otherwise error
-        //because of using g2o::LinearSolver<BalBlockSolver::PoseMatrixType> type of linearsolver
-        //其中模板参数当中的位姿矩阵类型在程序中未相机姿态参数的维度，于是BA当中schur消元后解得线性方程组必须是只含相机姿态变量。
-        //ceres没有这个限制。
-        vPoint->setMarginalized(true);
+        // Set MapPoint vertices
+        //Step 2.2 add mappoints
+        for (size_t i = 0; i < vpMP.size(); i++) {
+            MapPoint *pMP = vpMP[i];
+            if (pMP->isBad())
+                continue;
+            //new a VertexSBAPointXYZ for Mappoint
+            g2o::VertexSBAPointXYZ *vPoint = new g2o::VertexSBAPointXYZ();
+            vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));//T^world
+            const int id = pMP->mnId + maxKFid + 1;//id continuous from above Pose Vertext ID + mappoint ID
+            vPoint->setId(id);
+            //When G2O do BA, need schur all mapPoints, otherwise error
+            //because of using g2o::LinearSolver<BalBlockSolver::PoseMatrixType> type of linearsolver
+            //其中模板参数当中的位姿矩阵类型在程序中未相机姿态参数的维度，于是BA当中schur消元后解得线性方程组必须是只含相机姿态变量。
+            //ceres没有这个限制。
+            vPoint->setMarginalized(true);
 //        //note to remove
 //        if(i==1||i==3||i==5)
 //            vPoint->setFixed(true);
-        optimizer.addVertex(vPoint);
+            optimizer.addVertex(vPoint);
 
-        //write down vertex
-        writer1<<id<<" "<<Converter::toVector3d(pMP->GetWorldPos()).transpose()<<endl;
+            //write down vertex
+            writer1 << id << " " << Converter::toVector3d(pMP->GetWorldPos()).transpose() << endl;
 //        cout<<id<<" "<<Converter::toVector3d(pMP->GetWorldPos()).transpose()<<endl;
 
-        //return map<KeyFrame*,size_t>
-        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+            //return map<KeyFrame*,size_t>
+            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
 
-        int nEdges = 0;
-        //SET EDGES
-        //Step 3: add edges
-        for(map<KeyFrame*,size_t>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
-        {
-            //get the keyframe that oberserved this mappoint
-            KeyFrame* pKF = mit->first;
-            if(pKF->isBad() || pKF->mnId>maxKFid)
-                continue;
+            int nEdges = 0;
+            //SET EDGES
+            //Step 3: add edges
+            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(); mit != observations.end(); mit++) {
+                //get the keyframe that oberserved this mappoint
+                KeyFrame *pKF = mit->first;
+                if (pKF->isBad() || pKF->mnId > maxKFid)
+                    continue;
 
-            nEdges++;
-            //get the related keypoint by index
-            const cv::KeyPoint &kpUn = pKF->mvKeysUn[mit->second];
+                nEdges++;
+                //get the related keypoint by index
+                const cv::KeyPoint &kpUn = pKF->mvKeysUn[mit->second];
 
-            if(pKF->mvuRight[mit->second]<0)//if monocular observation
-            {
-                Eigen::Matrix<double,2,1> obs;
-                obs << kpUn.pt.x, kpUn.pt.y;
-                //new a EdgeSE3ProjectXYZ edge for this observation
-                g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
+                if (pKF->mvuRight[mit->second] < 0)//if monocular observation
+                {
+                    Eigen::Matrix<double, 2, 1> obs;
+                    obs << kpUn.pt.x, kpUn.pt.y;
+                    //new a EdgeSE3ProjectXYZ edge for this observation
+                    g2o::EdgeSE3ProjectXYZ *e = new g2o::EdgeSE3ProjectXYZ();
 
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));//id given above
-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));//vertex id is keyframe id
-                e->setMeasurement(obs);
-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
-                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);//using sigma^2 avoid negative number
+                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));//id given above
+                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKF->mnId)));//vertex id is keyframe id
+                    e->setMeasurement(obs);
+                    const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);//using sigma^2 avoid negative number
 
-                //write down edges
-                writer2<<id<<" "<<pKF->mnId<<" "<<obs.transpose()<<endl;
+                    //write down edges
+                    writer2 << id << " " << pKF->mnId << " " << obs.transpose() << endl;
 //                cout<<id<<" "<<pKF->mnId<<" "<<obs.transpose()<<endl;
 
-                if(bRobust)
+                    if (bRobust) {
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(thHuber2D);
+                    }
+
+                    e->fx = pKF->fx;
+                    e->fy = pKF->fy;
+                    e->cx = pKF->cx;
+                    e->cy = pKF->cy;
+
+                    optimizer.addEdge(e);
+                } else//if stereo observation
                 {
-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                    e->setRobustKernel(rk);
-                    rk->setDelta(thHuber2D);
+                    Eigen::Matrix<double, 3, 1> obs;
+                    const float kp_ur = pKF->mvuRight[mit->second];
+                    obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+                    //new a EdgeStereoSE3ProjectXYZ edge
+                    g2o::EdgeStereoSE3ProjectXYZ *e = new g2o::EdgeStereoSE3ProjectXYZ();
+
+                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
+                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKF->mnId)));
+                    e->setMeasurement(obs);
+                    const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+                    Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+                    e->setInformation(Info);
+
+                    if (bRobust) {
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(thHuber3D);
+                    }
+
+                    e->fx = pKF->fx;
+                    e->fy = pKF->fy;
+                    e->cx = pKF->cx;
+                    e->cy = pKF->cy;
+                    e->bf = pKF->mbf;//additional mbf parameter
+
+                    optimizer.addEdge(e);
                 }
-
-                e->fx = pKF->fx;
-                e->fy = pKF->fy;
-                e->cx = pKF->cx;
-                e->cy = pKF->cy;
-
-                optimizer.addEdge(e);
             }
-            else//if stereo observation
+
+            if (nEdges == 0)//if no observation remove this Vertex
             {
-                Eigen::Matrix<double,3,1> obs;
-                const float kp_ur = pKF->mvuRight[mit->second];
-                obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
-                //new a EdgeStereoSE3ProjectXYZ edge
-                g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
-
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
-                e->setMeasurement(obs);
-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
-                e->setInformation(Info);
-
-                if(bRobust)
-                {
-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                    e->setRobustKernel(rk);
-                    rk->setDelta(thHuber3D);
-                }
-
-                e->fx = pKF->fx;
-                e->fy = pKF->fy;
-                e->cx = pKF->cx;
-                e->cy = pKF->cy;
-                e->bf = pKF->mbf;//additional mbf parameter
-
-                optimizer.addEdge(e);
+                optimizer.removeVertex(vPoint);
+                vbNotIncludedMP[i] = true;//i-th Mappoint is not included
+            } else {
+                vbNotIncludedMP[i] = false;
             }
         }
 
-        if(nEdges==0)//if no observation remove this Vertex
-        {
-            optimizer.removeVertex(vPoint);
-            vbNotIncludedMP[i]=true;//i-th Mappoint is not included
+        writer1.close();
+        writer2.close();
+
+        ///Step 2.2 run optimization
+        // Optimize!
+        optimizer.initializeOptimization();
+        optimizer.optimize(nIterations);
+
+
+        ///Step 3 Recover optimized data
+        //Recover optimized data
+
+        //Keyframes
+        for (size_t i = 0; i < vpKFs.size(); i++) {
+            KeyFrame *pKF = vpKFs[i];
+            if (pKF->isBad())
+                continue;
+            //locate the Vertex by index which is the Keyframe ID
+            g2o::VertexSE3Expmap *vSE3 = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
+            g2o::SE3Quat SE3quat = vSE3->estimate();//then get the estimate
+            if (nLoopKF == 0) {// only when initmap
+                pKF->SetPose(Converter::toCvMat(SE3quat));
+                cout << "GBA result " << endl << Converter::toCvMat(SE3quat) << endl;
+            } else {
+                //normal case. write otpmized pose into mTcwGBA
+                pKF->mTcwGBA.create(4, 4, CV_32F);//return the same data unless creating a larger matrix, return all 0,
+                Converter::toCvMat(SE3quat).copyTo(pKF->mTcwGBA);//store the estimate in that member
+                pKF->mnBAGlobalForKF = nLoopKF;//store the number of nLoopKF
+            }
         }
-        else
-        {
-            vbNotIncludedMP[i]=false;
+
+        //Points
+        for (size_t i = 0; i < vpMP.size(); i++) {
+            if (vbNotIncludedMP[i])
+                continue;
+
+            MapPoint *pMP = vpMP[i];
+
+            if (pMP->isBad())
+                continue;
+
+            g2o::VertexSBAPointXYZ *vPoint = static_cast<g2o::VertexSBAPointXYZ *>(optimizer.vertex(
+                    pMP->mnId + maxKFid + 1));
+
+            if (nLoopKF == 0) {
+                pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
+                pMP->UpdateNormalAndDepth();
+            } else {
+                pMP->mPosGBA.create(3, 1, CV_32F);
+                Converter::toCvMat(vPoint->estimate()).copyTo(pMP->mPosGBA);
+                pMP->mnBAGlobalForKF = nLoopKF;
+            }
         }
+
     }
-
-    writer1.close();
-    writer2.close();
-
-    ///Step 2.2 run optimization
-    // Optimize!
-    optimizer.initializeOptimization();
-    optimizer.optimize(nIterations);
-
-
-    ///Step 3 Recover optimized data
-    //Recover optimized data
-
-    //Keyframes
-    for(size_t i=0; i<vpKFs.size(); i++){
-        KeyFrame* pKF = vpKFs[i];
-        if(pKF->isBad())
-            continue;
-        //locate the Vertex by index which is the Keyframe ID
-        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
-        g2o::SE3Quat SE3quat = vSE3->estimate();//then get the estimate
-        if (nLoopKF == 0) {// only when initmap
-            pKF->SetPose(Converter::toCvMat(SE3quat));
-            cout<<"GBA result "<<endl<<Converter::toCvMat(SE3quat)<<endl;
-        } else {
-            //normal case. write otpmized pose into mTcwGBA
-            pKF->mTcwGBA.create(4, 4, CV_32F);//return the same data unless creating a larger matrix, return all 0,
-            Converter::toCvMat(SE3quat).copyTo(pKF->mTcwGBA);//store the estimate in that member
-            pKF->mnBAGlobalForKF = nLoopKF;//store the number of nLoopKF
-        }
-    }
-
-    //Points
-    for(size_t i=0; i<vpMP.size(); i++){
-        if(vbNotIncludedMP[i])
-            continue;
-
-        MapPoint* pMP = vpMP[i];
-
-        if(pMP->isBad())
-            continue;
-
-        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-
-        if (nLoopKF == 0) {
-            pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-            pMP->UpdateNormalAndDepth();
-        } else {
-            pMP->mPosGBA.create(3, 1, CV_32F);
-            Converter::toCvMat(vPoint->estimate()).copyTo(pMP->mPosGBA);
-            pMP->mnBAGlobalForKF = nLoopKF;
-        }
-    }
-
-}
 
 /**
  * @brief Pose only optimization
@@ -313,244 +909,228 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
  * @param pFrame Frame
  * @return inliers数量
 */
-int Optimizer::PoseOptimization(Frame *pFrame)
-{
-    //*Step 1: 构造g2o优化器,BlockSolver_6_3：位姿_PoseDim 6维 路标 _LandmarkDim 3维
-    g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
+    int Optimizer::PoseOptimization(Frame *pFrame) {
+        //*Step 1: 构造g2o优化器,BlockSolver_6_3：位姿_PoseDim 6维 路标 _LandmarkDim 3维
+        g2o::SparseOptimizer optimizer;
+        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
 
-    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
+        linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
 
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
 
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
-    optimizer.setAlgorithm(solver);
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+        optimizer.setAlgorithm(solver);
 
-    int nInitialCorrespondences=0;
+        int nInitialCorrespondences = 0;
 
-    // Set Frame vertex
-    //*Step 2: 添加顶点,待优化帧的Tcw
-    g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-    vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
-    //设置ID
-    vSE3->setId(0);
-    //要优化所以不能fixed
-    vSE3->setFixed(false);
-    optimizer.addVertex(vSE3);
+        // Set Frame vertex
+        //*Step 2: 添加顶点,待优化帧的Tcw
+        g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+        vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+        //设置ID
+        vSE3->setId(0);
+        //要优化所以不能fixed
+        vSE3->setFixed(false);
+        optimizer.addVertex(vSE3);
 
-    // Set MapPoint vertices
-    const int N = pFrame->N;
+        // Set MapPoint vertices
+        const int N = pFrame->N;
 
-    //Monocular
-    vector<g2o::EdgeSE3ProjectXYZOnlyPose*> vpEdgesMono;
-    vector<size_t> vnIndexEdgeMono;
-    vpEdgesMono.reserve(N);
-    vnIndexEdgeMono.reserve(N);
-    //Stereo
-    vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose*> vpEdgesStereo;
-    vector<size_t> vnIndexEdgeStereo;
-    vpEdgesStereo.reserve(N);
-    vnIndexEdgeStereo.reserve(N);
+        //Monocular
+        vector<g2o::EdgeSE3ProjectXYZOnlyPose *> vpEdgesMono;
+        vector<size_t> vnIndexEdgeMono;
+        vpEdgesMono.reserve(N);
+        vnIndexEdgeMono.reserve(N);
+        //Stereo
+        vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose *> vpEdgesStereo;
+        vector<size_t> vnIndexEdgeStereo;
+        vpEdgesStereo.reserve(N);
+        vnIndexEdgeStereo.reserve(N);
 
-    //自由度为2的卡方分布，显著性水平为0.05,对应的临界值是5.991
-    const float deltaMono = sqrt(5.991);
-    const float deltaStereo = sqrt(78.15);//sqrt(7.815);
+        //自由度为2的卡方分布，显著性水平为0.05,对应的临界值是5.991
+        const float deltaMono = sqrt(5.991);
+        const float deltaStereo = sqrt(78.15);//sqrt(7.815);
 
 //    ofstream stereoWriter;
 //    stereoWriter.open("stereoVertices.txt",ios::out);
 
-    //*Step3 添加一元边
-    {
-    //使用地图点构建图的时候，不希望地图点被修改。
-    unique_lock<mutex> lock(MapPoint::mGlobalMutex);
-    //遍历（当前帧）地图点
-    for(int i=0; i<N; i++)
-    {
-        MapPoint* pMP = pFrame->mvpMapPoints[i];
-        if(pMP)
+        //*Step3 添加一元边
         {
-            // Monocular observation
-            if(pFrame->mvuRight[i]<0)
-            {
-                nInitialCorrespondences++;
-                pFrame->mvbOutlier[i] = false;
+            //使用地图点构建图的时候，不希望地图点被修改。
+            unique_lock<mutex> lock(MapPoint::mGlobalMutex);
+            //遍历（当前帧）地图点
+            for (int i = 0; i < N; i++) {
+                MapPoint *pMP = pFrame->mvpMapPoints[i];
+                if (pMP) {
+                    // Monocular observation
+                    if (pFrame->mvuRight[i] < 0) {
+                        nInitialCorrespondences++;
+                        pFrame->mvbOutlier[i] = false;
 
-                Eigen::Matrix<double,2,1> obs;
-                const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
-                obs << kpUn.pt.x, kpUn.pt.y;
-                //新建节点
-                g2o::EdgeSE3ProjectXYZOnlyPose* e = new g2o::EdgeSE3ProjectXYZOnlyPose();
-                //填充
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-                e->setMeasurement(obs);
-                //这个点的可信度和金字塔层级有关
-                const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-                //?跟其他地方信息矩阵用方差的逆有何区别？
-                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
-                //鲁棒核函数
-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                e->setRobustKernel(rk);
-                rk->setDelta(deltaMono);
+                        Eigen::Matrix<double, 2, 1> obs;
+                        const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
+                        obs << kpUn.pt.x, kpUn.pt.y;
+                        //新建节点
+                        g2o::EdgeSE3ProjectXYZOnlyPose *e = new g2o::EdgeSE3ProjectXYZOnlyPose();
+                        //填充
+                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+                        e->setMeasurement(obs);
+                        //这个点的可信度和金字塔层级有关
+                        const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                        //?跟其他地方信息矩阵用方差的逆有何区别？
+                        e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
+                        //鲁棒核函数
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(deltaMono);
 
-                e->fx = pFrame->fx;
-                e->fy = pFrame->fy;
-                e->cx = pFrame->cx;
-                e->cy = pFrame->cy;
-                cv::Mat Xw = pMP->GetWorldPos();
-                e->Xw[0] = Xw.at<float>(0);
-                e->Xw[1] = Xw.at<float>(1);
-                e->Xw[2] = Xw.at<float>(2);
+                        e->fx = pFrame->fx;
+                        e->fy = pFrame->fy;
+                        e->cx = pFrame->cx;
+                        e->cy = pFrame->cy;
+                        cv::Mat Xw = pMP->GetWorldPos();
+                        e->Xw[0] = Xw.at<float>(0);
+                        e->Xw[1] = Xw.at<float>(1);
+                        e->Xw[2] = Xw.at<float>(2);
 
-                optimizer.addEdge(e);
+                        optimizer.addEdge(e);
 
-                vpEdgesMono.push_back(e);
-                vnIndexEdgeMono.push_back(i);
-            }
-            else  // Stereo observation
-            {
-                nInitialCorrespondences++;
-                pFrame->mvbOutlier[i] = false;
+                        vpEdgesMono.push_back(e);
+                        vnIndexEdgeMono.push_back(i);
+                    } else  // Stereo observation
+                    {
+                        nInitialCorrespondences++;
+                        pFrame->mvbOutlier[i] = false;
 
-                //SET EDGE
-                Eigen::Matrix<double,3,1> obs;
-                const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
-                const float &kp_ur = pFrame->mvuRight[i];
-                obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+                        //SET EDGE
+                        Eigen::Matrix<double, 3, 1> obs;
+                        const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
+                        const float &kp_ur = pFrame->mvuRight[i];
+                        obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
-                g2o::EdgeStereoSE3ProjectXYZOnlyPose* e = new g2o::EdgeStereoSE3ProjectXYZOnlyPose();
+                        g2o::EdgeStereoSE3ProjectXYZOnlyPose *e = new g2o::EdgeStereoSE3ProjectXYZOnlyPose();
 
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-                e->setMeasurement(obs);
-                const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
-                e->setInformation(Info);
+                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+                        e->setMeasurement(obs);
+                        const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                        Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+                        e->setInformation(Info);
 
-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                e->setRobustKernel(rk);
-                rk->setDelta(deltaStereo);
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(deltaStereo);
 
-                e->fx = pFrame->fx;
-                e->fy = pFrame->fy;
-                e->cx = pFrame->cx;
-                e->cy = pFrame->cy;
-                e->bf = pFrame->mbf;
-                cv::Mat Xw = pMP->GetWorldPos();
-                e->Xw[0] = Xw.at<float>(0);
-                e->Xw[1] = Xw.at<float>(1);
-                e->Xw[2] = Xw.at<float>(2);
+                        e->fx = pFrame->fx;
+                        e->fy = pFrame->fy;
+                        e->cx = pFrame->cx;
+                        e->cy = pFrame->cy;
+                        e->bf = pFrame->mbf;
+                        cv::Mat Xw = pMP->GetWorldPos();
+                        e->Xw[0] = Xw.at<float>(0);
+                        e->Xw[1] = Xw.at<float>(1);
+                        e->Xw[2] = Xw.at<float>(2);
 
-                optimizer.addEdge(e);
+                        optimizer.addEdge(e);
 
-                vpEdgesStereo.push_back(e);
-                vnIndexEdgeStereo.push_back(i);
+                        vpEdgesStereo.push_back(e);
+                        vnIndexEdgeStereo.push_back(i);
 
-                //stereoWriter<<pMP->mnId<<" "<<e->Xw[0]<<" "<<e->Xw[1]<<" "<<e->Xw[2]<<" "<<endl;
+                        //stereoWriter<<pMP->mnId<<" "<<e->Xw[0]<<" "<<e->Xw[1]<<" "<<e->Xw[2]<<" "<<endl;
+                    }
+                }
+
             }
         }
 
+        //stereoWriter.close();
+
+        if (nInitialCorrespondences < 3)
+            return 0;
+
+        //*Step 4: 开始优化，总共优化4次，每次优化迭代10次，每次优化后将观测点区分为outlier和inlier
+        // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
+        // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
+        const float chi2Mono[4] = {5.991, 5.991, 5.991, 5.991};
+        const float chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
+        const int its[4] = {10, 10, 10, 10};
+
+        int nBad = 0;
+        for (size_t it = 0; it < 4; it++) {
+
+            vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+            //初始化优化器，默认为0，0指的是只对level为0的边进行优化
+            optimizer.initializeOptimization(0);
+            //优化10次
+            optimizer.optimize(its[it]);
+
+            nBad = 0;
+            //优化结束后，遍历边找outlier
+            for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+                g2o::EdgeSE3ProjectXYZOnlyPose *e = vpEdgesMono[i];
+
+                const size_t idx = vnIndexEdgeMono[i];
+
+                //? 优化结束后computeerror的目的？
+                if (pFrame->mvbOutlier[idx]) {
+                    e->computeError();
+                }
+
+                //error * informatrix * error
+                const float chi2 = e->chi2();
+
+                if (chi2 > chi2Mono[it]) {
+                    //如果误差大于阈值，离群标记true
+                    //点level设置为1
+                    pFrame->mvbOutlier[idx] = true;
+                    e->setLevel(1);
+                    nBad++;
+                } else {
+                    pFrame->mvbOutlier[idx] = false;
+                    e->setLevel(0);
+                }
+
+                //只有前两次需要鲁棒核函数，之后重投影误差显著下降，不再需要。
+                if (it == 2)
+                    e->setRobustKernel(0);
+            }
+
+            for (size_t i = 0, iend = vpEdgesStereo.size(); i < iend; i++) {
+                g2o::EdgeStereoSE3ProjectXYZOnlyPose *e = vpEdgesStereo[i];
+
+                const size_t idx = vnIndexEdgeStereo[i];
+
+                if (pFrame->mvbOutlier[idx]) {
+                    e->computeError();
+                }
+
+                const float chi2 = e->chi2();
+
+                if (chi2 > chi2Stereo[it]) {
+                    pFrame->mvbOutlier[idx] = true;
+                    e->setLevel(1);
+                    nBad++;
+                } else {
+                    e->setLevel(0);
+                    pFrame->mvbOutlier[idx] = false;
+                }
+
+                if (it == 2)
+                    e->setRobustKernel(0);
+            }
+
+            if (optimizer.edges().size() < 10)
+                break;
+        }
+
+        //* Step 5 得到优化后的当前帧的位姿
+        // Recover optimized pose and return number of inliers
+        g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
+        g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
+        cv::Mat pose = Converter::toCvMat(SE3quat_recov);
+        pFrame->SetPose(pose);
+
+        return nInitialCorrespondences - nBad;
     }
-    }
-
-    //stereoWriter.close();
-
-    if(nInitialCorrespondences<3)
-        return 0;
-
-    //*Step 4: 开始优化，总共优化4次，每次优化迭代10次，每次优化后将观测点区分为outlier和inlier
-    // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
-    // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
-    const float chi2Mono[4]={5.991,5.991,5.991,5.991};
-    const float chi2Stereo[4]={7.815,7.815,7.815, 7.815};
-    const int its[4]={10,10,10,10};    
-
-    int nBad=0;
-    for(size_t it=0; it<4; it++)
-    {
-
-        vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
-        //初始化优化器，默认为0，0指的是只对level为0的边进行优化
-        optimizer.initializeOptimization(0);
-        //优化10次
-        optimizer.optimize(its[it]);
-
-        nBad=0;
-        //优化结束后，遍历边找outlier
-        for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
-        {
-            g2o::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
-
-            const size_t idx = vnIndexEdgeMono[i];
-
-            //? 优化结束后computeerror的目的？
-            if(pFrame->mvbOutlier[idx])
-            {
-                e->computeError();
-            }
-
-            //error * informatrix * error
-            const float chi2 = e->chi2();
-
-            if(chi2>chi2Mono[it])
-            {                
-                //如果误差大于阈值，离群标记true
-                //点level设置为1
-                pFrame->mvbOutlier[idx]=true;
-                e->setLevel(1);
-                nBad++;
-            }
-            else
-            {
-                pFrame->mvbOutlier[idx]=false;
-                e->setLevel(0);
-            }
-
-            //只有前两次需要鲁棒核函数，之后重投影误差显著下降，不再需要。
-            if(it==2)
-                e->setRobustKernel(0);
-        }
-
-        for(size_t i=0, iend=vpEdgesStereo.size(); i<iend; i++)
-        {
-            g2o::EdgeStereoSE3ProjectXYZOnlyPose* e = vpEdgesStereo[i];
-
-            const size_t idx = vnIndexEdgeStereo[i];
-
-            if(pFrame->mvbOutlier[idx])
-            {
-                e->computeError();
-            }
-
-            const float chi2 = e->chi2();
-
-            if(chi2>chi2Stereo[it])
-            {
-                pFrame->mvbOutlier[idx]=true;
-                e->setLevel(1);
-                nBad++;
-            }
-            else
-            {                
-                e->setLevel(0);
-                pFrame->mvbOutlier[idx]=false;
-            }
-
-            if(it==2)
-                e->setRobustKernel(0);
-        }
-
-        if(optimizer.edges().size()<10)
-            break;
-    }    
-
-    //* Step 5 得到优化后的当前帧的位姿
-    // Recover optimized pose and return number of inliers
-    g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
-    g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
-    cv::Mat pose = Converter::toCvMat(SE3quat_recov);
-    pFrame->SetPose(pose);
-
-    return nInitialCorrespondences-nBad;
-}
 
 /**
  * @brief Pose only optimization, lidar fusion version so some feature has depth
@@ -570,21 +1150,20 @@ int Optimizer::PoseOptimization(Frame *pFrame)
  * @param pFrame Frame
  * @return inliers数量
 */
-    int Optimizer::FusionPoseOptimization(Frame *pFrame)
-    {
+    int Optimizer::FusionPoseOptimization(Frame *pFrame) {
         //*Step 1: 构造g2o优化器,BlockSolver_6_3：位姿_PoseDim 6维 路标 _LandmarkDim 3维
         g2o::SparseOptimizer optimizer;
-        g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
+        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
         linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
-        g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-        g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
         optimizer.setAlgorithm(solver);
 
-        int nInitialCorrespondences=0;
+        int nInitialCorrespondences = 0;
 
         // Set Frame vertex
         //*Step 2: 添加顶点,待优化帧的Tcw
-        g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
+        g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
         vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
         vSE3->setId(0);//设置ID
         vSE3->setFixed(false);//要优化所以不能fixed
@@ -593,12 +1172,12 @@ int Optimizer::PoseOptimization(Frame *pFrame)
         // Set MapPoint vertices
         const int N = pFrame->N;
         //Monocular
-        vector<g2o::EdgeSE3ProjectXYZOnlyPose*> vpEdgesMono;
+        vector<g2o::EdgeSE3ProjectXYZOnlyPose *> vpEdgesMono;
         vector<size_t> vnIndexEdgeMono;
         vpEdgesMono.reserve(N);
         vnIndexEdgeMono.reserve(N);
         //Stereo
-        vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose*> vpEdgesStereo;
+        vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose *> vpEdgesStereo;
         vector<size_t> vnIndexEdgeStereo;
         vpEdgesStereo.reserve(N);
         vnIndexEdgeStereo.reserve(N);
@@ -616,33 +1195,30 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             //使用地图点构建图的时候，不希望地图点被修改。
             unique_lock<mutex> lock(MapPoint::mGlobalMutex);
             //遍历（当前帧）地图点
-            for(int i=0; i<N; i++)
-            {
-                MapPoint* pMP = pFrame->mvpMapPoints[i];
-                if(pMP)
-                {
+            for (int i = 0; i < N; i++) {
+                MapPoint *pMP = pFrame->mvpMapPoints[i];
+                if (pMP) {
                     // Monocular observation
-                    if(pFrame->mvuRight[i]<0)
-                    {
+                    if (pFrame->mvuRight[i] < 0) {
                         //normal mono feature
                         if (pFrame->mvORBAttributions[i].depthSource == -1) {
                             nInitialCorrespondences++;
                             pFrame->mvbOutlier[i] = false;
 
-                            Eigen::Matrix<double,2,1> obs;
+                            Eigen::Matrix<double, 2, 1> obs;
                             const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
                             obs << kpUn.pt.x, kpUn.pt.y;
                             //新建节点
-                            g2o::EdgeSE3ProjectXYZOnlyPose* e = new g2o::EdgeSE3ProjectXYZOnlyPose();
+                            g2o::EdgeSE3ProjectXYZOnlyPose *e = new g2o::EdgeSE3ProjectXYZOnlyPose();
                             //填充
-                            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
+                            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                             e->setMeasurement(obs);
                             //这个点的可信度和金字塔层级有关
                             const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                             //?跟其他地方信息矩阵用方差的逆有何区别？
-                            e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+                            e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
                             //鲁棒核函数
-                            g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+                            g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                             e->setRobustKernel(rk);
                             rk->setDelta(deltaMono);
 
@@ -698,28 +1274,26 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                             vpEdgesStereo.push_back(e);
                             vnIndexEdgeStereo.push_back(i);
                         }
-
-                    }
-                    else  // Stereo observation
+                    } else  // Stereo observation
                     {
                         nInitialCorrespondences++;
                         pFrame->mvbOutlier[i] = false;
 
                         //SET EDGE
-                        Eigen::Matrix<double,3,1> obs;
+                        Eigen::Matrix<double, 3, 1> obs;
                         const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
                         const float &kp_ur = pFrame->mvuRight[i];
                         obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
-                        g2o::EdgeStereoSE3ProjectXYZOnlyPose* e = new g2o::EdgeStereoSE3ProjectXYZOnlyPose();
+                        g2o::EdgeStereoSE3ProjectXYZOnlyPose *e = new g2o::EdgeStereoSE3ProjectXYZOnlyPose();
 
-                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
+                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                         e->setMeasurement(obs);
                         const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-                        Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+                        Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
                         e->setInformation(Info);
 
-                        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
                         rk->setDelta(deltaStereo);
 
@@ -747,22 +1321,62 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
         //stereoWriter.close();
 
-        cout<<"fusionoptimization mono "<<vpEdgesMono.size()<<" stereo "<<vpEdgesStereo.size()<<endl;
+        vector<EdgeSE3LineOnlyPose*> vpEdgesLines;
+        int N_lines = pFrame->N_lines;
+        vpEdgesLines.reserve(N_lines);
+        vector<size_t> vnIndexEdgeLine;
+//        //Step 3.2 add line edge
+//        {
+//            //使用地图点构建图的时候，不希望地图点被修改。
+//            unique_lock<mutex> lock(MapPoint::mGlobalMutex);
+//            for (int i = 0; i < pFrame->mvpMapLines.size(); i++) {
+//                MapLine *pML = pFrame->mvpMapLines[i];
+//                if (pML) {
+//                    nInitialCorrespondences++;
+//                    pFrame->mvbOutlierLines[i] = false;
+//
+//                    //新建节点
+//                    EdgeSE3LineOnlyPose *e = new EdgeSE3LineOnlyPose();
+//                    //World Pose
+//                    cv::Mat mapLineWorldPose = pML->GetWorldPos();
+//                    e->Pend0 << mapLineWorldPose.at<float>(0, 0), mapLineWorldPose.at<float>(1,0), mapLineWorldPose.at<float>(2, 0);
+//                    e->Pend1 << mapLineWorldPose.at<float>(0, 1), mapLineWorldPose.at<float>(1,1), mapLineWorldPose.at<float>(2, 1);
+//                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+//                    Eigen::Vector4d obs;
+//                    obs << pFrame->mvLines[i].LSD.startPointX, pFrame->mvLines[i].LSD.startPointY, pFrame->mvLines[i].LSD.endPointX, pFrame->mvLines[i].LSD.endPointY;
+//                    e->setMeasurement(obs);
+//                    e->setInformation(Eigen::Matrix2d::Identity());
+//                    //鲁棒核函数
+//                    g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+//                    e->setRobustKernel(rk);
+//                    rk->setDelta(deltaMono);
+//                    e->fx = pFrame->fx;
+//                    e->fy = pFrame->fy;
+//                    e->cx = pFrame->cx;
+//                    e->cy = pFrame->cy;
+//                    optimizer.addEdge(e);
+//
+//                    vpEdgesLines.push_back(e);
+//                    vnIndexEdgeLine.push_back(i);
+//                }
+//            }
+//        }
 
-        if(nInitialCorrespondences<3)
+        cout << "fusionoptimization mono " << vpEdgesMono.size() << " stereo " << vpEdgesStereo.size() <<" line "<<vpEdgesLines.size()<<endl;
+
+        if (nInitialCorrespondences < 3)
             return 0;
 
         //*Step 4: 开始优化，总共优化4次，每次优化迭代10次，每次优化后将观测点区分为outlier和inlier
         // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
         // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
-        const float chi2Mono[4]={5.991,5.991,5.991,5.991};
-        const float chi2Stereo[4]={7.815,7.815,7.815, 7.815};
-        //const float chi2Stereo[4]={78.15,78.15,78.15, 78.15};
-        const int its[4]={10,10,10,10};
+        const float chi2Mono[4] = {5.991, 5.991, 5.991, 5.991};
+        const float chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
+        const float chi2Line[4] = {15.63, 15.63, 15.63, 15.63};
+        const int its[4] = {10, 10, 10, 10};
 
-        int nBad=0;
-        for(size_t it=0; it<4; it++)
-        {
+        int nBad = 0;
+        for (size_t it = 0; it < 4; it++) {
 
             vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
             //初始化优化器，默认为0，0指的是只对level为0的边进行优化
@@ -770,83 +1384,78 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             //优化10次
             optimizer.optimize(its[it]);
 
-            nBad=0;
+            nBad = 0;
             //优化结束后，遍历边找outlier
-            for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
-            {
-                g2o::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
-
+            for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+                g2o::EdgeSE3ProjectXYZOnlyPose *e = vpEdgesMono[i];
                 const size_t idx = vnIndexEdgeMono[i];
-
-                //? 优化结束后computeerror的目的？
-                if(pFrame->mvbOutlier[idx])
-                {
+                if (pFrame->mvbOutlier[idx]) {
                     e->computeError();
                 }
-
                 //error * informatrix * error
                 const float chi2 = e->chi2();
-
-                if(chi2>chi2Mono[it])
-                {
+                if (chi2 > chi2Mono[it]) {
                     //如果误差大于阈值，离群标记true
                     //点level设置为1
-                    pFrame->mvbOutlier[idx]=true;
+                    pFrame->mvbOutlier[idx] = true;
                     e->setLevel(1);
                     nBad++;
-                }
-                else
-                {
-                    pFrame->mvbOutlier[idx]=false;
+                } else {
+                    pFrame->mvbOutlier[idx] = false;
                     e->setLevel(0);
                 }
-
-                //只有前两次需要鲁棒核函数，之后重投影误差显著下降，不再需要。
-//                if(it==2)
+//                if(it==2)//只有前两次需要鲁棒核函数，之后重投影误差显著下降，不再需要。
 //                    e->setRobustKernel(0);
             }
-
-            for(size_t i=0, iend=vpEdgesStereo.size(); i<iend; i++)
-            {
-                g2o::EdgeStereoSE3ProjectXYZOnlyPose* e = vpEdgesStereo[i];
-
+            for (size_t i = 0, iend = vpEdgesStereo.size(); i < iend; i++) {
+                g2o::EdgeStereoSE3ProjectXYZOnlyPose *e = vpEdgesStereo[i];
                 const size_t idx = vnIndexEdgeStereo[i];
-
-                if(pFrame->mvbOutlier[idx])
-                {
+                if (pFrame->mvbOutlier[idx]) {
                     e->computeError();
                 }
-
                 const float chi2 = e->chi2();
-
-                if(chi2>chi2Stereo[it])
-                {
-                    pFrame->mvbOutlier[idx]=true;
+                if (chi2 > chi2Stereo[it]*2) {//100
+                    pFrame->mvbOutlier[idx] = true;
                     e->setLevel(1);
                     nBad++;
-                }
-                else
-                {
+                } else {
                     e->setLevel(0);
-                    pFrame->mvbOutlier[idx]=false;
+                    pFrame->mvbOutlier[idx] = false;
                 }
-
+//                if(it==2)
+//                    e->setRobustKernel(0);
+            }
+            for (size_t i = 0, iend = vpEdgesLines.size(); i < iend; i++) {
+                EdgeSE3LineOnlyPose *e = vpEdgesLines[i];
+                const size_t idx = vnIndexEdgeLine[i];
+                if (pFrame->mvbOutlierLines[idx]) {
+                    e->computeError();
+                }
+                const float chi2 = e->chi2();
+                if (chi2 > chi2Line[it]*2) {//100
+                    pFrame->mvbOutlierLines[idx] = true;
+                    e->setLevel(1);
+                    nBad++;
+                } else {
+                    e->setLevel(0);
+                    pFrame->mvbOutlierLines[idx] = false;
+                }
 //                if(it==2)
 //                    e->setRobustKernel(0);
             }
 
-            if(optimizer.edges().size()<10)
+            if (optimizer.edges().size() < 10)
                 break;
         }
 
         //* Step 5 得到优化后的当前帧的位姿
         // Recover optimized pose and return number of inliers
-        g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
+        g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
         g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
         cv::Mat pose = Converter::toCvMat(SE3quat_recov);
         pFrame->SetPose(pose);
 
-        return nInitialCorrespondences-nBad;
+        return nInitialCorrespondences - nBad;
     }
 
 /**
@@ -870,366 +1479,347 @@ int Optimizer::PoseOptimization(Frame *pFrame)
  * @param pMap 在优化后，更新状态时需要用到Map的互斥量mMutexMapUpdate
  * @note 由局部建图线程调用，对局部地图进行优化的函数
 */
-void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
-{    
-    // Local KeyFrames: First Breath Search from Current Keyframe
-    list<KeyFrame*> lLocalKeyFrames;
+    void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap) {
+        // Local KeyFrames: First Breath Search from Current Keyframe
+        list<KeyFrame *> lLocalKeyFrames;
 
-    //*Step 1 当前关键帧 和 共视关键帧 加入到localKeyframe
-    lLocalKeyFrames.push_back(pKF);
-    pKF->mnBALocalForKF = pKF->mnId;
+        //*Step 1 当前关键帧 和 共视关键帧 加入到localKeyframe
+        lLocalKeyFrames.push_back(pKF);
+        pKF->mnBALocalForKF = pKF->mnId;
 
-    const vector<KeyFrame*> vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
-    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
-    {
-        KeyFrame* pKFi = vNeighKFs[i];
-        //参与局部BA的每一个关键帧的mnBALocalForKF设置为当前关键帧的mnID，防止重复添加
-        pKFi->mnBALocalForKF = pKF->mnId;
-        if(!pKFi->isBad())
-            lLocalKeyFrames.push_back(pKFi);
-    }
+        const vector<KeyFrame *> vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
+        for (int i = 0, iend = vNeighKFs.size(); i < iend; i++) {
+            KeyFrame *pKFi = vNeighKFs[i];
+            //参与局部BA的每一个关键帧的mnBALocalForKF设置为当前关键帧的mnID，防止重复添加
+            pKFi->mnBALocalForKF = pKF->mnId;
+            if (!pKFi->isBad())
+                lLocalKeyFrames.push_back(pKFi);
+        }
 
-    //*Step 2 遍历共视关键帧，把观测到的地图点加入localMapPoints
-    // Local MapPoints seen in Local KeyFrames
-    list<MapPoint*> lLocalMapPoints;
-    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin() , lend=lLocalKeyFrames.end(); lit!=lend; lit++)
-    {
-        //取出地图点集合
-        vector<MapPoint*> vpMPs = (*lit)->GetMapPointMatches();
-        //遍历每一个地图点
-        for(vector<MapPoint*>::iterator vit=vpMPs.begin(), vend=vpMPs.end(); vit!=vend; vit++)
-        {
-            MapPoint* pMP = *vit;
-            if(pMP)
-                if(!pMP->isBad())
-                //地图点的localforkf标签设置
-                    if(pMP->mnBALocalForKF!=pKF->mnId)
+        //*Step 2 遍历共视关键帧，把观测到的地图点加入localMapPoints
+        // Local MapPoints seen in Local KeyFrames
+        list<MapPoint *> lLocalMapPoints;
+        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end();
+             lit != lend; lit++) {
+            //取出地图点集合
+            vector<MapPoint *> vpMPs = (*lit)->GetMapPointMatches();
+            //遍历每一个地图点
+            for (vector<MapPoint *>::iterator vit = vpMPs.begin(), vend = vpMPs.end(); vit != vend; vit++) {
+                MapPoint *pMP = *vit;
+                if (pMP)
+                    if (!pMP->isBad())
+                        //地图点的localforkf标签设置
+                        if (pMP->mnBALocalForKF != pKF->mnId) {
+                            lLocalMapPoints.push_back(pMP);
+                            pMP->mnBALocalForKF = pKF->mnId;
+                        }
+            }
+        }
+
+        //*Step 3 找到能被局部MapPoints观测到，但是不属于上述局部关键帧集合的关键帧（二级关键帧），这些关键帧在局部BA不优化
+        // Fixed Keyframes. Keyframes that see Local MapPoints but that are not Local Keyframes
+        list<KeyFrame *> lFixedCameras;
+        for (list<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end();
+             lit != lend; lit++) {
+            //观测到该Mappoint的kf和该mappoint在kf中的索引
+            map<KeyFrame *, size_t> observations = (*lit)->GetObservations();
+            //遍历所有观测到该maopoint的关键帧
+            for (map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
+                 mit != mend; mit++) {
+                KeyFrame *pKFi = mit->first;
+                //遍历到的关键帧的mnBALocalForKF 还没有被分配到当前关键帧（上面的步骤）
+                //还没有被标记为FIX关键帧
+                if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId) {
+                    //将遍历到的关键帧fix
+                    pKFi->mnBAFixedForKF = pKF->mnId;
+                    if (!pKFi->isBad())
+                        lFixedCameras.push_back(pKFi);
+                }
+            }
+        }
+
+        //*Step 4 构造g2o优化器
+        // Setup optimizer
+        g2o::SparseOptimizer optimizer;
+        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
+
+        linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+
+        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+        optimizer.setAlgorithm(solver);
+
+        //外界设置的停止优化标志
+        //可能在Tracking::neednewkeyframe里面置位
+        if (pbStopFlag)
+            optimizer.setForceStopFlag(pbStopFlag);
+
+        //参与局部BA的最大关键帧mnID
+        unsigned long maxKFid = 0;
+
+        //*Step 5 添加 待优化的位姿顶点 pose of local keyframe
+        // Set Local KeyFrame vertices
+        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end();
+             lit != lend; lit++) {
+            KeyFrame *pKFi = *lit;
+            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+            vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
+            vSE3->setId(pKFi->mnId);
+            //第0帧不优化
+            vSE3->setFixed(pKFi->mnId == 0);
+            optimizer.addVertex(vSE3);
+            if (pKFi->mnId > maxKFid)
+                maxKFid = pKFi->mnId;
+        }
+
+        //*Step 6 添加不优化的位姿顶点 pose of fixed keyframe
+        // Set Fixed KeyFrame vertices
+        for (list<KeyFrame *>::iterator lit = lFixedCameras.begin(), lend = lFixedCameras.end(); lit != lend; lit++) {
+            KeyFrame *pKFi = *lit;
+            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+            vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
+            vSE3->setId(pKFi->mnId);
+            //fix
+            vSE3->setFixed(true);
+            optimizer.addVertex(vSE3);
+            if (pKFi->mnId > maxKFid)
+                maxKFid = pKFi->mnId;
+        }
+        //*Step 7 添加待优化的3D地图点顶点
+        //边的数目=pose数目*地图点数目
+        // Set MapPoint vertices
+        const int nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
+
+        vector<g2o::EdgeSE3ProjectXYZ *> vpEdgesMono;
+        vpEdgesMono.reserve(nExpectedSize);
+
+        vector<KeyFrame *> vpEdgeKFMono;
+        vpEdgeKFMono.reserve(nExpectedSize);
+
+        vector<MapPoint *> vpMapPointEdgeMono;
+        vpMapPointEdgeMono.reserve(nExpectedSize);
+
+        vector<g2o::EdgeStereoSE3ProjectXYZ *> vpEdgesStereo;
+        vpEdgesStereo.reserve(nExpectedSize);
+
+        vector<KeyFrame *> vpEdgeKFStereo;
+        vpEdgeKFStereo.reserve(nExpectedSize);
+
+        vector<MapPoint *> vpMapPointEdgeStereo;
+        vpMapPointEdgeStereo.reserve(nExpectedSize);
+
+        const float thHuberMono = sqrt(5.991);
+        const float thHuberStereo = sqrt(7.815);
+
+        //遍历局部地图中的地图点
+        for (list<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end();
+             lit != lend; lit++) {
+            MapPoint *pMP = *lit;
+            g2o::VertexSBAPointXYZ *vPoint = new g2o::VertexSBAPointXYZ();
+            vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
+            //用到了前面的最大关键帧ID
+            int id = pMP->mnId + maxKFid + 1;
+            vPoint->setId(id);
+            //因为使用了linearsolvertype，所有的三维点可以边缘化
+            vPoint->setMarginalized(true);
+            optimizer.addVertex(vPoint);
+
+            //观测到该地图点的kf和该地图点在kf中的索引
+            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+
+            //*Step 8 添加完一个地图点之后，对每一对关联的mappoint和keyframe构建边
+            //Set edges
+            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+                 mit != mend; mit++) {
+                KeyFrame *pKFi = mit->first;
+
+                if (!pKFi->isBad()) {
+                    const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+
+                    // Monocular observation
+                    if (pKFi->mvuRight[mit->second] < 0) {
+                        Eigen::Matrix<double, 2, 1> obs;
+                        obs << kpUn.pt.x, kpUn.pt.y;
+
+                        g2o::EdgeSE3ProjectXYZ *e = new g2o::EdgeSE3ProjectXYZ();
+
+                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
+                        e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId)));
+                        e->setMeasurement(obs);
+                        const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+                        e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
+
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(thHuberMono);
+
+                        e->fx = pKFi->fx;
+                        e->fy = pKFi->fy;
+                        e->cx = pKFi->cx;
+                        e->cy = pKFi->cy;
+
+                        optimizer.addEdge(e);
+                        vpEdgesMono.push_back(e);
+                        vpEdgeKFMono.push_back(pKFi);
+                        vpMapPointEdgeMono.push_back(pMP);
+                    } else // Stereo observation
                     {
-                        lLocalMapPoints.push_back(pMP);
-                        pMP->mnBALocalForKF=pKF->mnId;
+                        Eigen::Matrix<double, 3, 1> obs;
+                        const float kp_ur = pKFi->mvuRight[mit->second];
+                        obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+
+                        g2o::EdgeStereoSE3ProjectXYZ *e = new g2o::EdgeStereoSE3ProjectXYZ();
+
+                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
+                        e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId)));
+                        e->setMeasurement(obs);
+                        const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+                        Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+                        e->setInformation(Info);
+
+                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+                        e->setRobustKernel(rk);
+                        rk->setDelta(thHuberStereo);
+
+                        e->fx = pKFi->fx;
+                        e->fy = pKFi->fy;
+                        e->cx = pKFi->cx;
+                        e->cy = pKFi->cy;
+                        e->bf = pKFi->mbf;
+
+                        optimizer.addEdge(e);
+                        vpEdgesStereo.push_back(e);
+                        vpEdgeKFStereo.push_back(pKFi);
+                        vpMapPointEdgeStereo.push_back(pMP);
                     }
-        }
-    }
-
-    //*Step 3 找到能被局部MapPoints观测到，但是不属于上述局部关键帧集合的关键帧（二级关键帧），这些关键帧在局部BA不优化
-    // Fixed Keyframes. Keyframes that see Local MapPoints but that are not Local Keyframes
-    list<KeyFrame*> lFixedCameras;
-    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
-    {
-        //观测到该Mappoint的kf和该mappoint在kf中的索引
-        map<KeyFrame*,size_t> observations = (*lit)->GetObservations();
-        //遍历所有观测到该maopoint的关键帧
-        for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-        {
-            KeyFrame* pKFi = mit->first;
-            //遍历到的关键帧的mnBALocalForKF 还没有被分配到当前关键帧（上面的步骤）
-            //还没有被标记为FIX关键帧
-            if(pKFi->mnBALocalForKF!=pKF->mnId && pKFi->mnBAFixedForKF!=pKF->mnId)
-            {                
-                //将遍历到的关键帧fix
-                pKFi->mnBAFixedForKF=pKF->mnId;
-                if(!pKFi->isBad())
-                    lFixedCameras.push_back(pKFi);
-            }
-        }
-    }
-
-    //*Step 4 构造g2o优化器
-    // Setup optimizer
-    g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
-    optimizer.setAlgorithm(solver);
-
-    //外界设置的停止优化标志
-    //可能在Tracking::neednewkeyframe里面置位
-    if(pbStopFlag)
-        optimizer.setForceStopFlag(pbStopFlag);
-
-    //参与局部BA的最大关键帧mnID
-    unsigned long maxKFid = 0;
-
-    //*Step 5 添加 待优化的位姿顶点 pose of local keyframe
-    // Set Local KeyFrame vertices
-    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
-    {
-        KeyFrame* pKFi = *lit;
-        g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
-        vSE3->setId(pKFi->mnId);
-        //第0帧不优化
-        vSE3->setFixed(pKFi->mnId==0);
-        optimizer.addVertex(vSE3);
-        if(pKFi->mnId>maxKFid)
-            maxKFid=pKFi->mnId;
-    }
-
-    //*Step 6 添加不优化的位姿顶点 pose of fixed keyframe
-    // Set Fixed KeyFrame vertices
-    for(list<KeyFrame*>::iterator lit=lFixedCameras.begin(), lend=lFixedCameras.end(); lit!=lend; lit++)
-    {
-        KeyFrame* pKFi = *lit;
-        g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
-        vSE3->setId(pKFi->mnId);
-        //fix
-        vSE3->setFixed(true);
-        optimizer.addVertex(vSE3);
-        if(pKFi->mnId>maxKFid)
-            maxKFid=pKFi->mnId;
-    }
-    //*Step 7 添加待优化的3D地图点顶点
-    //边的数目=pose数目*地图点数目
-    // Set MapPoint vertices
-    const int nExpectedSize = (lLocalKeyFrames.size()+lFixedCameras.size())*lLocalMapPoints.size();
-
-    vector<g2o::EdgeSE3ProjectXYZ*> vpEdgesMono;
-    vpEdgesMono.reserve(nExpectedSize);
-
-    vector<KeyFrame*> vpEdgeKFMono;
-    vpEdgeKFMono.reserve(nExpectedSize);
-
-    vector<MapPoint*> vpMapPointEdgeMono;
-    vpMapPointEdgeMono.reserve(nExpectedSize);
-
-    vector<g2o::EdgeStereoSE3ProjectXYZ*> vpEdgesStereo;
-    vpEdgesStereo.reserve(nExpectedSize);
-
-    vector<KeyFrame*> vpEdgeKFStereo;
-    vpEdgeKFStereo.reserve(nExpectedSize);
-
-    vector<MapPoint*> vpMapPointEdgeStereo;
-    vpMapPointEdgeStereo.reserve(nExpectedSize);
-
-    const float thHuberMono = sqrt(5.991);
-    const float thHuberStereo = sqrt(7.815);
-
-    //遍历局部地图中的地图点
-    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
-    {
-        MapPoint* pMP = *lit;
-        g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
-        vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
-        //用到了前面的最大关键帧ID
-        int id = pMP->mnId+maxKFid+1;
-        vPoint->setId(id);
-        //因为使用了linearsolvertype，所有的三维点可以边缘化
-        vPoint->setMarginalized(true);
-        optimizer.addVertex(vPoint);
-
-        //观测到该地图点的kf和该地图点在kf中的索引
-        const map<KeyFrame*,size_t> observations = pMP->GetObservations();
-
-        //*Step 8 添加完一个地图点之后，对每一对关联的mappoint和keyframe构建边
-        //Set edges
-        for(map<KeyFrame*,size_t>::const_iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-        {
-            KeyFrame* pKFi = mit->first;
-
-            if(!pKFi->isBad())
-            {                
-                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
-
-                // Monocular observation
-                if(pKFi->mvuRight[mit->second]<0)
-                {
-                    Eigen::Matrix<double,2,1> obs;
-                    obs << kpUn.pt.x, kpUn.pt.y;
-
-                    g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
-
-                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
-                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
-                    e->setMeasurement(obs);
-                    const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
-                    e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
-
-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                    e->setRobustKernel(rk);
-                    rk->setDelta(thHuberMono);
-
-                    e->fx = pKFi->fx;
-                    e->fy = pKFi->fy;
-                    e->cx = pKFi->cx;
-                    e->cy = pKFi->cy;
-
-                    optimizer.addEdge(e);
-                    vpEdgesMono.push_back(e);
-                    vpEdgeKFMono.push_back(pKFi);
-                    vpMapPointEdgeMono.push_back(pMP);
-                }
-                else // Stereo observation
-                {
-                    Eigen::Matrix<double,3,1> obs;
-                    const float kp_ur = pKFi->mvuRight[mit->second];
-                    obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
-
-                    g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
-
-                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
-                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
-                    e->setMeasurement(obs);
-                    const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
-                    Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
-                    e->setInformation(Info);
-
-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                    e->setRobustKernel(rk);
-                    rk->setDelta(thHuberStereo);
-
-                    e->fx = pKFi->fx;
-                    e->fy = pKFi->fy;
-                    e->cx = pKFi->cx;
-                    e->cy = pKFi->cy;
-                    e->bf = pKFi->mbf;
-
-                    optimizer.addEdge(e);
-                    vpEdgesStereo.push_back(e);
-                    vpEdgeKFStereo.push_back(pKFi);
-                    vpMapPointEdgeStereo.push_back(pMP);
                 }
             }
         }
-    }
 
-    if(pbStopFlag)
-        if(*pbStopFlag)
-            return;
+        if (pbStopFlag)
+            if (*pbStopFlag)
+                return;
 
-    //*Step 9 开始优化
-    optimizer.initializeOptimization();
-    //先优化五次
-    optimizer.optimize(5);
+        //*Step 9 开始优化
+        optimizer.initializeOptimization();
+        //先优化五次
+        optimizer.optimize(5);
 
-    bool bDoMore= true;
+        bool bDoMore = true;
 
-    if(pbStopFlag)
-        if(*pbStopFlag)
-            bDoMore = false;
+        if (pbStopFlag)
+            if (*pbStopFlag)
+                bDoMore = false;
 
-    if(bDoMore)
-    {
+        if (bDoMore) {
 
-    // Check inlier observations
-    for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
-    {
-        //*Step 10 outlier不再参与优化
-        g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
-        MapPoint* pMP = vpMapPointEdgeMono[i];
+            // Check inlier observations
+            for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+                //*Step 10 outlier不再参与优化
+                g2o::EdgeSE3ProjectXYZ *e = vpEdgesMono[i];
+                MapPoint *pMP = vpMapPointEdgeMono[i];
 
-        if(pMP->isBad())
-            continue;
+                if (pMP->isBad())
+                    continue;
 
-        //误差超过5.991或者深度为负不再优化
-        if(e->chi2()>5.991 || !e->isDepthPositive())
-        {
-            e->setLevel(1);
+                //误差超过5.991或者深度为负不再优化
+                if (e->chi2() > 5.991 || !e->isDepthPositive()) {
+                    e->setLevel(1);
+                }
+                //第二阶段不再需要鲁棒和函数
+                e->setRobustKernel(0);
+            }
+
+            for (size_t i = 0, iend = vpEdgesStereo.size(); i < iend; i++) {
+                g2o::EdgeStereoSE3ProjectXYZ *e = vpEdgesStereo[i];
+                MapPoint *pMP = vpMapPointEdgeStereo[i];
+
+                if (pMP->isBad())
+                    continue;
+
+                if (e->chi2() > 7.815 || !e->isDepthPositive()) {
+                    e->setLevel(1);
+                }
+
+                e->setRobustKernel(0);
+            }
+
+            //*Step 11 排除outlier之后再10次优化
+            // Optimize again without the outliers
+
+            optimizer.initializeOptimization(0);
+            optimizer.optimize(10);
+
         }
-        //第二阶段不再需要鲁棒和函数
-        e->setRobustKernel(0);
-    }
 
-    for(size_t i=0, iend=vpEdgesStereo.size(); i<iend;i++)
-    {
-        g2o::EdgeStereoSE3ProjectXYZ* e = vpEdgesStereo[i];
-        MapPoint* pMP = vpMapPointEdgeStereo[i];
+        //*Step 12 重新计算误差，剔除误差大的关键帧和mappoint
+        vector<pair<KeyFrame *, MapPoint *> > vToErase;
+        vToErase.reserve(vpEdgesMono.size() + vpEdgesStereo.size());
 
-        if(pMP->isBad())
-            continue;
+        // Check inlier observations
+        for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+            g2o::EdgeSE3ProjectXYZ *e = vpEdgesMono[i];
+            MapPoint *pMP = vpMapPointEdgeMono[i];
 
-        if(e->chi2()>7.815 || !e->isDepthPositive())
-        {
-            e->setLevel(1);
+            if (pMP->isBad())
+                continue;
+
+            if (e->chi2() > 5.991 || !e->isDepthPositive()) {
+                KeyFrame *pKFi = vpEdgeKFMono[i];
+                //加入到删除vector
+                vToErase.push_back(make_pair(pKFi, pMP));
+            }
         }
 
-        e->setRobustKernel(0);
-    }
+        for (size_t i = 0, iend = vpEdgesStereo.size(); i < iend; i++) {
+            g2o::EdgeStereoSE3ProjectXYZ *e = vpEdgesStereo[i];
+            MapPoint *pMP = vpMapPointEdgeStereo[i];
 
-    //*Step 11 排除outlier之后再10次优化
-    // Optimize again without the outliers
+            if (pMP->isBad())
+                continue;
 
-    optimizer.initializeOptimization(0);
-    optimizer.optimize(10);
+            if (e->chi2() > 7.815 || !e->isDepthPositive()) {
+                KeyFrame *pKFi = vpEdgeKFStereo[i];
+                vToErase.push_back(make_pair(pKFi, pMP));
+            }
+        }
 
-    }
+        //锁住地图点
+        // Get Map Mutex
+        unique_lock<mutex> lock(pMap->mMutexMapUpdate);
 
-    //*Step 12 重新计算误差，剔除误差大的关键帧和mappoint
-    vector<pair<KeyFrame*,MapPoint*> > vToErase;
-    vToErase.reserve(vpEdgesMono.size()+vpEdgesStereo.size());
+        if (!vToErase.empty()) {
+            for (size_t i = 0; i < vToErase.size(); i++) {
+                KeyFrame *pKFi = vToErase[i].first;
+                MapPoint *pMPi = vToErase[i].second;
+                //帧删除点，点删除帧
+                pKFi->EraseMapPointMatch(pMPi);
+                pMPi->EraseObservation(pKFi);
+            }
+        }
 
-    // Check inlier observations       
-    for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
-    {
-        g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
-        MapPoint* pMP = vpMapPointEdgeMono[i];
+        // Recover optimized data
+        //*Step 13 优化后更新关键帧位姿 地图点位置 和平均观测方向等属性
+        //Keyframes
+        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end();
+             lit != lend; lit++) {
+            KeyFrame *pKF = *lit;
+            g2o::VertexSE3Expmap *vSE3 = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
+            g2o::SE3Quat SE3quat = vSE3->estimate();
+            pKF->SetPose(Converter::toCvMat(SE3quat));
+        }
 
-        if(pMP->isBad())
-            continue;
-
-        if(e->chi2()>5.991 || !e->isDepthPositive())
-        {
-            KeyFrame* pKFi = vpEdgeKFMono[i];
-            //加入到删除vector
-            vToErase.push_back(make_pair(pKFi,pMP));
+        //Points
+        for (list<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end();
+             lit != lend; lit++) {
+            MapPoint *pMP = *lit;
+            g2o::VertexSBAPointXYZ *vPoint = static_cast<g2o::VertexSBAPointXYZ *>(optimizer.vertex(
+                    pMP->mnId + maxKFid + 1));
+            pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
+            pMP->UpdateNormalAndDepth();
         }
     }
-
-    for(size_t i=0, iend=vpEdgesStereo.size(); i<iend;i++)
-    {
-        g2o::EdgeStereoSE3ProjectXYZ* e = vpEdgesStereo[i];
-        MapPoint* pMP = vpMapPointEdgeStereo[i];
-
-        if(pMP->isBad())
-            continue;
-
-        if(e->chi2()>7.815 || !e->isDepthPositive())
-        {
-            KeyFrame* pKFi = vpEdgeKFStereo[i];
-            vToErase.push_back(make_pair(pKFi,pMP));
-        }
-    }
-
-    //锁住地图点
-    // Get Map Mutex
-    unique_lock<mutex> lock(pMap->mMutexMapUpdate);
-
-    if(!vToErase.empty())
-    {
-        for(size_t i=0;i<vToErase.size();i++)
-        {
-            KeyFrame* pKFi = vToErase[i].first;
-            MapPoint* pMPi = vToErase[i].second;
-            //帧删除点，点删除帧
-            pKFi->EraseMapPointMatch(pMPi);
-            pMPi->EraseObservation(pKFi);
-        }
-    }
-
-    // Recover optimized data
-    //*Step 13 优化后更新关键帧位姿 地图点位置 和平均观测方向等属性
-    //Keyframes
-    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
-    {
-        KeyFrame* pKF = *lit;
-        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
-        g2o::SE3Quat SE3quat = vSE3->estimate();
-        pKF->SetPose(Converter::toCvMat(SE3quat));
-    }
-
-    //Points
-    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
-    {
-        MapPoint* pMP = *lit;
-        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-        pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-        pMP->UpdateNormalAndDepth();
-    }
-}
 
 
 /**
@@ -1249,293 +1839,281 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
  * @param LoopConnections
  * @param bFixScale
  */
-void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
-                                       const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
-                                       const LoopClosing::KeyFrameAndPose &CorrectedSim3,
-                                       const map<KeyFrame *, set<KeyFrame *> > &LoopConnections, const bool &bFixScale)
-{
-    //Step 1
-    //Setup optimizer
-    //NOTE _7_3
-    g2o::SparseOptimizer optimizer;
-    optimizer.setVerbose(false);
-    g2o::BlockSolver_7_3::LinearSolverType * linearSolver =
-           new g2o::LinearSolverEigen<g2o::BlockSolver_7_3::PoseMatrixType>();
-    g2o::BlockSolver_7_3 * solver_ptr= new g2o::BlockSolver_7_3(linearSolver);
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+    void Optimizer::OptimizeEssentialGraph(Map *pMap, KeyFrame *pLoopKF, KeyFrame *pCurKF,
+                                           const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
+                                           const LoopClosing::KeyFrameAndPose &CorrectedSim3,
+                                           const map<KeyFrame *, set<KeyFrame *> > &LoopConnections,
+                                           const bool &bFixScale) {
+        //Step 1
+        //Setup optimizer
+        //NOTE _7_3
+        g2o::SparseOptimizer optimizer;
+        optimizer.setVerbose(false);
+        g2o::BlockSolver_7_3::LinearSolverType *linearSolver =
+                new g2o::LinearSolverEigen<g2o::BlockSolver_7_3::PoseMatrixType>();
+        g2o::BlockSolver_7_3 *solver_ptr = new g2o::BlockSolver_7_3(linearSolver);
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
 
-    solver->setUserLambdaInit(1e-16);
-    optimizer.setAlgorithm(solver);
+        solver->setUserLambdaInit(1e-16);
+        optimizer.setAlgorithm(solver);
 
-    const vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
-    const vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
+        const vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
+        const vector<MapPoint *> vpMPs = pMap->GetAllMapPoints();
 
-    const unsigned int nMaxKFid = pMap->GetMaxKFid();
+        const unsigned int nMaxKFid = pMap->GetMaxKFid();
 
-    //记录所有优化前关键帧的位姿，优先使用闭环时通过sim3传播的sim3位姿
-    vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid+1);
-    //记录所有关键帧经过本次essentialGraph优化过的位姿
-    vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid+1);
-    //Not in use
-    vector<g2o::VertexSim3Expmap*> vpVertices(nMaxKFid+1);
+        //记录所有优化前关键帧的位姿，优先使用闭环时通过sim3传播的sim3位姿
+        vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid + 1);
+        //记录所有关键帧经过本次essentialGraph优化过的位姿
+        vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid + 1);
+        //Not in use
+        vector<g2o::VertexSim3Expmap *> vpVertices(nMaxKFid + 1);
 
-    const int minFeat = 100;
+        const int minFeat = 100;
 
-    // Set KeyFrame vertices
-    //Step 2 : 地图中所有关键帧的pose作为顶点添加到优化器(优先sim3
-    for(size_t i=0, iend=vpKFs.size(); i<iend;i++)
-    {
-        KeyFrame* pKF = vpKFs[i];
-        if(pKF->isBad())
-            continue;
-        g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
-
-        const int nIDi = pKF->mnId;
-
-        LoopClosing::KeyFrameAndPose::const_iterator it = CorrectedSim3.find(pKF);
-
-        if(it!=CorrectedSim3.end())
-        {
-            vScw[nIDi] = it->second;
-            VSim3->setEstimate(it->second);
-        }
-        else
-        {
-            Eigen::Matrix<double,3,3> Rcw = Converter::toMatrix3d(pKF->GetRotation());
-            Eigen::Matrix<double,3,1> tcw = Converter::toVector3d(pKF->GetTranslation());
-            g2o::Sim3 Siw(Rcw,tcw,1.0);
-            vScw[nIDi] = Siw;
-            VSim3->setEstimate(Siw);
-        }
-
-        //loop-closure keyframe set fix (should only have one
-        if(pKF==pLoopKF)
-            VSim3->setFixed(true);
-
-        VSim3->setId(nIDi);
-        VSim3->setMarginalized(false);
-        VSim3->_fix_scale = bFixScale;//keep sim3 scale factor = 1 if stereo or rgbd
-
-        optimizer.addVertex(VSim3);
-
-        vpVertices[nIDi]=VSim3;
-    }
-
-    //保存由于闭环后优化sim3而新出现的关键帧和关键帧之间的连接关系，其中id小的在前
-    set<pair<long unsigned int,long unsigned int> > sInsertedEdges;
-
-    const Eigen::Matrix<double,7,7> matLambda = Eigen::Matrix<double,7,7>::Identity();
-
-    // Set Loop edges
-    //Step 3 : add loop edges
-    for(map<KeyFrame *, set<KeyFrame *> >::const_iterator mit = LoopConnections.begin(), mend=LoopConnections.end(); mit!=mend; mit++)
-    {
-        KeyFrame* pKF = mit->first;
-        const long unsigned int nIDi = pKF->mnId;
-        //connections of this keyframe
-        const set<KeyFrame*> &spConnections = mit->second;
-        const g2o::Sim3 Siw = vScw[nIDi];//this has corrected sim3 pose for sure
-        const g2o::Sim3 Swi = Siw.inverse();
-
-        for(set<KeyFrame*>::const_iterator sit=spConnections.begin(), send=spConnections.end(); sit!=send; sit++)
-        {
-            const long unsigned int nIDj = (*sit)->mnId;
-            if ((nIDi != pCurKF->mnId || nIDj != pLoopKF->mnId) //at least one of them is not pCurKf or pLoopKF
-                && pKF->GetWeight(*sit) < minFeat //co-visibility > threshold
-                    )
+        // Set KeyFrame vertices
+        //Step 2 : 地图中所有关键帧的pose作为顶点添加到优化器(优先sim3
+        for (size_t i = 0, iend = vpKFs.size(); i < iend; i++) {
+            KeyFrame *pKF = vpKFs[i];
+            if (pKF->isBad())
                 continue;
-            //通过上面条件的有两种情况：
-            //1.恰好是当前帧和它的闭环帧 nIDi=pCurKF 并且 nIDj = pLoopKF （此时忽略共视程度)
-            //2.任意两对，共视程度>100
-            //QUESTION? 1. 错误？
-            const g2o::Sim3 Sjw = vScw[nIDj];
-            const g2o::Sim3 Sji = Sjw * Swi;//contains corrected sim3
+            g2o::VertexSim3Expmap *VSim3 = new g2o::VertexSim3Expmap();
 
-            g2o::EdgeSim3* e = new g2o::EdgeSim3();
-            e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
-            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-            e->setMeasurement(Sji);
+            const int nIDi = pKF->mnId;
 
-            e->information() = matLambda;
+            LoopClosing::KeyFrameAndPose::const_iterator it = CorrectedSim3.find(pKF);
 
-            optimizer.addEdge(e);
+            if (it != CorrectedSim3.end()) {
+                vScw[nIDi] = it->second;
+                VSim3->setEstimate(it->second);
+            } else {
+                Eigen::Matrix<double, 3, 3> Rcw = Converter::toMatrix3d(pKF->GetRotation());
+                Eigen::Matrix<double, 3, 1> tcw = Converter::toVector3d(pKF->GetTranslation());
+                g2o::Sim3 Siw(Rcw, tcw, 1.0);
+                vScw[nIDi] = Siw;
+                VSim3->setEstimate(Siw);
+            }
 
-            sInsertedEdges.insert(make_pair(min(nIDi,nIDj),max(nIDi,nIDj)));//mark for not repeat add
-        }
-    }
+            //loop-closure keyframe set fix (should only have one
+            if (pKF == pLoopKF)
+                VSim3->setFixed(true);
 
-    // Set normal edges
-    //Step 4
-    for(size_t i=0, iend=vpKFs.size(); i<iend; i++)
-    {
-        KeyFrame* pKF = vpKFs[i];
+            VSim3->setId(nIDi);
+            VSim3->setMarginalized(false);
+            VSim3->_fix_scale = bFixScale;//keep sim3 scale factor = 1 if stereo or rgbd
 
-        const int nIDi = pKF->mnId;
+            optimizer.addVertex(VSim3);
 
-        g2o::Sim3 Swi;
-
-        LoopClosing::KeyFrameAndPose::const_iterator iti = NonCorrectedSim3.find(pKF);
-
-        if(iti!=NonCorrectedSim3.end())
-            Swi = (iti->second).inverse(); //No corrected first
-        else
-            Swi = vScw[nIDi].inverse();
-
-        KeyFrame* pParentKF = pKF->GetParent();
-
-        // Spanning tree edge
-        //Step 4.1 spaning tree ( keyframe with parent frame
-        if(pParentKF)
-        {
-            int nIDj = pParentKF->mnId;
-
-            g2o::Sim3 Sjw;
-
-            LoopClosing::KeyFrameAndPose::const_iterator itj = NonCorrectedSim3.find(pParentKF);
-
-            if(itj!=NonCorrectedSim3.end())//corretion sim3 first
-                Sjw = itj->second;
-            else
-                Sjw = vScw[nIDj];
-
-            g2o::Sim3 Sji = Sjw * Swi;
-
-            g2o::EdgeSim3* e = new g2o::EdgeSim3();
-            e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
-            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-            e->setMeasurement(Sji);
-
-            e->information() = matLambda;
-            optimizer.addEdge(e);
+            vpVertices[nIDi] = VSim3;
         }
 
-        // Loop edges
-        //Step 4.2 当前帧和闭环帧之间的连接关系 (包括当前遍历到的这个关键帧和之前曾经存在过的回环边
-        //ERROR getloopedges() get loopedge from addloopedges which is called after this opmization function. check outside
-        const set<KeyFrame*> sLoopEdges = pKF->GetLoopEdges();
-        for(set<KeyFrame*>::const_iterator sit=sLoopEdges.begin(), send=sLoopEdges.end(); sit!=send; sit++)
-        {
-            KeyFrame* pLKF = *sit;
-            if(pLKF->mnId<pKF->mnId)
-            {
-                g2o::Sim3 Slw;
+        //保存由于闭环后优化sim3而新出现的关键帧和关键帧之间的连接关系，其中id小的在前
+        set<pair<long unsigned int, long unsigned int> > sInsertedEdges;
 
-                LoopClosing::KeyFrameAndPose::const_iterator itl = NonCorrectedSim3.find(pLKF);
+        const Eigen::Matrix<double, 7, 7> matLambda = Eigen::Matrix<double, 7, 7>::Identity();
 
-                if(itl!=NonCorrectedSim3.end())
-                    Slw = itl->second;
-                else
-                    Slw = vScw[pLKF->mnId];
+        // Set Loop edges
+        //Step 3 : add loop edges
+        for (map<KeyFrame *, set<KeyFrame *> >::const_iterator mit = LoopConnections.begin(), mend = LoopConnections.end();
+             mit != mend; mit++) {
+            KeyFrame *pKF = mit->first;
+            const long unsigned int nIDi = pKF->mnId;
+            //connections of this keyframe
+            const set<KeyFrame *> &spConnections = mit->second;
+            const g2o::Sim3 Siw = vScw[nIDi];//this has corrected sim3 pose for sure
+            const g2o::Sim3 Swi = Siw.inverse();
 
-                g2o::Sim3 Sli = Slw * Swi;
-                g2o::EdgeSim3* el = new g2o::EdgeSim3();
-                el->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pLKF->mnId)));
-                el->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-                el->setMeasurement(Sli);
-                el->information() = matLambda;
-                optimizer.addEdge(el);
+            for (set<KeyFrame *>::const_iterator sit = spConnections.begin(), send = spConnections.end();
+                 sit != send; sit++) {
+                const long unsigned int nIDj = (*sit)->mnId;
+                if ((nIDi != pCurKF->mnId || nIDj != pLoopKF->mnId) //at least one of them is not pCurKf or pLoopKF
+                    && pKF->GetWeight(*sit) < minFeat //co-visibility > threshold
+                        )
+                    continue;
+                //通过上面条件的有两种情况：
+                //1.恰好是当前帧和它的闭环帧 nIDi=pCurKF 并且 nIDj = pLoopKF （此时忽略共视程度)
+                //2.任意两对，共视程度>100
+                //QUESTION? 1. 错误？
+                const g2o::Sim3 Sjw = vScw[nIDj];
+                const g2o::Sim3 Sji = Sjw * Swi;//contains corrected sim3
+
+                g2o::EdgeSim3 *e = new g2o::EdgeSim3();
+                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(nIDj)));
+                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(nIDi)));
+                e->setMeasurement(Sji);
+
+                e->information() = matLambda;
+
+                optimizer.addEdge(e);
+
+                sInsertedEdges.insert(make_pair(min(nIDi, nIDj), max(nIDi, nIDj)));//mark for not repeat add
             }
         }
 
-        // Covisibility graph edges
-        //Step 4.3 high co-visibility edge
-        const vector<KeyFrame*> vpConnectedKFs = pKF->GetCovisiblesByWeight(minFeat);
-        for(vector<KeyFrame*>::const_iterator vit=vpConnectedKFs.begin(); vit!=vpConnectedKFs.end(); vit++)
-        {
-            KeyFrame* pKFn = *vit;
-            if(pKFn && pKFn!=pParentKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn))
-            {
-                if(!pKFn->isBad() && pKFn->mnId<pKF->mnId)//pKFn id < pKF id, avoid repeat add
-                {
-                    if(sInsertedEdges.count(make_pair(min(pKF->mnId,pKFn->mnId),max(pKF->mnId,pKFn->mnId))))
-                        continue;
+        // Set normal edges
+        //Step 4
+        for (size_t i = 0, iend = vpKFs.size(); i < iend; i++) {
+            KeyFrame *pKF = vpKFs[i];
 
-                    g2o::Sim3 Snw;
+            const int nIDi = pKF->mnId;
 
-                    LoopClosing::KeyFrameAndPose::const_iterator itn = NonCorrectedSim3.find(pKFn);
+            g2o::Sim3 Swi;
 
-                    if(itn!=NonCorrectedSim3.end()) //non corrected sim3 first
-                        Snw = itn->second;
+            LoopClosing::KeyFrameAndPose::const_iterator iti = NonCorrectedSim3.find(pKF);
+
+            if (iti != NonCorrectedSim3.end())
+                Swi = (iti->second).inverse(); //No corrected first
+            else
+                Swi = vScw[nIDi].inverse();
+
+            KeyFrame *pParentKF = pKF->GetParent();
+
+            // Spanning tree edge
+            //Step 4.1 spaning tree ( keyframe with parent frame
+            if (pParentKF) {
+                int nIDj = pParentKF->mnId;
+
+                g2o::Sim3 Sjw;
+
+                LoopClosing::KeyFrameAndPose::const_iterator itj = NonCorrectedSim3.find(pParentKF);
+
+                if (itj != NonCorrectedSim3.end())//corretion sim3 first
+                    Sjw = itj->second;
+                else
+                    Sjw = vScw[nIDj];
+
+                g2o::Sim3 Sji = Sjw * Swi;
+
+                g2o::EdgeSim3 *e = new g2o::EdgeSim3();
+                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(nIDj)));
+                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(nIDi)));
+                e->setMeasurement(Sji);
+
+                e->information() = matLambda;
+                optimizer.addEdge(e);
+            }
+
+            // Loop edges
+            //Step 4.2 当前帧和闭环帧之间的连接关系 (包括当前遍历到的这个关键帧和之前曾经存在过的回环边
+            //ERROR getloopedges() get loopedge from addloopedges which is called after this opmization function. check outside
+            const set<KeyFrame *> sLoopEdges = pKF->GetLoopEdges();
+            for (set<KeyFrame *>::const_iterator sit = sLoopEdges.begin(), send = sLoopEdges.end();
+                 sit != send; sit++) {
+                KeyFrame *pLKF = *sit;
+                if (pLKF->mnId < pKF->mnId) {
+                    g2o::Sim3 Slw;
+
+                    LoopClosing::KeyFrameAndPose::const_iterator itl = NonCorrectedSim3.find(pLKF);
+
+                    if (itl != NonCorrectedSim3.end())
+                        Slw = itl->second;
                     else
-                        Snw = vScw[pKFn->mnId];
+                        Slw = vScw[pLKF->mnId];
 
-                    g2o::Sim3 Sni = Snw * Swi;
+                    g2o::Sim3 Sli = Slw * Swi;
+                    g2o::EdgeSim3 *el = new g2o::EdgeSim3();
+                    el->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pLKF->mnId)));
+                    el->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(nIDi)));
+                    el->setMeasurement(Sli);
+                    el->information() = matLambda;
+                    optimizer.addEdge(el);
+                }
+            }
 
-                    g2o::EdgeSim3* en = new g2o::EdgeSim3();
-                    en->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFn->mnId)));
-                    en->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-                    en->setMeasurement(Sni);
-                    en->information() = matLambda;
-                    optimizer.addEdge(en);
+            // Covisibility graph edges
+            //Step 4.3 high co-visibility edge
+            const vector<KeyFrame *> vpConnectedKFs = pKF->GetCovisiblesByWeight(minFeat);
+            for (vector<KeyFrame *>::const_iterator vit = vpConnectedKFs.begin(); vit != vpConnectedKFs.end(); vit++) {
+                KeyFrame *pKFn = *vit;
+                if (pKFn && pKFn != pParentKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn)) {
+                    if (!pKFn->isBad() && pKFn->mnId < pKF->mnId)//pKFn id < pKF id, avoid repeat add
+                    {
+                        if (sInsertedEdges.count(make_pair(min(pKF->mnId, pKFn->mnId), max(pKF->mnId, pKFn->mnId))))
+                            continue;
+
+                        g2o::Sim3 Snw;
+
+                        LoopClosing::KeyFrameAndPose::const_iterator itn = NonCorrectedSim3.find(pKFn);
+
+                        if (itn != NonCorrectedSim3.end()) //non corrected sim3 first
+                            Snw = itn->second;
+                        else
+                            Snw = vScw[pKFn->mnId];
+
+                        g2o::Sim3 Sni = Snw * Swi;
+
+                        g2o::EdgeSim3 *en = new g2o::EdgeSim3();
+                        en->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFn->mnId)));
+                        en->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(nIDi)));
+                        en->setMeasurement(Sni);
+                        en->information() = matLambda;
+                        optimizer.addEdge(en);
+                    }
                 }
             }
         }
-    }
 
-    // Optimize!
-    //Step 5
-    optimizer.initializeOptimization();
-    optimizer.optimize(20);
+        // Optimize!
+        //Step 5
+        optimizer.initializeOptimization();
+        optimizer.optimize(20);
 
-    unique_lock<mutex> lock(pMap->mMutexMapUpdate);
+        unique_lock<mutex> lock(pMap->mMutexMapUpdate);
 
-    // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
-    //Step 6 : update pose
-    for(size_t i=0;i<vpKFs.size();i++)
-    {
-        KeyFrame* pKFi = vpKFs[i];
+        // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
+        //Step 6 : update pose
+        for (size_t i = 0; i < vpKFs.size(); i++) {
+            KeyFrame *pKFi = vpKFs[i];
 
-        const int nIDi = pKFi->mnId;
+            const int nIDi = pKFi->mnId;
 
-        g2o::VertexSim3Expmap* VSim3 = static_cast<g2o::VertexSim3Expmap*>(optimizer.vertex(nIDi));
-        g2o::Sim3 CorrectedSiw =  VSim3->estimate();
-        vCorrectedSwc[nIDi]=CorrectedSiw.inverse();
-        Eigen::Matrix3d eigR = CorrectedSiw.rotation().toRotationMatrix();//automatic unified
-        Eigen::Vector3d eigt = CorrectedSiw.translation();
-        double s = CorrectedSiw.scale();
+            g2o::VertexSim3Expmap *VSim3 = static_cast<g2o::VertexSim3Expmap *>(optimizer.vertex(nIDi));
+            g2o::Sim3 CorrectedSiw = VSim3->estimate();
+            vCorrectedSwc[nIDi] = CorrectedSiw.inverse();
+            Eigen::Matrix3d eigR = CorrectedSiw.rotation().toRotationMatrix();//automatic unified
+            Eigen::Vector3d eigt = CorrectedSiw.translation();
+            double s = CorrectedSiw.scale();
 
-        eigt *=(1./s); //[R t/s;0 1]
+            eigt *= (1. / s); //[R t/s;0 1]
 
-        cv::Mat Tiw = Converter::toCvSE3(eigR,eigt);
+            cv::Mat Tiw = Converter::toCvSE3(eigR, eigt);
 
-        pKFi->SetPose(Tiw);
-    }
-
-    // Correct points. Transform to "non-optimized" reference keyframe pose and transform back with optimized pose
-    //Step 7: update mappoint by reference keyframe
-    for(size_t i=0, iend=vpMPs.size(); i<iend; i++)
-    {
-        MapPoint* pMP = vpMPs[i];
-
-        if(pMP->isBad())
-            continue;
-
-        int nIDr;
-        //如果这个地图点，在闭环检测中被当前KF调整过，使用调整过他的KF id
-        if(pMP->mnCorrectedByKF==pCurKF->mnId)
-        {
-            nIDr = pMP->mnCorrectedReference;
-        }
-        else
-        {//通常参考关键帧就是创建该地图点的关键帧
-            KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
-            nIDr = pRefKF->mnId;
+            pKFi->SetPose(Tiw);
         }
 
+        // Correct points. Transform to "non-optimized" reference keyframe pose and transform back with optimized pose
+        //Step 7: update mappoint by reference keyframe
+        for (size_t i = 0, iend = vpMPs.size(); i < iend; i++) {
+            MapPoint *pMP = vpMPs[i];
 
-        g2o::Sim3 Srw = vScw[nIDr];//pose before optimization
-        g2o::Sim3 correctedSwr = vCorrectedSwc[nIDr];//pose after optimization
+            if (pMP->isBad())
+                continue;
 
-        cv::Mat P3Dw = pMP->GetWorldPos();
-        Eigen::Matrix<double,3,1> eigP3Dw = Converter::toVector3d(P3Dw);
-        Eigen::Matrix<double,3,1> eigCorrectedP3Dw = correctedSwr.map(Srw.map(eigP3Dw));//transform to reference frame by before optimization transform, transform back to world by optimized transform
+            int nIDr;
+            //如果这个地图点，在闭环检测中被当前KF调整过，使用调整过他的KF id
+            if (pMP->mnCorrectedByKF == pCurKF->mnId) {
+                nIDr = pMP->mnCorrectedReference;
+            } else {//通常参考关键帧就是创建该地图点的关键帧
+                KeyFrame *pRefKF = pMP->GetReferenceKeyFrame();
+                nIDr = pRefKF->mnId;
+            }
 
-        cv::Mat cvCorrectedP3Dw = Converter::toCvMat(eigCorrectedP3Dw);
-        pMP->SetWorldPos(cvCorrectedP3Dw);
 
-        pMP->UpdateNormalAndDepth();
+            g2o::Sim3 Srw = vScw[nIDr];//pose before optimization
+            g2o::Sim3 correctedSwr = vCorrectedSwc[nIDr];//pose after optimization
+
+            cv::Mat P3Dw = pMP->GetWorldPos();
+            Eigen::Matrix<double, 3, 1> eigP3Dw = Converter::toVector3d(P3Dw);
+            Eigen::Matrix<double, 3, 1> eigCorrectedP3Dw = correctedSwr.map(
+                    Srw.map(eigP3Dw));//transform to reference frame by before optimization transform, transform back to world by optimized transform
+
+            cv::Mat cvCorrectedP3Dw = Converter::toCvMat(eigCorrectedP3Dw);
+            pMP->SetWorldPos(cvCorrectedP3Dw);
+
+            pMP->UpdateNormalAndDepth();
+        }
     }
-}
+
 /**
  *@brief when loopClosure happened, optimize sim3 without optimize mapPoints.
  * 1. Vertex:
@@ -1558,230 +2136,220 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
  * @param bFixScale : Monocular optimize Scale, Stereo/RGBD do not
  * @return int : inlines number
  */
-int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12, const float th2, const bool bFixScale)
-{
-    //*Step 1 初始化g2o优化器
-    //构造求解器
-    g2o::SparseOptimizer optimizer;
-    //构造线性方程求解器 Hx=-b的求解器
-    g2o::BlockSolverX::LinearSolverType * linearSolver;
-    //使用dense求解器(常见非dense求解器有cholmod先行求解器和shur补线性求解器)
-    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>();
+    int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12,
+                                const float th2, const bool bFixScale) {
+        //*Step 1 初始化g2o优化器
+        //构造求解器
+        g2o::SparseOptimizer optimizer;
+        //构造线性方程求解器 Hx=-b的求解器
+        g2o::BlockSolverX::LinearSolverType *linearSolver;
+        //使用dense求解器(常见非dense求解器有cholmod先行求解器和shur补线性求解器)
+        linearSolver = new g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>();
 
-    g2o::BlockSolverX * solver_ptr = new g2o::BlockSolverX(linearSolver);
-    //使用LM迭代
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
-    optimizer.setAlgorithm(solver);
+        g2o::BlockSolverX *solver_ptr = new g2o::BlockSolverX(linearSolver);
+        //使用LM迭代
+        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+        optimizer.setAlgorithm(solver);
 
-    //内参矩阵
-    // Calibration
-    const cv::Mat &K1 = pKF1->mK;
-    const cv::Mat &K2 = pKF2->mK;
+        //内参矩阵
+        // Calibration
+        const cv::Mat &K1 = pKF1->mK;
+        const cv::Mat &K2 = pKF2->mK;
 
-    // Camera poses
-    const cv::Mat R1w = pKF1->GetRotation();
-    const cv::Mat t1w = pKF1->GetTranslation();
-    const cv::Mat R2w = pKF2->GetRotation();
-    const cv::Mat t2w = pKF2->GetTranslation();
+        // Camera poses
+        const cv::Mat R1w = pKF1->GetRotation();
+        const cv::Mat t1w = pKF1->GetTranslation();
+        const cv::Mat R2w = pKF2->GetRotation();
+        const cv::Mat t2w = pKF2->GetTranslation();
 
-    // Set Sim3 vertex
-    //*Step 2 设置Sim3 作为顶点
-    g2o::VertexSim3Expmap * vSim3 = new g2o::VertexSim3Expmap();    
-    //根据传感器类型决定是否固定尺度
-    vSim3->_fix_scale=bFixScale;
-    vSim3->setEstimate(g2oS12);
-    vSim3->setId(0);
-    //Sim3不fix 需要优化
-    vSim3->setFixed(false);
-    vSim3->_principle_point1[0] = K1.at<float>(0,2); //光心横坐标cx
-    vSim3->_principle_point1[1] = K1.at<float>(1,2); //光心纵坐标cy
-    vSim3->_focal_length1[0] = K1.at<float>(0,0); //焦距fx
-    vSim3->_focal_length1[1] = K1.at<float>(1,1); //焦距fy
-    vSim3->_principle_point2[0] = K2.at<float>(0,2);
-    vSim3->_principle_point2[1] = K2.at<float>(1,2);
-    vSim3->_focal_length2[0] = K2.at<float>(0,0);
-    vSim3->_focal_length2[1] = K2.at<float>(1,1);
-    optimizer.addVertex(vSim3);
+        // Set Sim3 vertex
+        //*Step 2 设置Sim3 作为顶点
+        g2o::VertexSim3Expmap *vSim3 = new g2o::VertexSim3Expmap();
+        //根据传感器类型决定是否固定尺度
+        vSim3->_fix_scale = bFixScale;
+        vSim3->setEstimate(g2oS12);
+        vSim3->setId(0);
+        //Sim3不fix 需要优化
+        vSim3->setFixed(false);
+        vSim3->_principle_point1[0] = K1.at<float>(0, 2); //光心横坐标cx
+        vSim3->_principle_point1[1] = K1.at<float>(1, 2); //光心纵坐标cy
+        vSim3->_focal_length1[0] = K1.at<float>(0, 0); //焦距fx
+        vSim3->_focal_length1[1] = K1.at<float>(1, 1); //焦距fy
+        vSim3->_principle_point2[0] = K2.at<float>(0, 2);
+        vSim3->_principle_point2[1] = K2.at<float>(1, 2);
+        vSim3->_focal_length2[0] = K2.at<float>(0, 0);
+        vSim3->_focal_length2[1] = K2.at<float>(1, 1);
+        optimizer.addVertex(vSim3);
 
-    // Set MapPoint vertices
-    //*Step 3 设置地图点作为顶点
-    const int N = vpMatches1.size();
-    //获取pKF1的地图点
-    const vector<MapPoint*> vpMapPoints1 = pKF1->GetMapPointMatches();
-    vector<g2o::EdgeSim3ProjectXYZ*> vpEdges12; //pKF2对应的地图点到pKF1的投影边
-    vector<g2o::EdgeInverseSim3ProjectXYZ*> vpEdges21; //pKF1对应的地图点到pKF2的投影边
-    vector<size_t> vnIndexEdge; //边的索引
+        // Set MapPoint vertices
+        //*Step 3 设置地图点作为顶点
+        const int N = vpMatches1.size();
+        //获取pKF1的地图点
+        const vector<MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
+        vector<g2o::EdgeSim3ProjectXYZ *> vpEdges12; //pKF2对应的地图点到pKF1的投影边
+        vector<g2o::EdgeInverseSim3ProjectXYZ *> vpEdges21; //pKF1对应的地图点到pKF2的投影边
+        vector<size_t> vnIndexEdge; //边的索引
 
-    vnIndexEdge.reserve(2*N);
-    vpEdges12.reserve(2*N);
-    vpEdges21.reserve(2*N);
+        vnIndexEdge.reserve(2 * N);
+        vpEdges12.reserve(2 * N);
+        vpEdges21.reserve(2 * N);
 
-    //核函数的阈值
-    const float deltaHuber = sqrt(th2);
+        //核函数的阈值
+        const float deltaHuber = sqrt(th2);
 
-    int nCorrespondences = 0;
+        int nCorrespondences = 0;
 
-    //遍历每对匹配点
-    for(int i=0; i<N; i++)
-    {
-        if(!vpMatches1[i])
-            continue;
-
-        MapPoint* pMP1 = vpMapPoints1[i];
-        MapPoint* pMP2 = vpMatches1[i];
-
-        const int id1 = 2*i+1;//1 3 5 7
-        const int id2 = 2*(i+1);//2 4 6 8
-
-        //i2是pMP2在pKF2中的索引
-        const int i2 = pMP2->GetIndexInKeyFrame(pKF2);
-
-        if(pMP1 && pMP2)
-        {
-            if(!pMP1->isBad() && !pMP2->isBad() && i2>=0)
-            {
-                //添加PointXYZ顶点
-                g2o::VertexSBAPointXYZ* vPoint1 = new g2o::VertexSBAPointXYZ();
-                //地图点 转换到 各自相机坐标系下的三维点
-                cv::Mat P3D1w = pMP1->GetWorldPos();
-                cv::Mat P3D1c = R1w*P3D1w + t1w;
-                vPoint1->setEstimate(Converter::toVector3d(P3D1c));
-                vPoint1->setId(id1);
-                //地图点不优化
-                vPoint1->setFixed(true);
-                optimizer.addVertex(vPoint1);
-
-                g2o::VertexSBAPointXYZ* vPoint2 = new g2o::VertexSBAPointXYZ();
-                cv::Mat P3D2w = pMP2->GetWorldPos();
-                cv::Mat P3D2c = R2w*P3D2w + t2w;
-                vPoint2->setEstimate(Converter::toVector3d(P3D2c));
-                vPoint2->setId(id2);
-                vPoint2->setFixed(true);
-                optimizer.addVertex(vPoint2);
-            }
-            else
+        //遍历每对匹配点
+        for (int i = 0; i < N; i++) {
+            if (!vpMatches1[i])
                 continue;
+
+            MapPoint *pMP1 = vpMapPoints1[i];
+            MapPoint *pMP2 = vpMatches1[i];
+
+            const int id1 = 2 * i + 1;//1 3 5 7
+            const int id2 = 2 * (i + 1);//2 4 6 8
+
+            //i2是pMP2在pKF2中的索引
+            const int i2 = pMP2->GetIndexInKeyFrame(pKF2);
+
+            if (pMP1 && pMP2) {
+                if (!pMP1->isBad() && !pMP2->isBad() && i2 >= 0) {
+                    //添加PointXYZ顶点
+                    g2o::VertexSBAPointXYZ *vPoint1 = new g2o::VertexSBAPointXYZ();
+                    //地图点 转换到 各自相机坐标系下的三维点
+                    cv::Mat P3D1w = pMP1->GetWorldPos();
+                    cv::Mat P3D1c = R1w * P3D1w + t1w;
+                    vPoint1->setEstimate(Converter::toVector3d(P3D1c));
+                    vPoint1->setId(id1);
+                    //地图点不优化
+                    vPoint1->setFixed(true);
+                    optimizer.addVertex(vPoint1);
+
+                    g2o::VertexSBAPointXYZ *vPoint2 = new g2o::VertexSBAPointXYZ();
+                    cv::Mat P3D2w = pMP2->GetWorldPos();
+                    cv::Mat P3D2c = R2w * P3D2w + t2w;
+                    vPoint2->setEstimate(Converter::toVector3d(P3D2c));
+                    vPoint2->setId(id2);
+                    vPoint2->setFixed(true);
+                    optimizer.addVertex(vPoint2);
+                } else
+                    continue;
+            } else
+                continue;
+
+            //对匹配关系计数
+            nCorrespondences++;
+
+            //*Step 4 添加边（地图点投影到特征点为边）
+            // Set edge x1 = S12*X2
+            Eigen::Matrix<double, 2, 1> obs1;
+            const cv::KeyPoint &kpUn1 = pKF1->mvKeysUn[i];
+            obs1 << kpUn1.pt.x, kpUn1.pt.y;
+            //*Step 4.1 闭环候选帧 投影到 关键帧 的边 --- 正向投影 T12
+            g2o::EdgeSim3ProjectXYZ *e12 = new g2o::EdgeSim3ProjectXYZ();
+            //id2 说明是以pKF2为索引在添加边（正向投影
+            e12->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id2)));
+            //*另一个顶点是待优化的sim3相似变换。
+            e12->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+            e12->setMeasurement(obs1);
+            const float &invSigmaSquare1 = pKF1->mvInvLevelSigma2[kpUn1.octave];
+            e12->setInformation(Eigen::Matrix2d::Identity() * invSigmaSquare1);
+
+            g2o::RobustKernelHuber *rk1 = new g2o::RobustKernelHuber;
+            e12->setRobustKernel(rk1);
+            rk1->setDelta(deltaHuber);
+            optimizer.addEdge(e12);
+
+            //*Step 4.2 反向投影
+            // Set edge x2 = S21*X1
+            Eigen::Matrix<double, 2, 1> obs2;
+            const cv::KeyPoint &kpUn2 = pKF2->mvKeysUn[i2];
+            obs2 << kpUn2.pt.x, kpUn2.pt.y;
+
+            g2o::EdgeInverseSim3ProjectXYZ *e21 = new g2o::EdgeInverseSim3ProjectXYZ();
+
+            e21->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id1)));
+            e21->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
+            e21->setMeasurement(obs2);
+            float invSigmaSquare2 = pKF2->mvInvLevelSigma2[kpUn2.octave];
+            e21->setInformation(Eigen::Matrix2d::Identity() * invSigmaSquare2);
+
+            g2o::RobustKernelHuber *rk2 = new g2o::RobustKernelHuber;
+            e21->setRobustKernel(rk2);
+            rk2->setDelta(deltaHuber);
+            optimizer.addEdge(e21);
+
+            vpEdges12.push_back(e12);
+            vpEdges21.push_back(e21);
+            vnIndexEdge.push_back(i);
         }
+
+        // Optimize!
+        //*Step 5 优化5次
+        optimizer.initializeOptimization();
+        optimizer.optimize(5);
+
+        //*Step 剔除outlier
+        // Check inliers
+        int nBad = 0;
+        for (size_t i = 0; i < vpEdges12.size(); i++) {
+            g2o::EdgeSim3ProjectXYZ *e12 = vpEdges12[i];
+            g2o::EdgeInverseSim3ProjectXYZ *e21 = vpEdges21[i];
+            if (!e12 || !e21)
+                continue;
+
+            if (e12->chi2() > th2 || e21->chi2() > th2) {
+                //正反投影任意一个误差超过阈值都要删除该边
+                size_t idx = vnIndexEdge[i];
+                vpMatches1[idx] = static_cast<MapPoint *>(NULL);//NOTE this will influence inputParameter
+                optimizer.removeEdge(e12);
+                optimizer.removeEdge(e21);
+                vpEdges12[i] = static_cast<g2o::EdgeSim3ProjectXYZ *>(NULL);
+                vpEdges21[i] = static_cast<g2o::EdgeInverseSim3ProjectXYZ *>(NULL);
+                nBad++;
+            }
+        }
+
+        //有删除误差边 说明质量不好 增加迭代次数
+        int nMoreIterations;
+        if (nBad > 0)
+            nMoreIterations = 10;
         else
-            continue;
+            nMoreIterations = 5;
 
-        //对匹配关系计数
-        nCorrespondences++;
+        if (nCorrespondences - nBad < 10)//edge number should more than 10
+            return 0;
 
-        //*Step 4 添加边（地图点投影到特征点为边）
-        // Set edge x1 = S12*X2
-        Eigen::Matrix<double,2,1> obs1;
-        const cv::KeyPoint &kpUn1 = pKF1->mvKeysUn[i];
-        obs1 << kpUn1.pt.x, kpUn1.pt.y;
-        //*Step 4.1 闭环候选帧 投影到 关键帧 的边 --- 正向投影 T12
-        g2o::EdgeSim3ProjectXYZ* e12 = new g2o::EdgeSim3ProjectXYZ();
-        //id2 说明是以pKF2为索引在添加边（正向投影
-        e12->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id2)));
-        //*另一个顶点是待优化的sim3相似变换。
-        e12->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-        e12->setMeasurement(obs1);
-        const float &invSigmaSquare1 = pKF1->mvInvLevelSigma2[kpUn1.octave];
-        e12->setInformation(Eigen::Matrix2d::Identity()*invSigmaSquare1);
+        //*Step 7 再次迭代
+        // Optimize again only with inliers
 
-        g2o::RobustKernelHuber* rk1 = new g2o::RobustKernelHuber;
-        e12->setRobustKernel(rk1);
-        rk1->setDelta(deltaHuber);
-        optimizer.addEdge(e12);
+        optimizer.initializeOptimization();
+        optimizer.optimize(nMoreIterations);
 
-        //*Step 4.2 反向投影
-        // Set edge x2 = S21*X1
-        Eigen::Matrix<double,2,1> obs2;
-        const cv::KeyPoint &kpUn2 = pKF2->mvKeysUn[i2];
-        obs2 << kpUn2.pt.x, kpUn2.pt.y;
+        //统计inlier
+        int nIn = 0;
+        for (size_t i = 0; i < vpEdges12.size(); i++) {
+            g2o::EdgeSim3ProjectXYZ *e12 = vpEdges12[i];
+            g2o::EdgeInverseSim3ProjectXYZ *e21 = vpEdges21[i];
+            if (!e12 || !e21)
+                continue;
 
-        g2o::EdgeInverseSim3ProjectXYZ* e21 = new g2o::EdgeInverseSim3ProjectXYZ();
-
-        e21->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id1)));
-        e21->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-        e21->setMeasurement(obs2);
-        float invSigmaSquare2 = pKF2->mvInvLevelSigma2[kpUn2.octave];
-        e21->setInformation(Eigen::Matrix2d::Identity()*invSigmaSquare2);
-
-        g2o::RobustKernelHuber* rk2 = new g2o::RobustKernelHuber;
-        e21->setRobustKernel(rk2);
-        rk2->setDelta(deltaHuber);
-        optimizer.addEdge(e21);
-
-        vpEdges12.push_back(e12);
-        vpEdges21.push_back(e21);
-        vnIndexEdge.push_back(i);
-    }
-
-    // Optimize!
-    //*Step 5 优化5次
-    optimizer.initializeOptimization();
-    optimizer.optimize(5);
-
-    //*Step 剔除outlier
-    // Check inliers
-    int nBad=0;
-    for(size_t i=0; i<vpEdges12.size();i++)
-    {
-        g2o::EdgeSim3ProjectXYZ* e12 = vpEdges12[i];
-        g2o::EdgeInverseSim3ProjectXYZ* e21 = vpEdges21[i];
-        if(!e12 || !e21)
-            continue;
-
-        if(e12->chi2()>th2 || e21->chi2()>th2)
-        {
-            //正反投影任意一个误差超过阈值都要删除该边
-            size_t idx = vnIndexEdge[i];
-            vpMatches1[idx]=static_cast<MapPoint*>(NULL);//NOTE this will influence inputParameter
-            optimizer.removeEdge(e12);
-            optimizer.removeEdge(e21);
-            vpEdges12[i]=static_cast<g2o::EdgeSim3ProjectXYZ*>(NULL);
-            vpEdges21[i]=static_cast<g2o::EdgeInverseSim3ProjectXYZ*>(NULL);
-            nBad++;
+            if (e12->chi2() > th2 || e21->chi2() > th2) {
+                size_t idx = vnIndexEdge[i];
+                //因为不再优化了 就不删除边了 只是匹配关系置为null
+                vpMatches1[idx] = static_cast<MapPoint *>(NULL);
+            } else
+                nIn++;
         }
+
+        //*Step 8 优化后的结果
+        // Recover optimized Sim3
+        g2o::VertexSim3Expmap *vSim3_recov = static_cast<g2o::VertexSim3Expmap *>(optimizer.vertex(0));
+        g2oS12 = vSim3_recov->estimate();
+
+        return nIn;
     }
-
-    //有删除误差边 说明质量不好 增加迭代次数
-    int nMoreIterations;
-    if(nBad>0)
-        nMoreIterations=10;
-    else
-        nMoreIterations=5;
-
-    if(nCorrespondences-nBad<10)//edge number should more than 10
-        return 0;
-
-    //*Step 7 再次迭代 
-    // Optimize again only with inliers
-
-    optimizer.initializeOptimization();
-    optimizer.optimize(nMoreIterations);
-
-    //统计inlier
-    int nIn = 0;
-    for(size_t i=0; i<vpEdges12.size();i++)
-    {
-        g2o::EdgeSim3ProjectXYZ* e12 = vpEdges12[i];
-        g2o::EdgeInverseSim3ProjectXYZ* e21 = vpEdges21[i];
-        if(!e12 || !e21)
-            continue;
-
-        if(e12->chi2()>th2 || e21->chi2()>th2)
-        {
-            size_t idx = vnIndexEdge[i];
-            //因为不再优化了 就不删除边了 只是匹配关系置为null
-            vpMatches1[idx]=static_cast<MapPoint*>(NULL);
-        }
-        else
-            nIn++;
-    }
-
-    //*Step 8 优化后的结果
-    // Recover optimized Sim3
-    g2o::VertexSim3Expmap* vSim3_recov = static_cast<g2o::VertexSim3Expmap*>(optimizer.vertex(0));
-    g2oS12= vSim3_recov->estimate();
-
-    return nIn;
-}
 
 
 } //namespace ORB_SLAM

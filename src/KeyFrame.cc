@@ -74,7 +74,8 @@ long unsigned int KeyFrame::nNextId=0;
             ///added modules
             mLaserPoints(F.mLaserPoints),mLaser16ScansPoints(F.mLaser16ScansPoints),mLaserPt_cam(F.mLaserPt_cam),
             mLaserCorner_cam(F.mLaserCorner_cam),mLaserLessCorner_cam(F.mLaserLessCorner_cam),mLaserFlat_cam(F.mLaserFlat_cam),mLaserLessFlat_cam(F.mLaserLessFlat_cam),
-            mLaserTimes(F.mLaserTimes),mvPlanes(F.mvPlanes),mvLines(F.mvLines),mvORBAttributions(F.mvORBAttributions)
+            mLaserTimes(F.mLaserTimes),mvPlanes(F.mvPlanes),mvLines(F.mvLines),mvORBAttributions(F.mvORBAttributions),
+            mvpMapLines(F.mvpMapLines),N_lines(F.N_lines),mlsdDescriptors(F.mlsdDescriptors)
     {
         //关键帧ID
         mnId=nNextId++;
@@ -254,11 +255,16 @@ int KeyFrame::GetWeight(KeyFrame *pKF)
         return 0;
 }
 
-void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx)
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    mvpMapPoints[idx]=pMP;
-}
+    void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx) {
+        unique_lock<mutex> lock(mMutexFeatures);
+        mvpMapPoints[idx] = pMP;
+    }
+
+    ///Added Module
+    void KeyFrame::AddMapLine(MapLine *lML, const size_t &idx) {
+        unique_lock<mutex> lock(mMutexFeatures);
+        mvpMapLines[idx] = lML;
+    }
 
 void KeyFrame::EraseMapPointMatch(const size_t &idx)
 {
@@ -326,6 +332,12 @@ vector<MapPoint*> KeyFrame::GetMapPointMatches()
     unique_lock<mutex> lock(mMutexFeatures);
     return mvpMapPoints;
 }
+    ///Added Module
+    vector<MapLine*> KeyFrame::GetMapLineMatches()
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return mvpMapLines;
+    }
 
 MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
 {

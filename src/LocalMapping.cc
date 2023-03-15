@@ -270,295 +270,279 @@ void LocalMapping::MapPointCulling()
 /*
 当前关键帧与相邻关键帧生成新的地图点
 */
-void LocalMapping::CreateNewMapPoints()
-{
-    // Retrieve neighbor keyframes in covisibility graph
-    int nn = 10;
-    if(mbMonocular)
-        nn=20;
-    //*Step 1 当前关键帧中前nn个共视度高的关键帧
-    const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    void LocalMapping::CreateNewMapPoints() {
+        // Retrieve neighbor keyframes in covisibility graph
+        int nn = 10;
+        if (mbMonocular)
+            nn = 20;
+        //*Step 1 当前关键帧中前nn个共视度高的关键帧
+        const vector<KeyFrame *> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
-    //ORB matcher setting 最佳 < 0.6 * 次佳 ?,不查旋转
-    ORBmatcher matcher(0.6,false);
+        //ORB matcher setting 最佳 < 0.6 * 次佳 ?,不查旋转
+        ORBmatcher matcher(0.6, false);
 
-    //取出Tcw
-    cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
-    cv::Mat Rwc1 = Rcw1.t();
-    cv::Mat tcw1 = mpCurrentKeyFrame->GetTranslation();
-    cv::Mat Tcw1(3,4,CV_32F);
-    Rcw1.copyTo(Tcw1.colRange(0,3));
-    tcw1.copyTo(Tcw1.col(3));
-    cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();//光心坐标Ow1
+        //取出Tcw
+        cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
+        cv::Mat Rwc1 = Rcw1.t();
+        cv::Mat tcw1 = mpCurrentKeyFrame->GetTranslation();
+        cv::Mat Tcw1(3, 4, CV_32F);
+        Rcw1.copyTo(Tcw1.colRange(0, 3));
+        tcw1.copyTo(Tcw1.col(3));
+        cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();//光心坐标Ow1
 
-    const float &fx1 = mpCurrentKeyFrame->fx;
-    const float &fy1 = mpCurrentKeyFrame->fy;
-    const float &cx1 = mpCurrentKeyFrame->cx;
-    const float &cy1 = mpCurrentKeyFrame->cy;
-    const float &invfx1 = mpCurrentKeyFrame->invfx;
-    const float &invfy1 = mpCurrentKeyFrame->invfy;
+        const float &fx1 = mpCurrentKeyFrame->fx;
+        const float &fy1 = mpCurrentKeyFrame->fy;
+        const float &cx1 = mpCurrentKeyFrame->cx;
+        const float &cy1 = mpCurrentKeyFrame->cy;
+        const float &invfx1 = mpCurrentKeyFrame->invfx;
+        const float &invfy1 = mpCurrentKeyFrame->invfy;
 
-    //深度验证用得比例 1.5是经验值
-    //1.5*1.2
-    const float ratioFactor = 1.5f*mpCurrentKeyFrame->mfScaleFactor;
+        //深度验证用得比例 1.5是经验值
+        //1.5*1.2
+        const float ratioFactor = 1.5f * mpCurrentKeyFrame->mfScaleFactor;
 
-    int nnew=0;
+        int nnew = 0;
 
-    //*Step 2 遍历相邻关键帧
-    // Search matches with epipolar restriction and triangulate
-    for(size_t i=0; i<vpNeighKFs.size(); i++)
-    {
-        //因为要处理20帧比较耗时间
-        //新的关键要处理则return
-        if(i>0 && CheckNewKeyFrames())
-            return;
+        //*Step 2 遍历相邻关键帧
+        // Search matches with epipolar restriction and triangulate
+        for (size_t i = 0; i < vpNeighKFs.size(); i++) {
+            //因为要处理20帧比较耗时间
+            //新的关键要处理则return
+            if (i > 0 && CheckNewKeyFrames())
+                return;
 
-        KeyFrame* pKF2 = vpNeighKFs[i];
+            KeyFrame *pKF2 = vpNeighKFs[i];
 
-        //邻居关键帧光心Ow2
-        // Check first that baseline is not too short
-        cv::Mat Ow2 = pKF2->GetCameraCenter();
-        //基线向量
-        cv::Mat vBaseline = Ow2-Ow1;
-        //基线距离
-        const float baseline = cv::norm(vBaseline);
+            //邻居关键帧光心Ow2
+            // Check first that baseline is not too short
+            cv::Mat Ow2 = pKF2->GetCameraCenter();
+            //基线向量
+            cv::Mat vBaseline = Ow2 - Ow1;
+            //基线距离
+            const float baseline = cv::norm(vBaseline);
 
-        //*Step 3 双目的话，运动T要大于相机本身baseline
-        if(!mbMonocular)
-        {
-            if(baseline<pKF2->mb)
-            continue;
-        }
-        else
-        {
-            //邻居关键帧深度中值
-            const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-            //baseline与景深比例
-            const float ratioBaselineDepth = baseline/medianDepthKF2;
-
-            if(ratioBaselineDepth<0.01)
-                continue;
-        }
-
-        //*Step 4 根据两个关键帧得位姿计算他们之间的F矩阵
-        // Compute Fundamental Matrix
-        cv::Mat F12 = ComputeF12(mpCurrentKeyFrame,pKF2);
-
-        //*Step 5 通过BoW对两帧未匹配的特征点快速匹配，用极限约束抑制离群点，生成新的匹配点对。
-        // Search matches that fullfil epipolar constraint
-        vector<pair<size_t,size_t> > vMatchedIndices;
-        matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedIndices,false);
-
-        cv::Mat Rcw2 = pKF2->GetRotation();
-        cv::Mat Rwc2 = Rcw2.t();
-        cv::Mat tcw2 = pKF2->GetTranslation();
-        cv::Mat Tcw2(3,4,CV_32F);
-        Rcw2.copyTo(Tcw2.colRange(0,3));
-        tcw2.copyTo(Tcw2.col(3));
-
-        const float &fx2 = pKF2->fx;
-        const float &fy2 = pKF2->fy;
-        const float &cx2 = pKF2->cx;
-        const float &cy2 = pKF2->cy;
-        const float &invfx2 = pKF2->invfx;
-        const float &invfy2 = pKF2->invfy;
-
-        //*Step 6 对每对匹配通过三角化生成3D点
-        // Triangulate each match
-        const int nmatches = vMatchedIndices.size();
-        for(int ikp=0; ikp<nmatches; ikp++)
-        {
-            //*Step 6.1 取出匹配特征点
-            const int &idx1 = vMatchedIndices[ikp].first;
-            const int &idx2 = vMatchedIndices[ikp].second;
-
-            const cv::KeyPoint &kp1 = mpCurrentKeyFrame->mvKeysUn[idx1];
-            //双目深度值 单目为-1
-            const float kp1_ur=mpCurrentKeyFrame->mvuRight[idx1];
-            bool bStereo1 = kp1_ur>=0;
-
-            const cv::KeyPoint &kp2 = pKF2->mvKeysUn[idx2];
-            const float kp2_ur = pKF2->mvuRight[idx2];
-            bool bStereo2 = kp2_ur>=0;
-
-            //*Step 6.2 匹配点反投影得到视察角
-            //特征点反投影，得到各自相机系下一个非归一化方向向量,各自相机系下的射线
-            // Check parallax between rays
-            cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx1)*invfx1, (kp1.pt.y-cy1)*invfy1, 1.0);
-            cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx2)*invfx2, (kp2.pt.y-cy2)*invfy2, 1.0);
-            //把这个点（射线）从相机坐标系转到世界坐标系
-            cv::Mat ray1 = Rwc1*xn1;
-            cv::Mat ray2 = Rwc2*xn2;
-            //向量夹角
-            const float cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
-            //+1是为了初始化成一个大值
-            float cosParallaxStereo = cosParallaxRays+1;
-            float cosParallaxStereo1 = cosParallaxStereo;
-            float cosParallaxStereo2 = cosParallaxStereo;
-            //*Step 6.3 双目得到视差角，单目不做特殊操作
-            if(bStereo1)
-                //如果是双目，用双目的3D点啊基线什么的算出两个相机的视差角，比三角化计算的可靠
-                cosParallaxStereo1 = cos(2*atan2(mpCurrentKeyFrame->mb/2,mpCurrentKeyFrame->mvDepth[idx1]));
-            else if(bStereo2)
-                //如果是双目相机，并且邻接的关键帧的这个点有对应的深度，和上面一样的操作。
-                cosParallaxStereo2 = cos(2*atan2(pKF2->mb/2,pKF2->mvDepth[idx2]));
-
-            cosParallaxStereo = min(cosParallaxStereo1,cosParallaxStereo2);
-
-            //*Step 6.4 三角化恢复3D点
-            //视差角小用三角法恢复，视差角大用双目恢复
-            cv::Mat x3D;
-            if (cosParallaxRays < cosParallaxStereo //向量夹角小于双目视差角
-                && cosParallaxRays > 0 //向量夹角大于0
-                && (bStereo1 || bStereo2 || cosParallaxRays < 0.9998) // cos(1degree)=0.9998
-                )
-            {
-                // 视差角小用三角法恢复
-                // Linear Triangulation Method
-                cv::Mat A(4,4,CV_32F);
-                A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
-                A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
-                A.row(2) = xn2.at<float>(0)*Tcw2.row(2)-Tcw2.row(0);
-                A.row(3) = xn2.at<float>(1)*Tcw2.row(2)-Tcw2.row(1);
-
-                cv::Mat w,u,vt;
-                cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
-
-                x3D = vt.row(3).t();
-
-                if(x3D.at<float>(3)==0)
+            //*Step 3 双目的话，运动T要大于相机本身baseline
+            if (!mbMonocular) {
+                if (baseline < pKF2->mb)
                     continue;
+            } else {
+                //邻居关键帧深度中值
+                const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+                //baseline与景深比例
+                const float ratioBaselineDepth = baseline / medianDepthKF2;
 
-                // Euclidean coordinates
-                x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
-
-            }
-            else if(bStereo1 && cosParallaxStereo1<cosParallaxStereo2)
-            {
-                //如果是双目 用视差角更大的双目信息来恢复，直接用3D点反投影
-                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);                
-            }
-            else if(bStereo2 && cosParallaxStereo2<cosParallaxStereo1)
-            {
-                x3D = pKF2->UnprojectStereo(idx2);
-            }
-            else
-                continue; //No stereo and very low parallax
-
-            cv::Mat x3Dt = x3D.t();
-
-            //*Step 6.5 检测3D点在相机前方
-            //Check triangulation in front of cameras
-            float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);
-            if(z1<=0)
-                continue;
-
-            float z2 = Rcw2.row(2).dot(x3Dt)+tcw2.at<float>(2);
-            if(z2<=0)
-                continue;
-
-            //*Step 6.6 3D点在当前帧的重投影误差
-            //Check reprojection error in first keyframe
-            const float &sigmaSquare1 = mpCurrentKeyFrame->mvLevelSigma2[kp1.octave];
-            const float x1 = Rcw1.row(0).dot(x3Dt)+tcw1.at<float>(0);
-            const float y1 = Rcw1.row(1).dot(x3Dt)+tcw1.at<float>(1);
-            const float invz1 = 1.0/z1;
-
-            //单目
-            if(!bStereo1)
-            {
-                float u1 = fx1*x1*invz1+cx1;
-                float v1 = fy1*y1*invz1+cy1;
-                float errX1 = u1 - kp1.pt.x;
-                float errY1 = v1 - kp1.pt.y;
-                //2自由度一个像素对应5.991
-                if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1)
-                    continue;
-            }
-            //双目
-            else
-            {
-                float u1 = fx1*x1*invz1+cx1;
-                float u1_r = u1 - mpCurrentKeyFrame->mbf*invz1;
-                float v1 = fy1*y1*invz1+cy1;
-                float errX1 = u1 - kp1.pt.x;
-                float errY1 = v1 - kp1.pt.y;
-                float errX1_r = u1_r - kp1_ur;
-                if((errX1*errX1+errY1*errY1+errX1_r*errX1_r)>7.8*sigmaSquare1)
+                if (ratioBaselineDepth < 0.01)
                     continue;
             }
 
-            //3D点在另一帧的检测
-            //Check reprojection error in second keyframe
-            const float sigmaSquare2 = pKF2->mvLevelSigma2[kp2.octave];
-            const float x2 = Rcw2.row(0).dot(x3Dt)+tcw2.at<float>(0);
-            const float y2 = Rcw2.row(1).dot(x3Dt)+tcw2.at<float>(1);
-            const float invz2 = 1.0/z2;
-            if(!bStereo2)
-            {
-                float u2 = fx2*x2*invz2+cx2;
-                float v2 = fy2*y2*invz2+cy2;
-                float errX2 = u2 - kp2.pt.x;
-                float errY2 = v2 - kp2.pt.y;
-                if((errX2*errX2+errY2*errY2)>5.991*sigmaSquare2)
+            //*Step 4 根据两个关键帧得位姿计算他们之间的F矩阵
+            // Compute Fundamental Matrix
+            cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, pKF2);
+
+            //*Step 5 通过BoW对两帧未匹配的特征点快速匹配，用极限约束抑制离群点，生成新的匹配点对。
+            // Search matches that fullfil epipolar constraint
+            vector<pair<size_t, size_t> > vMatchedIndices;
+            matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, F12, vMatchedIndices, false);
+
+            cv::Mat Rcw2 = pKF2->GetRotation();
+            cv::Mat Rwc2 = Rcw2.t();
+            cv::Mat tcw2 = pKF2->GetTranslation();
+            cv::Mat Tcw2(3, 4, CV_32F);
+            Rcw2.copyTo(Tcw2.colRange(0, 3));
+            tcw2.copyTo(Tcw2.col(3));
+
+            const float &fx2 = pKF2->fx;
+            const float &fy2 = pKF2->fy;
+            const float &cx2 = pKF2->cx;
+            const float &cy2 = pKF2->cy;
+            const float &invfx2 = pKF2->invfx;
+            const float &invfy2 = pKF2->invfy;
+
+            //*Step 6 对每对匹配通过三角化生成3D点
+            // Triangulate each match
+            const int nmatches = vMatchedIndices.size();
+            for (int ikp = 0; ikp < nmatches; ikp++) {
+                //*Step 6.1 取出匹配特征点
+                const int &idx1 = vMatchedIndices[ikp].first;
+                const int &idx2 = vMatchedIndices[ikp].second;
+
+                const cv::KeyPoint &kp1 = mpCurrentKeyFrame->mvKeysUn[idx1];
+                //双目深度值 单目为-1
+                const float kp1_ur = mpCurrentKeyFrame->mvuRight[idx1];
+                bool bStereo1 = kp1_ur >= 0;
+
+                const cv::KeyPoint &kp2 = pKF2->mvKeysUn[idx2];
+                const float kp2_ur = pKF2->mvuRight[idx2];
+                bool bStereo2 = kp2_ur >= 0;
+
+                //*Step 6.2 匹配点反投影得到视察角
+                //特征点反投影，得到各自相机系下一个非归一化方向向量,各自相机系下的射线
+                // Check parallax between rays
+                cv::Mat xn1 = (cv::Mat_<float>(3, 1) << (kp1.pt.x - cx1) * invfx1, (kp1.pt.y - cy1) * invfy1, 1.0);
+                cv::Mat xn2 = (cv::Mat_<float>(3, 1) << (kp2.pt.x - cx2) * invfx2, (kp2.pt.y - cy2) * invfy2, 1.0);
+                //把这个点（射线）从相机坐标系转到世界坐标系
+                cv::Mat ray1 = Rwc1 * xn1;
+                cv::Mat ray2 = Rwc2 * xn2;
+                //向量夹角
+                const float cosParallaxRays = ray1.dot(ray2) / (cv::norm(ray1) * cv::norm(ray2));
+                //+1是为了初始化成一个大值
+                float cosParallaxStereo = cosParallaxRays + 1;
+                float cosParallaxStereo1 = cosParallaxStereo;
+                float cosParallaxStereo2 = cosParallaxStereo;
+                //*Step 6.3 双目得到视差角，单目不做特殊操作
+                if (bStereo1)
+                    //如果是双目，用双目的3D点啊基线什么的算出两个相机的视差角，比三角化计算的可靠
+                    cosParallaxStereo1 = cos(2 * atan2(mpCurrentKeyFrame->mb / 2, mpCurrentKeyFrame->mvDepth[idx1]));
+                else if (bStereo2)
+                    //如果是双目相机，并且邻接的关键帧的这个点有对应的深度，和上面一样的操作。
+                    cosParallaxStereo2 = cos(2 * atan2(pKF2->mb / 2, pKF2->mvDepth[idx2]));
+
+                cosParallaxStereo = min(cosParallaxStereo1, cosParallaxStereo2);
+
+                //*Step 6.4 三角化恢复3D点
+                //视差角小用三角法恢复，视差角大用双目恢复
+                cv::Mat x3D;
+                if (cosParallaxRays < cosParallaxStereo //向量夹角小于双目视差角
+                    && cosParallaxRays > 0 //向量夹角大于0
+                    && (bStereo1 || bStereo2 || cosParallaxRays < 0.9998) // cos(1degree)=0.9998
+                        ) {
+                    // 视差角小用三角法恢复
+                    // Linear Triangulation Method
+                    cv::Mat A(4, 4, CV_32F);
+                    A.row(0) = xn1.at<float>(0) * Tcw1.row(2) - Tcw1.row(0);
+                    A.row(1) = xn1.at<float>(1) * Tcw1.row(2) - Tcw1.row(1);
+                    A.row(2) = xn2.at<float>(0) * Tcw2.row(2) - Tcw2.row(0);
+                    A.row(3) = xn2.at<float>(1) * Tcw2.row(2) - Tcw2.row(1);
+
+                    cv::Mat w, u, vt;
+                    cv::SVD::compute(A, w, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
+
+                    x3D = vt.row(3).t();
+
+                    if (x3D.at<float>(3) == 0)
+                        continue;
+
+                    // Euclidean coordinates
+                    x3D = x3D.rowRange(0, 3) / x3D.at<float>(3);
+
+                } else if (bStereo1 && cosParallaxStereo1 < cosParallaxStereo2) {
+                    //如果是双目 用视差角更大的双目信息来恢复，直接用3D点反投影
+                    x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
+                } else if (bStereo2 && cosParallaxStereo2 < cosParallaxStereo1) {
+                    x3D = pKF2->UnprojectStereo(idx2);
+                } else
+                    continue; //No stereo and very low parallax
+
+                cv::Mat x3Dt = x3D.t();
+
+                //*Step 6.5 检测3D点在相机前方
+                //Check triangulation in front of cameras
+                float z1 = Rcw1.row(2).dot(x3Dt) + tcw1.at<float>(2);
+                if (z1 <= 0)
                     continue;
-            }
-            else
-            {
-                float u2 = fx2*x2*invz2+cx2;
-                float u2_r = u2 - mpCurrentKeyFrame->mbf*invz2;
-                float v2 = fy2*y2*invz2+cy2;
-                float errX2 = u2 - kp2.pt.x;
-                float errY2 = v2 - kp2.pt.y;
-                float errX2_r = u2_r - kp2_ur;
-                if((errX2*errX2+errY2*errY2+errX2_r*errX2_r)>7.8*sigmaSquare2)
+
+                float z2 = Rcw2.row(2).dot(x3Dt) + tcw2.at<float>(2);
+                if (z2 <= 0)
                     continue;
+
+                //*Step 6.6 3D点在当前帧的重投影误差
+                //Check reprojection error in first keyframe
+                const float &sigmaSquare1 = mpCurrentKeyFrame->mvLevelSigma2[kp1.octave];
+                const float x1 = Rcw1.row(0).dot(x3Dt) + tcw1.at<float>(0);
+                const float y1 = Rcw1.row(1).dot(x3Dt) + tcw1.at<float>(1);
+                const float invz1 = 1.0 / z1;
+
+                //单目
+                if (!bStereo1) {
+                    float u1 = fx1 * x1 * invz1 + cx1;
+                    float v1 = fy1 * y1 * invz1 + cy1;
+                    float errX1 = u1 - kp1.pt.x;
+                    float errY1 = v1 - kp1.pt.y;
+                    //2自由度一个像素对应5.991
+                    if ((errX1 * errX1 + errY1 * errY1) > 5.991 * sigmaSquare1)
+                        continue;
+                }
+                    //双目
+                else {
+                    float u1 = fx1 * x1 * invz1 + cx1;
+                    float u1_r = u1 - mpCurrentKeyFrame->mbf * invz1;
+                    float v1 = fy1 * y1 * invz1 + cy1;
+                    float errX1 = u1 - kp1.pt.x;
+                    float errY1 = v1 - kp1.pt.y;
+                    float errX1_r = u1_r - kp1_ur;
+                    if ((errX1 * errX1 + errY1 * errY1 + errX1_r * errX1_r) > 7.8 * sigmaSquare1)
+                        continue;
+                }
+
+                //3D点在另一帧的检测
+                //Check reprojection error in second keyframe
+                const float sigmaSquare2 = pKF2->mvLevelSigma2[kp2.octave];
+                const float x2 = Rcw2.row(0).dot(x3Dt) + tcw2.at<float>(0);
+                const float y2 = Rcw2.row(1).dot(x3Dt) + tcw2.at<float>(1);
+                const float invz2 = 1.0 / z2;
+                if (!bStereo2) {
+                    float u2 = fx2 * x2 * invz2 + cx2;
+                    float v2 = fy2 * y2 * invz2 + cy2;
+                    float errX2 = u2 - kp2.pt.x;
+                    float errY2 = v2 - kp2.pt.y;
+                    if ((errX2 * errX2 + errY2 * errY2) > 5.991 * sigmaSquare2)
+                        continue;
+                } else {
+                    float u2 = fx2 * x2 * invz2 + cx2;
+                    float u2_r = u2 - mpCurrentKeyFrame->mbf * invz2;
+                    float v2 = fy2 * y2 * invz2 + cy2;
+                    float errX2 = u2 - kp2.pt.x;
+                    float errY2 = v2 - kp2.pt.y;
+                    float errX2_r = u2_r - kp2_ur;
+                    if ((errX2 * errX2 + errY2 * errY2 + errX2_r * errX2_r) > 7.8 * sigmaSquare2)
+                        continue;
+                }
+
+                //*Step 6.7 尺度连续性
+                //Check scale consistency
+                cv::Mat normal1 = x3D - Ow1;
+                float dist1 = cv::norm(normal1);
+
+                cv::Mat normal2 = x3D - Ow2;
+                float dist2 = cv::norm(normal2);
+
+                if (dist1 == 0 || dist2 == 0)
+                    continue;
+
+                const float ratioDist = dist2 / dist1;
+                const float ratioOctave =
+                        mpCurrentKeyFrame->mvScaleFactors[kp1.octave] / pKF2->mvScaleFactors[kp2.octave];
+
+                //两个光心到点的向量的长度的比例 跟 金字塔比例不应该差太多
+                /*if(fabs(ratioDist-ratioOctave)>ratioFactor)
+                    continue;*/
+                if (ratioDist * ratioFactor < ratioOctave || ratioDist > ratioOctave * ratioFactor)
+                    continue;
+
+                //*Step 6.8 构造MapPoint
+                // Triangulation is succesfull
+                MapPoint *pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpMap);
+
+                //*Step 6.9 添加地图点属性
+                pMP->AddObservation(mpCurrentKeyFrame, idx1);
+                pMP->AddObservation(pKF2, idx2);
+
+                mpCurrentKeyFrame->AddMapPoint(pMP, idx1);
+                pKF2->AddMapPoint(pMP, idx2);
+
+                pMP->ComputeDistinctiveDescriptors();
+
+                pMP->UpdateNormalAndDepth();
+
+                mpMap->AddMapPoint(pMP);
+                //*Step 6.10 待检测队列
+                //将来用mappointculling检验
+                mlpRecentAddedMapPoints.push_back(pMP);
+
+                nnew++;
             }
-
-            //*Step 6.7 尺度连续性
-            //Check scale consistency
-            cv::Mat normal1 = x3D-Ow1;
-            float dist1 = cv::norm(normal1);
-
-            cv::Mat normal2 = x3D-Ow2;
-            float dist2 = cv::norm(normal2);
-
-            if(dist1==0 || dist2==0)
-                continue;
-
-            const float ratioDist = dist2/dist1;
-            const float ratioOctave = mpCurrentKeyFrame->mvScaleFactors[kp1.octave]/pKF2->mvScaleFactors[kp2.octave];
-
-            //两个光心到点的向量的长度的比例 跟 金字塔比例不应该差太多
-            /*if(fabs(ratioDist-ratioOctave)>ratioFactor)
-                continue;*/
-            if(ratioDist*ratioFactor<ratioOctave || ratioDist>ratioOctave*ratioFactor)
-                continue;
-
-            //*Step 6.8 构造MapPoint
-            // Triangulation is succesfull
-            MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
-
-            //*Step 6.9 添加地图点属性
-            pMP->AddObservation(mpCurrentKeyFrame,idx1);            
-            pMP->AddObservation(pKF2,idx2);
-
-            mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
-            pKF2->AddMapPoint(pMP,idx2);
-
-            pMP->ComputeDistinctiveDescriptors();
-
-            pMP->UpdateNormalAndDepth();
-
-            mpMap->AddMapPoint(pMP);
-            //*Step 6.10 待检测队列
-            //将来用mappointculling检验
-            mlpRecentAddedMapPoints.push_back(pMP);
-
-            nnew++;
         }
     }
-}
 
 void LocalMapping::SearchInNeighbors()
 {
