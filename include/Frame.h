@@ -92,7 +92,7 @@ class MapLine;
         int ptID;
         cv::Point2d pt2d;
         cv::Point3d pt3d;
-        int index2d;
+        int index2d;//why I have this?
         int index3d;
         float intensity;
         int scanID;// i-th scan
@@ -177,6 +177,8 @@ public:
     ///added module
     Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers, ORBextractor *extractor, ORBextractor *extractor1, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
           cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imGray, const cv::Mat &imGray_r, const double &timeStamp, const vector<vector<double>> &lasers, ORBextractor *extractor, ORBextractor *extractor1, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+          cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -234,8 +236,8 @@ public:
     // Frame timestamp.
     double mTimeStamp;
 
-    ///added module
-    cv::Mat mTcamlid;
+    ///added modules
+    cv::Mat mTcamlid;//Transform from LiDAR to Camera
     int givenDepthNum;
     void PlaneFitting();
     int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, mPlane &foundPlane, pcl::PointIndices &inliersOutput);
@@ -266,9 +268,9 @@ public:
     vector<double> mLaserTimes; //{middle time, start, end}
     vector<ORB_SLAM2::mPlane> mvPlanes;
     vector<mLine> mvLines;
-    vector<mORBAttribution> mvORBAttributions; //size init at undistortion function
+    vector<mORBAttribution> mvORBAttributions; //store ORB-LiDAR related attributions
     cv::Mat mlsdDescriptors;
-
+    ///-------------------------------------
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;

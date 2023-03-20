@@ -31,8 +31,7 @@
 
 using namespace std;
 
-void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
-                vector<double> &vTimestamps);
+void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps);
 
 void LoadLaserscansRaw(const string &strPathToSequence, vector<string> &vstrLaserscanFilenames, vector<double> &vTimestamps, vector<double> &vTimestarts, vector<double> &vTimeends);
 
@@ -58,10 +57,6 @@ int main(int argc, char **argv)
     ///Added Module
     //Retrieve paths to Laser Scans
     vector<string> vstrScanFilenames;
-//    vector<double> vLaserTimestamps;
-//    vector<double> vLaserStartTimes;
-//    vector<double> vLaserEndTimes;
-    //LoadLaserscansRaw(string(argv[4]), vstrScanFilenames, vLaserTimestamps, vLaserStartTimes, vLaserEndTimes);
     LoadLaserscans(string(argv[4]), vstrScanFilenames, vTimestamps.size());
     cout<<"load scans done "<<endl;
 

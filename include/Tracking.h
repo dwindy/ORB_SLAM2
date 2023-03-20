@@ -75,7 +75,8 @@ namespace ORB_SLAM2
         cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
         ///added module ---with Laser
-        cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
+        cv::Mat GrabImageMonoLiDAR(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
+        cv::Mat GrabImageMonoLiDAR(const cv::Mat &im, const cv::Mat &im_r, const double &timestamp, const vector<vector<double>> &lasers);
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -155,6 +156,7 @@ namespace ORB_SLAM2
         void CreateInitialMapMonocular();
         ///Added Module
         void MonoLiDARInitialization();
+        void MonoLiDARStereoWayInitialization();
 
         void CheckReplacedInLastFrame();
         bool TrackReferenceKeyFrame();

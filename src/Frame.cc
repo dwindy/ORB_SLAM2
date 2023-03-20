@@ -70,7 +70,6 @@ namespace ORB_SLAM2
             SetPose(frame.mTcw);
     }
 
-
     Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
             :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
              mpReferenceKF(static_cast<KeyFrame*>(NULL))
@@ -201,11 +200,12 @@ namespace ORB_SLAM2
  * @param[in] bf //baseline*f
  * @param[int]thDepth //区分远近点的深度阈值
  */
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-                 ORBextractor *extractor, ORBextractor *extractor1, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
-                 const float &bf, const float &thDepth)
-            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
-              mpORBextractorRight(extractor1),//static_cast<ORBextractor *>(NULL)
+    Frame::Frame(const cv::Mat &imGray, const cv::Mat &imGray_right, const double &timeStamp,
+                 const vector<vector<double>> &lasers,
+                 ORBextractor *extractor, ORBextractor *extractor_right,
+                 ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+                 cv::Mat &distCoef, const float &bf, const float &thDepth)
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(extractor_right),
               mTimeStamp(timeStamp), mLaserPoints(lasers), mK(K.clone()),
               mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
 
@@ -225,8 +225,11 @@ namespace ORB_SLAM2
 
         // ORB extraction
         //Step 3 提取特征点 0 左图 1 右图
-        //提取ORB特征
-        ExtractORB(0,imGray);
+        thread threadLeft(&Frame::ExtractORB,this,0,imGray);
+        thread threadRight(&Frame::ExtractORB,this,1,imGray_right);
+        threadLeft.join();
+        threadRight.join();
+
         N = mvKeys.size();
 
         if(mvKeys.empty())
@@ -234,66 +237,38 @@ namespace ORB_SLAM2
 
         //Step 4 OpenCV的去畸变函数
         UndistortKeyPoints();
-
-        // Set no stereo information
-        //单目，右边图像的对应点和深度都赋-1
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
-
-        ///Added Module
-        string image1AddressHead = "/home/xin/Downloads/DATASET/KITTI/data_odometry_gray/dataset/sequences/09/image_1/";
-        stringstream ss;
-        ss<<image1AddressHead;
-        if (mnId < 10)
-            ss << "00000" << mnId;
-        else if (mnId >= 10 && mnId < 100)
-            ss << "0000" << mnId;
-        else if (mnId >= 100 && mnId < 1000)
-            ss << "000" << mnId;
-        ss<<".png";
-        string image1Address = ss.str();
-        cout<<image1Address<<endl;
-        cv::Mat image1 = cv::imread(image1Address,CV_LOAD_IMAGE_UNCHANGED);
-        ExtractORB(1,image1);
-        //特征点匹配，计算深度放进mvDpeth
+        //Step 5 Compute Depth by Stereo
         ComputeStereoMatches();
-        ///---------------------------------------
-
-        //初始化本帧的地图点-给null
         mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
-        //初始化outlier，给false
         mvbOutlier = vector<bool>(N,false);
-        ///Line related things initialized later after Lines has been detected
 
         // This is done only for the first Frame (or after a change in the calibration)
         //标志位，只在第一帧或者相机标定参数变化后执行
-        if(mbInitialComputations)
-        {
+        if (mbInitialComputations) {
             //计算去畸变图像的边界
             ComputeImageBounds(imGray);
 
             //一个图像像素相当于多少个图像网格列（grid cols）/ (col length)
-            mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
             //一个图像像素相当于多少个图像网格行（grid rows）/ (row height)
-            mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
 
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
-            invfx = 1.0f/fx;
-            invfy = 1.0f/fy;
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
 
-            mbInitialComputations=false;
+            mbInitialComputations = false;
         }
 
-        //计算baseline，单目用不到其实
         mb = mbf/fx;
 
         //把特征点分配到网格中，默认64/48
         AssignFeaturesToGrid();
 
-        ///added module
+        ///added modules---------------------------------------------------
         givenDepthNum = 0;
         mvORBAttributions.resize(N);
         for (int i = 0; i < N; i++) {
@@ -301,7 +276,7 @@ namespace ORB_SLAM2
             mvORBAttributions[i].ID = i;
         }
         clock_t start = clock();
-        ExtractLiDARFeature();        //extract LiDAR feature
+        ExtractLiDARFeature();//extract LiDAR feature
         clock_t end = clock();
         //cout<<"ExtractLiDARFeature costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
         start = clock();
@@ -320,18 +295,28 @@ namespace ORB_SLAM2
         start = clock();
         PairLaserVisionFeatures(imGray);
         end = clock();
-        ///Compare depth with Stereo way
-        CompareWithStereo(imGray, image1);
         //cout<<"PairLaserVisionFeatures costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        ///Compare depth with Stereo way
+        CompareWithStereo(imGray, imGray_right);
         ///Restore depth to stereo
         ComputeStereoFromFusion(mvORBAttributions);
-        ///init lines related things
+
+        ///init lines feature related things
         N_lines = mvLines.size();
-        mvpMapLines = vector<MapLine*>(N_lines,static_cast<MapLine*>(NULL));
-        mvbOutlierLines = vector<bool>(N_lines,false);
+        mvpMapLines = vector<MapLine *>(N_lines, static_cast<MapLine *>(NULL));
+        mvbOutlierLines = vector<bool>(N_lines, false);
         float wait = 0;
+        ///----------------------------------------------------
     }
 
+    //Todo the parameters below should define in some other places
+    int N_SCANS = 64;
+    const double scanPeriod = 0.1;
+    float cloudCurvature[400000];
+    int cloudSortInd[400000];
+    int cloudNeighborPicked[400000];
+    int cloudLabel[400000];
+    bool comp (int i,int j) { return (cloudCurvature[i]<cloudCurvature[j]); }
     ///Added module
     template <typename PointT>
     void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in,
@@ -362,16 +347,124 @@ namespace ORB_SLAM2
         cloud_out.is_dense = true;
     }
 
-    int N_SCANS = 64;
-    const double scanPeriod = 0.1;
-    float cloudCurvature[400000];
-    int cloudSortInd[400000];
-    int cloudNeighborPicked[400000];
-    int cloudLabel[400000];
-    //Todo the parameter above should define in some other places
-    bool comp (int i,int j) { return (cloudCurvature[i]<cloudCurvature[j]); }
+    ///added module --- add some LiDAR feature codes
+/**
+ * @brief 单目帧构造函数
+ *
+ * @param[in] imGray //灰度图
+ * @param[in] timeStamp //时间戳
+ * @param[in] lasers //激光点云
+ * @param[in] laserTimes //激光点云的中间时间，开始时间，结束时间
+ * @param[in & out] extractor //ORB特征点提取器的句柄
+ * @param[in] voc //ORB字典句柄
+ * @param[in] K //相机内参矩阵
+ * @param[in] bf //baseline*f
+ * @param[int]thDepth //区分远近点的深度阈值
+ */
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp,
+                 const vector<vector<double>> &lasers,
+                 ORBextractor *extractor, ORBextractor *extractor_right,
+                 ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid,
+                 cv::Mat &distCoef, const float &bf, const float &thDepth)
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor), mpORBextractorRight(extractor_right),
+              mTimeStamp(timeStamp), mLaserPoints(lasers), mK(K.clone()),
+              mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
 
+        // Frame ID
+        //Step 1 帧ID增加
+        mnId=nNextId++;
 
+        // Scale Level Info
+        //Step 2 图像金字塔参数
+        mnScaleLevels = mpORBextractorLeft->GetLevels(); //层数
+        mfScaleFactor = mpORBextractorLeft->GetScaleFactor(); //缩放因子
+        mfLogScaleFactor = log(mfScaleFactor); //缩放因子的自然数对数
+        mvScaleFactors = mpORBextractorLeft->GetScaleFactors(); //缩放因子 again?
+        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors(); //缩放因子的倒数
+        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares(); //sigma^2
+        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares(); //sigma^2倒数
+
+        // ORB extraction
+        ExtractORB(0,imGray);
+
+        N = mvKeys.size();
+
+        if(mvKeys.empty())
+            return;
+
+        //Step 4 OpenCV的去畸变函数
+        UndistortKeyPoints();
+        //Step 5 Compute Depth by Stereo
+        ComputeStereoMatches();
+        mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+        mvbOutlier = vector<bool>(N,false);
+
+        // This is done only for the first Frame (or after a change in the calibration)
+        //标志位，只在第一帧或者相机标定参数变化后执行
+        if (mbInitialComputations) {
+            //计算去畸变图像的边界
+            ComputeImageBounds(imGray);
+
+            //一个图像像素相当于多少个图像网格列（grid cols）/ (col length)
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
+            //一个图像像素相当于多少个图像网格行（grid rows）/ (row height)
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
+
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
+
+            mbInitialComputations = false;
+        }
+
+        mb = mbf/fx;
+
+        //把特征点分配到网格中，默认64/48
+        AssignFeaturesToGrid();
+
+        ///added modules---------------------------------------------------
+        givenDepthNum = 0;
+        mvORBAttributions.resize(N);
+        for (int i = 0; i < N; i++) {
+            mvORBAttributions[i].keyPt = mvKeysUn[i];
+            mvORBAttributions[i].ID = i;
+        }
+        clock_t start = clock();
+        ExtractLiDARFeature();//extract LiDAR feature
+        clock_t end = clock();
+        //cout<<"ExtractLiDARFeature costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        start = clock();
+        ProjectLiDARtoCam();        //Project LiDAR point to Cam coordination
+        end = clock();
+        //cout<<"ProjectLiDARtoCam costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        start = clock();
+        ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
+        end = clock();
+        //cout<<"ProjectLiDARtoImg costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        start = clock();
+        ProjectLiDARFeaturetoImg(mK, imGray.cols, imGray.rows);
+        end = clock();
+        //cout<<"ProjectLiDARFeaturetoImg costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        ///Pair the LiDAR Features and Img Features
+        start = clock();
+        PairLaserVisionFeatures(imGray);
+        end = clock();
+        //cout<<"PairLaserVisionFeatures costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
+        ///Compare depth with Stereo way
+        //CompareWithStereo(imGray, imGray_right);
+        ///Restore depth to stereo
+        ComputeStereoFromFusion(mvORBAttributions);
+
+        ///init lines feature related things
+        N_lines = mvLines.size();
+        mvpMapLines = vector<MapLine *>(N_lines, static_cast<MapLine *>(NULL));
+        mvbOutlierLines = vector<bool>(N_lines, false);
+        float wait = 0;
+        ///----------------------------------------------------
+    }
 
     /*
  * dealing with the case that two keylines overlap.
@@ -814,9 +907,11 @@ int pause = 1;
 
 
     /**
-     * @brief Under LiDAR coordination, this function extract edge feature and plane feature from LiDAR source (ALOAM)
+     * @brief works under LiDAR coordination,
+     * this function extract process 64/16 LiDAR scans lidar data
+     * this ALOAM function extract edge feature and plane feature from LiDAR source (commented)
      */
-    void Frame::ExtractLiDARFeature(){
+    void Frame::ExtractLiDARFeature() {
         ///Step 0: prepare data container
         for (int i = 0; i < 16; i++) {
             pcl::PointCloud<pcl::PointXYZI> newPointCloud;
@@ -837,7 +932,7 @@ int pause = 1;
         std::vector<int> indices;
         int lsrPtNum = mLaserPoints.size();
         laserCloudIn.resize(lsrPtNum);
-        for(int i =0;i<lsrPtNum;i++){
+        for (int i = 0; i < lsrPtNum; i++) {
             laserCloudIn.points[i].x = mLaserPoints[i][0];
             laserCloudIn.points[i].y = mLaserPoints[i][1];
             laserCloudIn.points[i].z = mLaserPoints[i][2];
@@ -857,8 +952,7 @@ int pause = 1;
         if (endOri - startOri > 3 * M_PI) //start -179, ends 179 degree
         {
             endOri -= 2 * M_PI;
-        }
-        else if (endOri - startOri < M_PI) //start 179, ends -179 degree
+        } else if (endOri - startOri < M_PI) //start 179, ends -179 degree
         {
             endOri += 2 * M_PI;
         }
@@ -880,8 +974,7 @@ int pause = 1;
 //        for(int i = 0; i < N_SCANS;i++)
 //            eachScanIndexs.push_back(0);
         // 遍历每一个点
-        for (int i = 0; i < cloudSize; i++)
-        {
+        for (int i = 0; i < cloudSize; i++) {
             point.x = laserCloudIn.points[i].x;
             point.y = laserCloudIn.points[i].y;
             point.z = laserCloudIn.points[i].z;
@@ -889,73 +982,53 @@ int pause = 1;
             float angle = atan(point.z / sqrt(point.x * point.x + point.y * point.y)) * 180 / M_PI;
             int scanID = 0;
             // 计算是第几根scan
-            if (N_SCANS == 16)
-            {
+            if (N_SCANS == 16) {
                 scanID = int((angle + 15) / 2 + 0.5);
-                if (scanID > (N_SCANS - 1) || scanID < 0)
-                {
+                if (scanID > (N_SCANS - 1) || scanID < 0) {
                     count--;
                     continue;
                 }
-            }
-            else if (N_SCANS == 32)
-            {
-                scanID = int((angle + 92.0/3.0) * 3.0 / 4.0);
-                if (scanID > (N_SCANS - 1) || scanID < 0)
-                {
+            } else if (N_SCANS == 32) {
+                scanID = int((angle + 92.0 / 3.0) * 3.0 / 4.0);
+                if (scanID > (N_SCANS - 1) || scanID < 0) {
                     count--;
                     continue;
                 }
-            }
-            else if (N_SCANS == 64)
-            {
+            } else if (N_SCANS == 64) {
                 if (angle >= -8.83)
                     scanID = int((2 - angle) * 3.0 + 0.5);
                 else
                     scanID = N_SCANS / 2 + int((-8.83 - angle) * 2.0 + 0.5);
 
                 // use [0 50]  > 50 remove outlies
-                if (angle > 2 || angle < -24.33 || scanID > 50 || scanID < 0)
-                {
+                if (angle > 2 || angle < -24.33 || scanID > 50 || scanID < 0) {
                     count--;
                     continue;
                 }
-            }
-            else
-            {
+            } else {
                 printf("wrong scan number\n");
                 //ROS_BREAK();
             }
             //printf("angle %f scanID %d \n", angle, scanID);
             // 计算水平角
             float ori = -atan2(point.y, point.x);
-            if (!halfPassed)
-            {
+            if (!halfPassed) {
                 // 确保-PI / 2 < ori - startOri < 3 / 2 * PI
-                if (ori < startOri - M_PI / 2)
-                {
+                if (ori < startOri - M_PI / 2) {
                     ori += 2 * M_PI;
-                }
-                else if (ori > startOri + M_PI * 3 / 2)
-                {
+                } else if (ori > startOri + M_PI * 3 / 2) {
                     ori -= 2 * M_PI;
                 }
                 // 如果超过180度，就说明过了一半了 //half passed the start point
-                if (ori - startOri > M_PI)
-                {
+                if (ori - startOri > M_PI) {
                     halfPassed = true;
                 }
-            }
-            else
-            {
+            } else {
                 // 确保-PI * 3 / 2 < ori - endOri < PI / 2
                 ori += 2 * M_PI;    // 先补偿2PI
-                if (ori < endOri - M_PI * 3 / 2)
-                {
+                if (ori < endOri - M_PI * 3 / 2) {
                     ori += 2 * M_PI;
-                }
-                else if (ori > endOri + M_PI / 2)
-                {
+                } else if (ori > endOri + M_PI / 2) {
                     ori -= 2 * M_PI;
                 }
             }
@@ -1192,7 +1265,7 @@ int pause = 1;
 
     ///added module
     void Frame::PlaneFitting() {
-        ///Step 1 store all lidar point into container
+        ///Step 1 store all low ground lidar point into container
         int actualNum = 0;
         pcl::PointCloud<pcl::PointXYZ>::Ptr allPoints(new pcl::PointCloud<pcl::PointXYZ>);
         allPoints->resize(mLaserPt_cam.size());
@@ -1332,69 +1405,59 @@ int pause = 1;
 
 /**
  * Connect ORB point with LiDAR plane Point.
- * The idea is get depth information from LiDAR plane point
+ * The idea is get depth information from LiDAR plane
+ * by find the closest lidar point's plane
  * @param LiDARPoints
  * @param ORBFeatures
  * @param extractedPlanes
  * @param threshold
  * @param im
  */
-    void Frame::connectORB2Plane(vector<PtLsr> &LiDARPoints, std::vector<cv::KeyPoint> &ORBFeatures, vector<ORB_SLAM2::mPlane> &extractedPlanes, double threshold, cv::Mat im) {
+    void Frame::connectORB2Plane(vector<PtLsr> &LiDARPoints, std::vector<cv::KeyPoint> &ORBFeatures,
+                                 vector<ORB_SLAM2::mPlane> &extractedPlanes, double threshold, cv::Mat im) {
         int target = -1;
-        double thresholdSquare = threshold * threshold;
-        //prepare a <lidar index, planelidar index> map
-        std::map<int, int> indexPlane2indexLiDAR;
+        ///Step 1, extract in-plane lidar points, store in cloud, store in KD tree. keep index map.
+        std::map<int, int> indexPlane2indexLiDAR; //prepare a index map <cloud index, inputs index>
         //prepare a pcl kd-tree
         pcl::PointCloud<pcl::PointXY>::Ptr cloud(new pcl::PointCloud<pcl::PointXY>);
         cloud->width = LiDARPoints.size();
         cloud->height = 1;
         cloud->points.resize(cloud->width * cloud->height);
-        int planeLiDARNum = 0;
+        int planeLiDARNum = 0;//record cloud size
         for (int i = 0; i < LiDARPoints.size(); i++) {
             if (LiDARPoints[i].planeID > -1) {
                 (*cloud)[planeLiDARNum].x = LiDARPoints[i].pt2d.x;
                 (*cloud)[planeLiDARNum].y = LiDARPoints[i].pt2d.y;
-                indexPlane2indexLiDAR.insert({planeLiDARNum,i});
-//                cout<<planeLiDARNum<<" "<<i<<endl;
+                indexPlane2indexLiDAR.insert({planeLiDARNum, i});
                 planeLiDARNum++;
             }
         }
         cloud->points.resize(planeLiDARNum);
         pcl::KdTreeFLANN<pcl::PointXY> kdtree;
         kdtree.setInputCloud(cloud);
-        //search a closest lidar for each orb feature
-        for (int i = 0; i < ORBFeatures.size();i++) {
-            double minDistance = 1000;
-            double distance = 10000;
-            int minLiDARIndex = -1;
-            int minPlaneIndex = -1;
+        ///Step 2 search a closest lidar pt for each orb feature
+        for (int i = 0; i < ORBFeatures.size(); i++) {
+            int minLiDARIndex = -1, minPlaneIndex = -1;
             double lix, liy;
-//            cv::circle(im, cv::Point(ORBFeatures[i].pt.x, ORBFeatures[i].pt.y), 3, cv::Scalar(0, 0, 255), 1);
-//            imshow("function connectORB2Plane : on plane ORB", im);
-//            waitKey(1);
-
-//            if(ORBFeatures[i].pt.x==320&&ORBFeatures[i].pt.y==273){
-//                int pause = 1;
-//                target = i;
-//                cout<<"target "<<target<<endl;
-//            }
-
-            //some kdtree parameters
             pcl::PointXY searchPoint;
             searchPoint.x = ORBFeatures[i].pt.x;
             searchPoint.y = ORBFeatures[i].pt.y;
-//            searchPoint.x = 320;
-//            searchPoint.y = 273;
-            std::vector<int> pointIdxNKNSearch(1);
-            std::vector<float> pointNKNSquaredDistance(1);
-            kdtree.nearestKSearch (searchPoint, 5, pointIdxNKNSearch, pointNKNSquaredDistance);
-            if (pointNKNSquaredDistance[0] < threshold) //threshold
-                minPlaneIndex = pointIdxNKNSearch[0];
-            minLiDARIndex = indexPlane2indexLiDAR[minPlaneIndex];
+            int searchNum = 5;//how many close point you want?
+            std::vector<int> pointIdxKNNSearch(searchNum);
+            std::vector<float> pointKNNSquaredDistance(searchNum);
+            kdtree.nearestKSearch(searchPoint, searchNum, pointIdxKNNSearch, pointKNNSquaredDistance);
+            if (pointKNNSquaredDistance[0] < threshold) //min distance should smaller than threshold
+                minPlaneIndex = pointIdxKNNSearch[0];
+            else
+                continue;
+            if (minPlaneIndex > -1)
+                minLiDARIndex = indexPlane2indexLiDAR[minPlaneIndex];//get the index of input LiDAR dataset
+            else
+                continue;
             //cout<<"ORB point ORBFeatures.size(): "<<ORBFeatures.size()<<" each of while loop costs time "<<((double)(end - start) / CLOCKS_PER_SEC)*1000 << " mini sec" << endl;
             if (minLiDARIndex > -1) {//if we find a close lidar point
-                if(LiDARPoints[minLiDARIndex].planeID>-1){// if this lidar point belongs to a plane
-                    ///get depth from large plane
+                if (LiDARPoints[minLiDARIndex].planeID > -1) {// if this lidar point belongs to a plane
+                    ///Step 3 get depth from large plane
                     mvORBAttributions[i].floorPlaneID = LiDARPoints[minLiDARIndex].planeID;
                     ///Given Ax+BY+CZ+D=0 and u=fx*X/Z+cx, v = fy*Y/Z + cy
                     ///Z = -D / (A*(u-cx)/fx + B*(v-cy)/fy + C)
@@ -1403,14 +1466,11 @@ int pause = 1;
                             C = extractedPlanes[mvORBAttributions[i].floorPlaneID].C,
                             D = extractedPlanes[mvORBAttributions[i].floorPlaneID].D;
                     double u = ORBFeatures[i].pt.x, v = ORBFeatures[i].pt.y;
-                    //cout<<"u "<<u<<" v "<<v<<" A "<<A<<" B "<<B<<" C "<<C<<" D "<<D<<" fx "<<fx<<" fy "<<fy<<" cx "<<cx<<" cy "<<cy<<" ---------------------------------------------------------------------"<<endl;
-                    double Z = -D / (A*(u-cx)/fx + B*(v-cy)/fy + C); //from Ax+By+Cz + D =0;
+                    double Z = -D / (A * (u - cx) / fx + B * (v - cy) / fy + C); //from Ax+By+Cz + D =0;
                     mvORBAttributions[i].depth = Z;
                     mvORBAttributions[i].depthSource = 1;
                     double X = (u - cx) * Z / fx, Y = (v - cy) * Z / fy;
                     mvORBAttributions[i].p3d_est.x = X, mvORBAttributions[i].p3d_est.y = Y, mvORBAttributions[i].p3d_est.z = Z;
-                    //cout<<ORBFeature.p3d_est.x<<" "<<ORBFeature.p3d_est.y<<" "<<ORBFeature.p3d_est.z<<endl;
-                    //mvORBAttributions[i].Plane = &extractedPlanes[mvORBAttributions[i].floorPlaneID];
                 }
             }
         }
@@ -1440,11 +1500,9 @@ int pause = 1;
     }
 
     /**
- * Connect ORBFeature to LSD lines
- * find 3 nearest LSD lines, check the point to endpoints distance
- * distance to 2 endpoints should ~= line length
- */
-    //TODO 1. do not change depthsource of plane. 2.change 3 threshold to box way!!!
+    * Connect ORBFeature to LSD lines
+    * find 3 nearest LSD lines, by point to lsd distance, and point should withnin lsd bounding box
+    */
     void Frame::connectORB2LSD(vector<mLine> &mLSDLinesIN, vector<cv::KeyPoint> &ORBin, cv::Mat im) {
         ///Step 0 transfer lines to Ax+By+C = 0 type
         vector<vector<float>> keyLineABCs;//store key-lines in terms of Ax+By+C = 0;
@@ -1458,113 +1516,82 @@ int pause = 1;
             thisLine.push_back(C);
             keyLineABCs.push_back(thisLine);
         }
-        ///Step 1 pair up ORB key-points with 3 LSD lines
+        ///Step 1 pair up ORB key-points with 3 nearby LSD lines
         vector<int> keyPt2LSD(ORBin.size(), -1);
         for (int i = 0; i < ORBin.size(); i++) {
-            if (mvORBAttributions[i].depthSource == -1) {
-                double x0 = ORBin[i].pt.x, y0 = ORBin[i].pt.y;
-                float minDistance1 = 5, minDistance2 = 5, minDistance3 = 5;
-                //imgKeyPoint[i].index2line = -1;
-                int index1 = -1, index2 = -1, index3 = -1;
-                for (int j = 0; j < mLSDLinesIN.size(); j++) {
-                    ///Step 1.1 search for 3 lines
-                    ///point to line --- d = abs(Ax0+By0+C) / abs(sqrt(A^2+B^2))
-                    float A = keyLineABCs[j][0], B = keyLineABCs[j][1], C = keyLineABCs[j][2];
-                    float dis = abs(A * x0 + B * y0 + C) /
-                                sqrt(A * A + B * B);
-                    if (dis < minDistance1) {
+            if (mvORBAttributions[i].depthSource != -1)
+                continue;
+
+            double x0 = ORBin[i].pt.x, y0 = ORBin[i].pt.y;
+            float minDistance1 = 5, minDistance2 = 5, minDistance3 = 5;
+            //imgKeyPoint[i].index2line = -1;
+            int index1 = -1, index2 = -1, index3 = -1;
+            for (int j = 0; j < mLSDLinesIN.size(); j++) {
+                ///Step 1.1 search for 3 near by LSD lines
+                ///point to line --- d = abs(Ax0+By0+C) / abs(sqrt(A^2+B^2))
+                float A = keyLineABCs[j][0], B = keyLineABCs[j][1], C = keyLineABCs[j][2];
+                float dis = abs(A * x0 + B * y0 + C) / sqrt(A * A + B * B);
+                //check point should be in the bounding box
+                float xs = mLSDLinesIN[j].LSD.startPointX, ys = mLSDLinesIN[j].LSD.startPointY;
+                float xe = mLSDLinesIN[j].LSD.endPointX, ye = mLSDLinesIN[j].LSD.endPointY;
+                //make sure : xstart < x < xend , ystart < y < yend
+                if (xe < xs) {
+                    float x_tmp = xs;
+                    xs = xe;
+                    xe = x_tmp;
+                }
+                if (ye < ys) {
+                    float y_tmp = ys;
+                    ys = ye;
+                    ye = y_tmp;
+                }
+                if (dis < minDistance1 && (xs - 5) > x0 && x0 < (xe + 5) && (ys - 5) > y0 && y0 < (ye + 5)) {
+                    minDistance3 = minDistance2;
+                    index3 = index2;
+                    minDistance2 = minDistance1;
+                    index2 = index1;
+                    minDistance1 = dis;
+                    index1 = j;
+                } else {
+                    if (dis >= minDistance1 && dis < minDistance2 && (xs - 5) > x0 && x0 < (xe + 5) &&
+                        (ys - 5) > y0 && y0 < (ye + 5)) {
                         minDistance3 = minDistance2;
                         index3 = index2;
-                        minDistance2 = minDistance1;
-                        index2 = index1;
-                        minDistance1 = dis;
-                        index1 = j;
+                        minDistance2 = dis;
+                        index2 = j;
                     } else {
-                        if (dis >= minDistance1 && dis < minDistance2) {
-                            minDistance3 = minDistance2;
-                            index3 = index2;
-                            minDistance2 = dis;
-                            index2 = j;
-                        } else {
-                            if (dis >= minDistance2 && dis < minDistance3) {
-                                minDistance3 = dis;
-                                index3 = j;
-                            }
+                        if (dis >= minDistance2 && dis < minDistance3 && (xs - 5) > x0 && x0 < (xe + 5) &&
+                            (ys - 5) > y0 && y0 < (ye + 5)) {
+                            minDistance3 = dis;
+                            index3 = j;
                         }
                     }
                 }
-                ///Step 1.2 select nearest line from above 3 candidates
-                float disToLineThres = 3; //? not in use current because above 3 line is qualified already
-                float disTo2EndsThres = 1;
-                if (index1 > -1 && mLSDLinesIN[index1].fit3DLine) {
-//                    cout << "point i " << i << " : " << "x0 y0 : " << x0 << " " << y0 << " , ORBin i " << i << " : "
-//                         << ORBin[i].pt.x << " " << ORBin[i].pt.y << " , close to " << keyLineABCs[index1][0] << ","
-//                         << keyLineABCs[index1][1] << "," << keyLineABCs[index1][2] << endl;
-//                    cout << "distance 1: " << minDistance1 << endl;
-                    ///Candidate 1 --- distance to each endpoints and sum up
-                    float x1 = mLSDLinesIN[index1].LSD.startPointX, y1 = mLSDLinesIN[index1].LSD.startPointY;
-                    float x2 = mLSDLinesIN[index1].LSD.endPointX, y2 = mLSDLinesIN[index1].LSD.endPointY;
-                    float disToStart = sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
-                    float disToEnd = sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2));
-                    float disTo2EndPoints = disToStart + disToEnd;
-                    if (disToStart <= disToLineThres || disToEnd <= disToLineThres ||
-                        disTo2EndPoints <= disTo2EndsThres) {
+            }
+            ///Step 1.2 if any of the near LSD lines fit a 3D line
+            //Because we have make sure the keypoint is within the line bounding box and distance to line is valid.
+            //no need to check pt to LSD endpoints and midpoint distance
+            if (index1 > -1 && mLSDLinesIN[index1].fit3DLine) {
+                mvORBAttributions[i].LSDlineID = mLSDLinesIN[index1].ID;
+                mvORBAttributions[i].LSDline = &mLSDLinesIN[index1];
+                mvORBAttributions[i].depthSource = 2;
+            } else {
+                if (index2 > -1 && mLSDLinesIN[index2].fit3DLine) {
+                    mvORBAttributions[i].LSDlineID = mLSDLinesIN[index2].ID;
+                    mvORBAttributions[i].LSDline = &mLSDLinesIN[index2];
+                    mvORBAttributions[i].depthSource = 2;
+
+                } else {
+                    if (index3 > -1 && mLSDLinesIN[index3].fit3DLine) {
                         //cout<<"mvORBAttributions size "<<mvORBAttributions.size()<<endl;
-                        mvORBAttributions[i].LSDlineID = mLSDLinesIN[index1].ID;
-                        mvORBAttributions[i].LSDline = &mLSDLinesIN[index1];
+                        mvORBAttributions[i].LSDlineID = mLSDLinesIN[index3].ID;
+                        mvORBAttributions[i].LSDline = &mLSDLinesIN[index3];
                         mvORBAttributions[i].depthSource = 2;
-//                        cout << "mvORBAttributions i " << i << " " << mvORBAttributions[i].keyPt.pt.x << " "
-//                             << mvORBAttributions[i].keyPt.pt.y << " change depthsource to 2" << endl;
-                    } else {
-                        if (index2 > -1 && mLSDLinesIN[index2].fit3DLine) {
-//                            cout << "point i " << i << " : " << "x0 y0 : " << x0 << " " << y0 << " , ORBin i " << i << " : "
-//                                 << ORBin[i].pt.x << " " << ORBin[i].pt.y << " , close to " << keyLineABCs[index2][0] << ","
-//                                 << keyLineABCs[index2][1] << "," << keyLineABCs[index2][2] << endl;
-//                            cout << "distance 2: " << minDistance2 << endl;
-                            ///Candidate 2 --- distance to each endpoints and sum up
-                            x1 = mLSDLinesIN[index2].LSD.startPointX, y1 = mLSDLinesIN[index2].LSD.startPointY;
-                            x2 = mLSDLinesIN[index2].LSD.endPointX, y2 = mLSDLinesIN[index2].LSD.endPointY;
-                            disToStart = sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
-                            disToEnd = sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2));
-                            disTo2EndPoints = disToStart + disToEnd;
-                            if (disToStart <= disToLineThres || disToEnd <= disToLineThres ||
-                                disTo2EndPoints <= disTo2EndsThres) {
-                                //cout<<"mvORBAttributions size "<<mvORBAttributions.size()<<endl;
-                                mvORBAttributions[i].LSDlineID = mLSDLinesIN[index2].ID;
-                                mvORBAttributions[i].LSDline = &mLSDLinesIN[index2];
-                                mvORBAttributions[i].depthSource = 2;
-//                                cout << "mvORBAttributions i " << i << " " << mvORBAttributions[i].keyPt.pt.x << " "
-//                                     << mvORBAttributions[i].keyPt.pt.y << " change depthsource to 2" << endl;
-                            }
-                        } else {
-                            if (index3 > -1 && mLSDLinesIN[index3].fit3DLine) {
-//                                cout << "point i " << i << " : " << "x0 y0 : " << x0 << " " << y0 << " , ORBin i " << i << " : "
-//                                     << ORBin[i].pt.x << " " << ORBin[i].pt.y << " , close to " << keyLineABCs[index3][0] << ","
-//                                     << keyLineABCs[index3][1] << "," << keyLineABCs[index3][2] << endl;
-//                                cout << "distance 3: " << minDistance3 << endl;
-                                ///Candidate 2 --- distance to each endpoints and sum up
-                                x1 = mLSDLinesIN[index3].LSD.startPointX, y1 = mLSDLinesIN[index3].LSD.startPointY;
-                                x2 = mLSDLinesIN[index3].LSD.endPointX, y2 = mLSDLinesIN[index3].LSD.endPointY;
-                                disToStart = sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
-                                disToEnd = sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2));
-                                disTo2EndPoints = disToStart + disToEnd;
-                                if (disToStart <= disToLineThres || disToEnd <= disToLineThres ||
-                                    disTo2EndPoints <= disTo2EndsThres) {
-                                    //cout<<"mvORBAttributions size "<<mvORBAttributions.size()<<endl;
-                                    mvORBAttributions[i].LSDlineID = mLSDLinesIN[index3].ID;
-                                    mvORBAttributions[i].LSDline = &mLSDLinesIN[index3];
-                                    mvORBAttributions[i].depthSource = 2;
 //                                    cout << "mvORBAttributions i " << i << " " << mvORBAttributions[i].keyPt.pt.x << " "
 //                                         << mvORBAttributions[i].keyPt.pt.y << " change depthsource to 2" << endl;
-                                }
-                            }
-                        }
+
                     }
                 }
-//        if(i.LSDlineID>-1){
-//            cout<<"ORB "<<i.keyPt.x<<" "<<i.keyPt.y<<" to lsd "<<i.LSDline->LSD.startPointX<<" "<<i.LSDline->LSD.startPointY
-//            <<" to "<<i.LSDline->LSD.endPointX<<" "<<i.LSDline->LSD.endPointY<<endl;
-//        }
             }
         }
         ///Check
@@ -1591,50 +1618,38 @@ int pause = 1;
 
     void Frame::ORBdepthFromLine(vector<mLine> &lineInputs, vector<mORBAttribution> &ORBinputs, cv::Mat im) {
         for (int i = 0; i < ORBinputs.size(); i++) {
-            if (ORBinputs[i].depthSource != 1 && ORBinputs[i].LSDlineID > -1) {
-                mLine *thisLine = &lineInputs[mvORBAttributions[i].LSDlineID];
-                if (thisLine->fit3DLine) {
-                    if (true) {
-                        ///Complicate formula below
-                        ///Given X=(u-Cx)*Z/fx | Y=(v-Cy)*Z/fy | Z=(Fx*X)/(u-Cx)
-                        ///Given (X-x1)/l=(Y-y1)/m=(Z-z1)/n
-                        ///We have:
-                        ///X=(Cx*x1*n-u*x1*n+u*z1*l-Cx*z1*l)/(fx*l-u*n+Cx*n)
-                        ///Y=(Cy*y1*n-v*y1*n+v*z1*m-Cy*z1*m)/(fy*m+Cy*n-v*n)
-                        ///Z=(fx*X)/(u-Cx)
+            if (ORBinputs[i].depthSource == 1)
+                continue;
+            if (ORBinputs[i].LSDlineID <= -1)
+                continue;
+            mLine *thisLine = &lineInputs[mvORBAttributions[i].LSDlineID];
+            if (thisLine->fit3DLine) {
+                ///Complicate formula below, be careful
+                ///Given X=(u-Cx)*Z/fx | Y=(v-Cy)*Z/fy | Z=(Fx*X)/(u-Cx)
+                ///Given (X-x1)/l=(Y-y1)/m=(Z-z1)/n
+                ///We have:
+                ///X=(Cx*x1*n-u*x1*n+u*z1*l-Cx*z1*l)/(fx*l-u*n+Cx*n)
+                ///Y=(Cy*y1*n-v*y1*n+v*z1*m-Cy*z1*m)/(fy*m+Cy*n-v*n)
+                ///Z=(fx*X)/(u-Cx)
 
-                        ///Step1 get the (X-x1)/l=(Y-y1)/m=(Z-z1)/n
-                        double u = ORBinputs[i].keyPt.pt.x, v = ORBinputs[i].keyPt.pt.y;
-                        double l = (thisLine->pt3dStart.x - thisLine->pt3dEnd.x),
-                                m = (thisLine->pt3dStart.y - thisLine->pt3dEnd.y),
-                                n = (thisLine->pt3dStart.z - thisLine->pt3dEnd.z);
-                        double x1 = thisLine->pt3dStart.x, y1 = thisLine->pt3dStart.y, z1 = thisLine->pt3dStart.z;
-                        double X = (cx * x1 * n - u * x1 * n + u * z1 * l - cx * z1 * l) / (fx * l - u * n + cx * n);
-                        double Y = (cy * y1 * n - v * y1 * n + v * z1 * m - cy * z1 * m) / (fy * m + cy * n - v * n);
-                        double Z = (fx * X) / (u - cx);
-                        mvORBAttributions[i].depth = Z;
-                        mvORBAttributions[i].p3d_est.x = X, mvORBAttributions[i].p3d_est.y = Y, mvORBAttributions[i].p3d_est.z = Z;
-                        mvORBAttributions[i].depthSource = 2;
-//                        cout << "ORBkeypt " <<  mvKeysUn[i].pt.x << " " <<  mvKeysUn[i].pt.y << " get 3D "
-//                             << mvORBAttributions[i].p3d_est.x << " " << mvORBAttributions[i].p3d_est.y << " " << mvORBAttributions[i].p3d_est.z
-//                             << " from 3d line "
-////                             << mvORBAttributions[i].LSDline->pt3dStart.x << " " << mvORBAttributions[i].LSDline->pt3dStart.y << " "<< mvORBAttributions[i].LSDline->pt3dStart.z
-////                             << " | "<<mvORBAttributions[i].LSDline->pt3dEnd.x << " " << mvORBAttributions[i].LSDline->pt3dEnd.y << " "<< mvORBAttributions[i].LSDline->pt3dEnd.z
-////                             << endl;//note why this sometime error?
-//                        << thisLine->pt3dStart.x << " " << thisLine->pt3dStart.y << " "<< thisLine->pt3dStart.z
-//                        << " | "<<thisLine->pt3dEnd.x << " " << thisLine->pt3dEnd.y << " "<< thisLine->pt3dEnd.z
-//                        << endl;
-//                ///Function 2 . point position ratio in 2d line, the ratio is the same with 3d line
-//                ///Note that LSD start point end point is not the 3d LiDAR line start point end point.
-//                double ratioX2d = (ORBpoint.keyPt.x - ORBpoint.LSDline.LSD.startPointX) / abs(ORBpoint.LSDline.LSD.startPointX-ORBpoint.LSDline.LSD.endPointX);
-                    }
-                }
+                ///Step1 get the (X-x1)/l=(Y-y1)/m=(Z-z1)/n
+                double u = ORBinputs[i].keyPt.pt.x, v = ORBinputs[i].keyPt.pt.y;
+                double l = (thisLine->pt3dStart.x - thisLine->pt3dEnd.x),
+                        m = (thisLine->pt3dStart.y - thisLine->pt3dEnd.y),
+                        n = (thisLine->pt3dStart.z - thisLine->pt3dEnd.z);
+                double x1 = thisLine->pt3dStart.x, y1 = thisLine->pt3dStart.y, z1 = thisLine->pt3dStart.z;
+                double X = (cx * x1 * n - u * x1 * n + u * z1 * l - cx * z1 * l) / (fx * l - u * n + cx * n);
+                double Y = (cy * y1 * n - v * y1 * n + v * z1 * m - cy * z1 * m) / (fy * m + cy * n - v * n);
+                double Z = (fx * X) / (u - cx);
+                mvORBAttributions[i].depth = Z;
+                mvORBAttributions[i].p3d_est.x = X, mvORBAttributions[i].p3d_est.y = Y, mvORBAttributions[i].p3d_est.z = Z;
+                mvORBAttributions[i].depthSource = 2;
             }
         }
     }
 
     /**
-     * get depth from nearby LiDAR point. only for those that away from Other LiDAR features
+     * get depth from nearby LiDAR point. only for those keypoints that away from Other LiDAR features(plane and line)
      * @param lineInputs
      * @param ORBinputs
      * @param im
@@ -1642,20 +1657,18 @@ int pause = 1;
     void Frame::ORBdepthFromPoint(vector<PtLsr> &LiDARInputs, vector<mORBAttribution> &ORBinputs, double threshold,
                                   cv::Mat im) {
 
-
-
         double thresholdSquare = threshold * threshold;
         //prepare a pcl kdtree
-        pcl::PointCloud<pcl::PointXY>::Ptr cloud (new pcl::PointCloud<pcl::PointXY>);
+        pcl::PointCloud<pcl::PointXY>::Ptr cloud(new pcl::PointCloud<pcl::PointXY>);
         cloud->width = LiDARInputs.size();
         cloud->height = 1;
-        cloud->points.resize (cloud->width * cloud->height);
-        for(int i =0;i<LiDARInputs.size();i++){
+        cloud->points.resize(cloud->width * cloud->height);
+        for (int i = 0; i < LiDARInputs.size(); i++) {
             (*cloud)[i].x = LiDARInputs[i].pt2d.x;
             (*cloud)[i].y = LiDARInputs[i].pt2d.y;
         }
         pcl::KdTreeFLANN<pcl::PointXY> kdtree;
-        kdtree.setInputCloud (cloud);
+        kdtree.setInputCloud(cloud);
 
         //Search !
         for (int i = 0; i < ORBinputs.size(); i++) {
@@ -1679,14 +1692,9 @@ int pause = 1;
             std::vector<float> pointNKNSquaredDistance(1);
             searchPoint.x = mvKeysUn[i].pt.x;
             searchPoint.y = mvKeysUn[i].pt.y;
-            kdtree.nearestKSearch (searchPoint, 1, pointIdxNKNSearch, pointNKNSquaredDistance);
-            if(pointNKNSquaredDistance[0]<thresholdSquare){
-                //cout<<"minID "<<minID<<" dis "<<minDistance<<" pointIdxNKNSearch "<<pointIdxNKNSearch[0]<<" dis "<<pointNKNSquaredDistance[0]<<endl;
-                minID =pointIdxNKNSearch[0];
-            }
-
-
+            kdtree.nearestKSearch(searchPoint, 1, pointIdxNKNSearch, pointNKNSquaredDistance);
             if (pointNKNSquaredDistance[0] < thresholdSquare) {
+                //cout<<"minID "<<minID<<" dis "<<minDistance<<" pointIdxNKNSearch "<<pointIdxNKNSearch[0]<<" dis "<<pointNKNSquaredDistance[0]<<endl;
                 minID = pointIdxNKNSearch[0];
                 ORBinputs[i].depthSource = 3;
                 ORBinputs[i].depth = LiDARInputs[minID].pt3d.z;
@@ -1697,7 +1705,6 @@ int pause = 1;
                 ORBinputs[i].LiDARPt = &LiDARInputs[minID];
                 //cout<<pt.keyPt<<" id "<<pt.ID<<" min distance "<<minDistance<<endl;
             }
-
         }
 //        cv::Mat im_clone = im.clone();
 //        cv::cvtColor(im,im_clone,CV_GRAY2BGR);
@@ -1819,7 +1826,7 @@ int pause = 1;
     /**
      * @brief search the image feature with nearby Laser depth
      */
-    void Frame::PairLaserVisionFeatures(const cv::Mat &im){
+    void Frame::PairLaserVisionFeatures(const cv::Mat &im) {
         std::clock_t start = clock();
         ///Step 1 Search for LiDAR Plane
         PlaneFitting();
@@ -1827,18 +1834,14 @@ int pause = 1;
         //cout << "PlaneFitting costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
 
         start = clock();
-        ///Step 2 Search for LSD and LiDAR line
+        ///Step 2 Search for LSD
         cv::Ptr<cv::line_descriptor::BinaryDescriptor> bd = cv::line_descriptor::BinaryDescriptor::createBinaryDescriptor();
         vector<cv::line_descriptor::KeyLine> priKeylines;
         cv::Mat mask = cv::Mat::ones(im.size(), CV_8UC1);
         bd->detect(im, priKeylines, mask);
-        /* compute descriptors */
         cv::Mat descriptors;
-        //bd->compute(im, priKeylines, descriptors);
-        /* merge primary keylines*/
         std::vector<bool> keylineMergeFlags(priKeylines.size(), false);
-        mergeKeyLines(priKeylines, keylineMergeFlags,descriptors, im.clone());
-        /* select the lines with enough length */
+        mergeKeyLines(priKeylines, keylineMergeFlags, descriptors, im.clone());
         vector<cv::line_descriptor::KeyLine> selectedKeyLines;
         int lineCounter = 0;
         const float lineLengthThres = 50;
@@ -1853,61 +1856,47 @@ int pause = 1;
                 lineCounter++;
             }
         }
-        //for check
-//        cv::Mat im_clone = im.clone();
-//        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
-//        for(int i=0;i<mvLines.size();i++){
-//            cv::line(im_clone,cv::Point(mvLines[i].LSD.startPointX,mvLines[i].LSD.startPointY),cv::Point(mvLines[i].LSD.endPointX,mvLines[i].LSD.endPointY),cv::Scalar(204,204,0));
-//        }
-//        cv::imshow("check",im_clone);
-//        cv::waitKey(1);
-        //cv::Mat descriptors;
+        //calc descriptors
         bd->compute(im, selectedKeyLines, descriptors);
         mlsdDescriptors = descriptors.clone();
         end = clock();
         //cout << "Search for LSD and LiDAR line costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
 
-        ///Step 4.2 LSD and LiDAR
+        ///Step 3 connect LSD and LiDAR, fitting a 3D Line
         start = clock();
-        connectLSD2LiDAR(mvLines, mLaserPt_cam,im.clone());
+        connectLSD2LiDAR(mvLines, mLaserPt_cam, im.clone());
         end = clock();
         //cout << "connectLSD2LiDAR costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
-
         start = clock();
         LineFitting(mvLines, mLaserPt_cam, im.clone());
         end = clock();
         //cout << "LineFitting costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
 
-        ///Step 5 pair ORB with LiDAR Plane
-        ///Pair ORB and LSD to Plane features
+        ///Step 4 pair ORB point with LiDAR Plane
         start = clock();
         connectORB2Plane(mLaserPt_cam, mvKeysUn, mvPlanes, 100, im.clone());
         end = clock();
 
-        ///Step 5.2 connect feature point and feature line
+        ///Step 5 connect ORB point and LiDAR line
         start = clock();
         connectORB2LSD(mvLines, mvKeysUn, im.clone());
         end = clock();
-
-        //check mvvkeysun and mvorbattributions
-//        cout << "mvKeysUn size " << mvKeysUn.size() << " orbattribution size " << mvORBAttributions.size() << endl;
-        for (int i = 0; i < mvKeysUn.size(); i++) {
-            if (mvKeysUn[i].pt.x != mvORBAttributions[i].keyPt.pt.x
-                || mvKeysUn[i].pt.y != mvORBAttributions[i].keyPt.pt.y) {
-                cout<<"mvkeysun unmatch to orbattribution i"<<i<<" ";
-                cout << mvKeysUn[i].pt.x << " " << mvKeysUn[i].pt.y
-                     << " " << mvORBAttributions[i].keyPt.pt.x << " " << mvORBAttributions[i].keyPt.pt.y << endl;
-            }
-        }
-
-
         //cout << "mvLines costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
-        ///! NOTE there is a big issue that ORB member's line is not the same with mline vector.
-        /// For safey, reach Line by Line ID
-        /// there are not the same address !!!!!!
+
+        //check mvvkeysun and mvorbattributions, a debug check. should not print anything
+        for (int i = 0; i < mvKeysUn.size(); i++)
+            if (mvKeysUn[i].pt.x != mvORBAttributions[i].keyPt.pt.x
+                || mvKeysUn[i].pt.y != mvORBAttributions[i].keyPt.pt.y)
+                cout << "mvkeysun unmatch i to orbattribution i " << i << " : " << mvKeysUn[i].pt.x << " "
+                     << mvKeysUn[i].pt.y
+                     << "  | " << mvORBAttributions[i].keyPt.pt.x << " " << mvORBAttributions[i].keyPt.pt.y << endl;
+
+        ///! NOTE there is a big issue that ORB member's line is not the same pointer with mline vector.
+        /// For safety, reach Line by Line ID and mLines
         start = clock();
         ORBdepthFromLine(mvLines, mvORBAttributions, im.clone());
         end = clock();
+        //cout << "ORBdepthFromLine costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
 //        counter = 0;
 //        for(int i=0;i<mvORBAttributions.size();i++){
 //            if (mvORBAttributions[i].depthSource == 2) {
@@ -1918,11 +1907,12 @@ int pause = 1;
 //        }
 //        cout << counter << " ORBS points on line" << endl;
 
-        //cout << "ORBdepthFromLine costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
+        ///Step 6 connect ORB point and LiDAR point / LiDAR point patch
         start = clock();
-        //ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 3, im.clone());
-        ORBdepthFromPointPatch(mLaserPt_cam, mvORBAttributions, 7, im.clone());
+        ORBdepthFromPoint(mLaserPt_cam, mvORBAttributions, 2, im.clone());
+        //ORBdepthFromPointPatch(mLaserPt_cam, mvORBAttributions, 5, im.clone());
         end = clock();
+        //cout << "ORBdepthFromPoint costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
 
 //        counter = 0;
 //        for(int i=0;i<mvORBAttributions.size();i++){
@@ -1934,9 +1924,7 @@ int pause = 1;
 //        }
 //        cout << counter << " ORBS points on point" << endl;
 
-        //cout << "ORBdepthFromPoint costs " << ((double)(end - start) / CLOCKS_PER_SEC)*1000 << "mini second" << endl;
-
-        //show
+        //show-all
 //        cv::Mat im_clone=im.clone();
 //        cv::cvtColor(im, im_clone, CV_GRAY2BGR);
 //        for(int i=0;i<mLaserPt_cam.size();i++){
@@ -1968,14 +1956,15 @@ int pause = 1;
 //        //cout<<windowName<<endl;
 //        cv::imshow(windowName, im_clone);
 //        cv::waitKey(0);
-        ///Step 6 check if est depth larger than 25 meter
-        for(int i=0;i<mvORBAttributions.size();i++){
-            if(mvORBAttributions[i].depthSource>-1){
+
+        ///Step 6 check if est depth larger than 20 meter
+        for (int i = 0; i < mvORBAttributions.size(); i++) {
+            if (mvORBAttributions[i].depthSource > -1) {
                 givenDepthNum++;
-                if(mvORBAttributions[i].depth>25){
+                if (mvORBAttributions[i].depth > 20) {
                     mvORBAttributions[i].depthSource = -1;
                     mvORBAttributions[i].depth = -1;
-                    mvORBAttributions[i].p3d_est=cv::Point3d(-1,-1,-1);
+                    mvORBAttributions[i].p3d_est = cv::Point3d(-1, -1, -1);
                     givenDepthNum--;
                 }
             }
@@ -1983,9 +1972,7 @@ int pause = 1;
         //cout<<"givenDepthNum "<<givenDepthNum<<endl;
     }
 
-
-///Added module
-/**
+/** Added module
  * @brief Project LiDAR Points to Image. src: https://github.com/williamhyin/lidar_to_camera/blob/master/src/project_lidar_to_camera.cpp
  * @param[in] mK : camera distortion and project parameters
  * @param[in] cols : image cols boundary
@@ -1994,7 +1981,7 @@ int pause = 1;
     void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
         //it seems like OpenCV upgraded, then the func changed?
         //cv::Mat P_rect_00 = cv::Mat::zeros(CvSize(4, 3), CV_64F);
-        cv::Mat P_rect_00 = cv::Mat::zeros(3,4,CV_64F);
+        cv::Mat P_rect_00 = cv::Mat::zeros(3, 4, CV_64F);
         P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
         P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
         P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
@@ -2139,9 +2126,10 @@ int pause = 1;
 //        cout <<"Lidar in-frame less surface points "<<counter<<"/"<<mLaserLessFlat_cam.size();
     }
 
-    ///Added module
-    /**
-     * @brief Project LiDAR Points and Features (PCL pointset) to Camera coordination system
+    /** Added Module
+     * @brief Project LiDAR Points and Features (PCL Pointset) to Camera coordination system
+     * Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter-distance, tan(26.9/2). it can only detect ~ 1.52+1.73 height
+     * Velodyne System : X front, Y left, Z up
      */
     void Frame::ProjectLiDARtoCam() {
         double maxX = 50.0, maxY = 50.0, minZ = 20.0;
@@ -2156,7 +2144,7 @@ int pause = 1;
                 //X front, Y left, Z up
                 if (mlaserScansPoints[i].points[j].x > maxX || mlaserScansPoints[i].points[j].x < 0.0
                     || mlaserScansPoints[i].points[j].y > maxY || mlaserScansPoints[i].points[j].y < -maxY
-                    || mlaserScansPoints[i].points[j].z > minZ || mlaserScansPoints[i].points[j].z  < -minZ) {
+                    || mlaserScansPoints[i].points[j].z > minZ || mlaserScansPoints[i].points[j].z < -minZ) {
                     continue;
                 }
                 P_lidar.at<double>(0, 0) = mlaserScansPoints[i].points[j].x;
@@ -2170,7 +2158,7 @@ int pause = 1;
                 newP.z = P_cam.at<double>(2, 0);
                 PtLsr newPtLsr;
                 newPtLsr.pt3d = newP;
-                newPtLsr.intensity =  mlaserScansPoints[i].points[j].intensity;
+                newPtLsr.intensity = mlaserScansPoints[i].points[j].intensity;
                 newPtLsr.scanID = i;
                 newPtLsr.pointID = j;
                 newPtLsr.low = false;
@@ -3098,13 +3086,15 @@ int pause = 1;
         }
     }
 
-    void Frame::ComputeStereoFromFusion(const vector<mORBAttribution> ORBAttributions)
-    {
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
+    /*
+     * retrive stereo infor from Fusioned depth.
+     * note I set mbf back to 0.
+     */
+    void Frame::ComputeStereoFromFusion(const vector<mORBAttribution> ORBAttributions) {
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
 
-        for(int i=0; i<N; i++)
-        {
+        for (int i = 0; i < N; i++) {
             const cv::KeyPoint &kp = mvKeys[i];
             const cv::KeyPoint &kpU = mvKeysUn[i];
 
@@ -3112,13 +3102,12 @@ int pause = 1;
             const float &u = kp.pt.x;
 
             //const float d = imDepth.at<float>(v,u);
-            if(ORBAttributions[i].depthSource>-1){
+            if (ORBAttributions[i].depthSource > -1) {
                 const float d = ORBAttributions[i].depth;
-                if(d>0)
-                {
+                if (d > 0) {
                     mvDepth[i] = d;
                     mbf = 0;
-                    mvuRight[i] = kpU.pt.x-mbf/d;
+                    mvuRight[i] = kpU.pt.x - mbf / d;
                 }
             }
         }
@@ -3146,20 +3135,40 @@ int pause = 1;
     void Frame::CompareWithStereo(cv::Mat im0, cv::Mat im1) {
         float minDiffer = 999, maxDiffer = -999;
         float binGap = 0.3;
+        //depth from each kind of LiDAR source
+        int planeOutlier= 0, planeTotal = 0, lineOutlier = 0, lineTotal = 0, pointOutlier = 0, pointTotal = 0;
         for (int i = 0; i < N; i++) {
             float stereoDepth = mvDepth[i];
             float fusionDepth = mvORBAttributions[i].depth;
             if (stereoDepth > -1 && fusionDepth > -1) {
                 int fusionDepthSource = mvORBAttributions[i].depthSource;
                 float depthDifferent = stereoDepth - fusionDepth;
-                //cout << mvKeysUn[i].pt.x << " , " << mvKeysUn[i].pt.y << " : " << stereoDepth
-                //     << " - " << fusionDepth << " = " << depthDifferent << endl;
+                if (abs(depthDifferent > 1.0)) {
+//                    cout << mvKeysUn[i].pt.x << " , " << mvKeysUn[i].pt.y << " : " << stereoDepth
+//                         << " - " << fusionDepth << " = " << depthDifferent << " src "
+//                         << mvORBAttributions[i].depthSource << endl;
+                    if(mvORBAttributions[i].depthSource==1)
+                        planeOutlier++;
+                    if(mvORBAttributions[i].depthSource==2)
+                        lineOutlier++;
+                    if(mvORBAttributions[i].depthSource==3)
+                        pointOutlier++;
+                }
+                if(mvORBAttributions[i].depthSource==1)
+                    planeTotal++;
+                if(mvORBAttributions[i].depthSource==2)
+                    lineTotal++;
+                if(mvORBAttributions[i].depthSource==3)
+                    pointTotal++;
                 if (abs(depthDifferent) < minDiffer)
                     minDiffer = abs(depthDifferent);
                 if (abs(depthDifferent) > maxDiffer)
                     maxDiffer = abs(depthDifferent);
             }
         }
+        cout<<"plane outlier "<<planeOutlier<<" / "<<planeTotal
+        <<" line outlier "<<lineOutlier<<" / "<<lineTotal
+        <<" source3 outlier "<<pointOutlier<<" / "<<pointTotal<<endl;
         int binNum = ceil((maxDiffer-minDiffer)/binGap);
         //cout<<"max "<<maxDiffer<<" min "<<minDiffer<<" bin number "<<binNum<<endl;
         vector<vector<int>> binContainer;
@@ -3187,12 +3196,12 @@ int pause = 1;
             if (stereoDepth > -1 && fusionDepth > -1) {
                 int fusionDepthSource = mvORBAttributions[i].depthSource;
                 float depthDifferent = abs(stereoDepth - fusionDepth);
-                if (abs(depthDifferent) > 1.0) {
+                if (abs(depthDifferent) > 1.0) { //remove fusion depth if it is differ with stereo depth
                     mvORBAttributions[i].depthSource = -1;
                     mvORBAttributions[i].depth = -1;
                 }
             }
-            if (stereoDepth == -1 && fusionDepth > -1) {
+            if (stereoDepth == -1 && fusionDepth > -1) {//remove fusion depth if stereo has no depth
                     mvORBAttributions[i].depthSource = -1;
                     mvORBAttributions[i].depth = -1;
             }

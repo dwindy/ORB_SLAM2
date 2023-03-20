@@ -66,7 +66,7 @@ namespace ORB_SLAM2
         System(const string &strVocFile, //字典路径
                const string &strSettingsFile, //配置文件路径
                const eSensor sensor, //传感器类型
-               const bool bUseViewer = true); //是否可视化
+               const bool bUseViewer = true);//是否可视化
 
         // Proccess the given stereo frame. Images must be synchronized and rectified.
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -86,7 +86,8 @@ namespace ORB_SLAM2
         ///Added module
         //Input image, image time, laser, laser time, laser start time, laser end time
         cv::Mat TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
-
+        cv::Mat TrackMonoLiDAR(const cv::Mat &im, const cv::Mat &im_right, const double &timestamp,
+                                       const vector<vector<double>> &lasers);
         // This stops local mapping thread (map building) and performs only camera tracking.
         void ActivateLocalizationMode();
         // This resumes local mapping thread and performs SLAM again.
@@ -178,6 +179,8 @@ namespace ORB_SLAM2
         std::mutex mMutexMode;
         bool mbActivateLocalizationMode;
         bool mbDeactivateLocalizationMode;
+        ///Added module
+        bool mbDebug;
 
         // Tracking state
         int mTrackingState;

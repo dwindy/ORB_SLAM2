@@ -127,3 +127,7 @@ target_link_libraries(mono_kitti ${PROJECT_NAME} )#Notice: here import Ceres ${C
 #Examples/Monocular/mono_euroc.cc)
 #target_link_libraries(mono_euroc ${PROJECT_NAME})
 
+add_executable(monoLiDAR_kitti
+        Examples/Monocular/fusion_kitti.cc)
+target_link_libraries(monoLiDAR_kitti ${PROJECT_NAME} )#Notice: here import Ceres ${CERES_LIBRARIES}
+

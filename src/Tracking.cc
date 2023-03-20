@@ -49,154 +49,154 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, //系统实例
-                   ORBVocabulary* pVoc, //BOW字典
-                   FrameDrawer *pFrameDrawer,
-                   MapDrawer *pMapDrawer,
-                   Map *pMap, //地图句柄
-                   KeyFrameDatabase* pKFDB, //关键帧产生的词袋数据库
-                   const string &strSettingPath,
-                   const int sensor):
-    mState(NO_IMAGES_YET),
-    mSensor(sensor),
-    mbOnlyTracking(false),
-    mbVO(false), //当处于纯跟踪模式时候，这个变量表示了当前跟踪状态的好坏
-    mpORBVocabulary(pVoc),
-    mpKeyFrameDB(pKFDB),
-    mpInitializer(static_cast<Initializer*>(NULL)),
-    mpSystem(pSys),
-    mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer),
-    mpMapDrawer(pMapDrawer),
-    mpMap(pMap),
-    mnLastRelocFrameId(0),
-    mbLiDARInit(false), //Added module, for lidar init
-    mLiDARState(NOT_INITIALIZED)
-{
-    // Load camera parameters from settings file
+    Tracking::Tracking(System *pSys, //系统实例
+                       ORBVocabulary *pVoc, //BOW字典
+                       FrameDrawer *pFrameDrawer,
+                       MapDrawer *pMapDrawer,
+                       Map *pMap, //地图句柄
+                       KeyFrameDatabase *pKFDB, //关键帧产生的词袋数据库
+                       const string &strSettingPath,
+                       const int sensor) :
+            mState(NO_IMAGES_YET),
+            mSensor(sensor),
+            mbOnlyTracking(false),
+            mbVO(false), //当处于纯跟踪模式时候，这个变量表示了当前跟踪状态的好坏
+            mpORBVocabulary(pVoc),
+            mpKeyFrameDB(pKFDB),
+            mpInitializer(static_cast<Initializer *>(NULL)),
+            mpSystem(pSys),
+            mpViewer(NULL),
+            mpFrameDrawer(pFrameDrawer),
+            mpMapDrawer(pMapDrawer),
+            mpMap(pMap),
+            mnLastRelocFrameId(0),
+            mbLiDARInit(false), //Added module, for lidar init
+            mLiDARState(NOT_INITIALIZED) {
+        // Load camera parameters from settings file
 
-    cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-    float fx = fSettings["Camera.fx"];
-    float fy = fSettings["Camera.fy"];
-    float cx = fSettings["Camera.cx"];
-    float cy = fSettings["Camera.cy"];
+        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+        float fx = fSettings["Camera.fx"];
+        float fy = fSettings["Camera.fy"];
+        float cx = fSettings["Camera.cx"];
+        float cy = fSettings["Camera.cy"];
 
-    cv::Mat K = cv::Mat::eye(3,3,CV_32F);
-    K.at<float>(0,0) = fx;
-    K.at<float>(1,1) = fy;
-    K.at<float>(0,2) = cx;
-    K.at<float>(1,2) = cy;
-    K.copyTo(mK);
+        cv::Mat K = cv::Mat::eye(3, 3, CV_32F);
+        K.at<float>(0, 0) = fx;
+        K.at<float>(1, 1) = fy;
+        K.at<float>(0, 2) = cx;
+        K.at<float>(1, 2) = cy;
+        K.copyTo(mK);
 
-    cv::Mat DistCoef(4,1,CV_32F);
-    DistCoef.at<float>(0) = fSettings["Camera.k1"];
-    DistCoef.at<float>(1) = fSettings["Camera.k2"];
-    DistCoef.at<float>(2) = fSettings["Camera.p1"];
-    DistCoef.at<float>(3) = fSettings["Camera.p2"];
-    const float k3 = fSettings["Camera.k3"];
-    if(k3!=0)
-    {
-        DistCoef.resize(5);
-        DistCoef.at<float>(4) = k3;
-    }
-    DistCoef.copyTo(mDistCoef);
+        cv::Mat DistCoef(4, 1, CV_32F);
+        DistCoef.at<float>(0) = fSettings["Camera.k1"];
+        DistCoef.at<float>(1) = fSettings["Camera.k2"];
+        DistCoef.at<float>(2) = fSettings["Camera.p1"];
+        DistCoef.at<float>(3) = fSettings["Camera.p2"];
+        const float k3 = fSettings["Camera.k3"];
+        if (k3 != 0) {
+            DistCoef.resize(5);
+            DistCoef.at<float>(4) = k3;
+        }
+        DistCoef.copyTo(mDistCoef);
 
-    mbf = fSettings["Camera.bf"]; //双目baseline * fx 50
+        mbf = fSettings["Camera.bf"]; //双目baseline * fx 50
 
-    float fps = fSettings["Camera.fps"];
-    if(fps==0)
-        fps=30;
+        float fps = fSettings["Camera.fps"];
+        if (fps == 0)
+            fps = 30;
 
-    ///-----added module
-    ///load Tcam_Lidar parameters
-    cv::Mat Tcl = cv::Mat::eye(4,4,CV_64F);
-    Tcl.at<double>(0,0) = fSettings["Rcl.11"];
-    Tcl.at<double>(0,1) = fSettings["Rcl.12"];
-    Tcl.at<double>(0,2) = fSettings["Rcl.13"];
-    Tcl.at<double>(1,0) = fSettings["Rcl.21"];
-    Tcl.at<double>(1,1) = fSettings["Rcl.22"];
-    Tcl.at<double>(1,2) = fSettings["Rcl.23"];
-    Tcl.at<double>(2,0) = fSettings["Rcl.31"];
-    Tcl.at<double>(2,1) = fSettings["Rcl.32"];
-    Tcl.at<double>(2,2) = fSettings["Rcl.33"];
-    Tcl.at<double>(0,3) = fSettings["Tcl.1"];
-    Tcl.at<double>(1,3) = fSettings["Tcl.2"];
-    Tcl.at<double>(2,3) = fSettings["Tcl.3"];
-    Tcl.copyTo(mTcamlid);
+        ///-----added module
+        ///load Tcam_Lidar parameters
+        cv::Mat Tcl = cv::Mat::eye(4, 4, CV_64F);
+        Tcl.at<double>(0, 0) = fSettings["Rcl.11"];
+        Tcl.at<double>(0, 1) = fSettings["Rcl.12"];
+        Tcl.at<double>(0, 2) = fSettings["Rcl.13"];
+        Tcl.at<double>(1, 0) = fSettings["Rcl.21"];
+        Tcl.at<double>(1, 1) = fSettings["Rcl.22"];
+        Tcl.at<double>(1, 2) = fSettings["Rcl.23"];
+        Tcl.at<double>(2, 0) = fSettings["Rcl.31"];
+        Tcl.at<double>(2, 1) = fSettings["Rcl.32"];
+        Tcl.at<double>(2, 2) = fSettings["Rcl.33"];
+        Tcl.at<double>(0, 3) = fSettings["Tcl.1"];
+        Tcl.at<double>(1, 3) = fSettings["Tcl.2"];
+        Tcl.at<double>(2, 3) = fSettings["Tcl.3"];
+        Tcl.copyTo(mTcamlid);
+        ///--------------------------------------
 
-    // Max/Min Frames to insert keyframes and to check relocalisation
-    mMinFrames = 0;
-    mMaxFrames = fps;
+        // Max/Min Frames to insert keyframes and to check relocalisation
+        mMinFrames = 0;
+        mMaxFrames = fps;
 
-    cout << endl << "Camera Parameters: " << endl;
-    cout << "- fx: " << fx << endl;
-    cout << "- fy: " << fy << endl;
-    cout << "- cx: " << cx << endl;
-    cout << "- cy: " << cy << endl;
-    cout << "- k1: " << DistCoef.at<float>(0) << endl;
-    cout << "- k2: " << DistCoef.at<float>(1) << endl;
-    if(DistCoef.rows==5)
-        cout << "- k3: " << DistCoef.at<float>(4) << endl;
-    cout << "- p1: " << DistCoef.at<float>(2) << endl;
-    cout << "- p2: " << DistCoef.at<float>(3) << endl;
-    cout << "- fps: " << fps << endl;
+        cout << endl << "Camera Parameters: " << endl;
+        cout << "- fx: " << fx << endl;
+        cout << "- fy: " << fy << endl;
+        cout << "- cx: " << cx << endl;
+        cout << "- cy: " << cy << endl;
+        cout << "- k1: " << DistCoef.at<float>(0) << endl;
+        cout << "- k2: " << DistCoef.at<float>(1) << endl;
+        if (DistCoef.rows == 5)
+            cout << "- k3: " << DistCoef.at<float>(4) << endl;
+        cout << "- p1: " << DistCoef.at<float>(2) << endl;
+        cout << "- p2: " << DistCoef.at<float>(3) << endl;
+        cout << "- fps: " << fps << endl;
 
+        int nRGB = fSettings["Camera.RGB"];
+        mbRGB = nRGB;
 
-    int nRGB = fSettings["Camera.RGB"];
-    mbRGB = nRGB;
-
-    if(mbRGB)
-        cout << "- color order: RGB (ignored if grayscale)" << endl;
-    else
-        cout << "- color order: BGR (ignored if grayscale)" << endl;
-
-    // Load ORB parameters
-
-    int nFeatures = fSettings["ORBextractor.nFeatures"]; //每帧特征点数 1000
-    float fScaleFactor = fSettings["ORBextractor.scaleFactor"]; //图像金字塔的尺度 1.2
-    int nLevels = fSettings["ORBextractor.nLevels"]; //金字塔层数 8
-    int fIniThFAST = fSettings["ORBextractor.iniThFAST"]; //fast初始阈值 20
-    int fMinThFAST = fSettings["ORBextractor.minThFAST"]; //如果达不到足够的特征点数量，改用最小阈值 8
-
-    //tracking过程使用的是left实例作为特征提取器
-    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-    ///Added Module---monocular depth debug
-    mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-
-    if(sensor==System::STEREO)
-        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-
-    //monocular初始化过程中使用这个实例作为特征提取器，注意两倍特征数
-    if(sensor==System::MONOCULAR)
-        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-
-    cout << endl  << "ORB Extractor Parameters: " << endl;
-    cout << "- Number of Features: " << nFeatures << endl;
-    cout << "- Scale Levels: " << nLevels << endl;
-    cout << "- Scale Factor: " << fScaleFactor << endl;
-    cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
-    cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
-
-    ///Added Module --- depth debug
-    mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
-    cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
-
-    if(sensor==System::STEREO || sensor==System::RGBD)
-    {
-        //判断一个3D点远近的阈值，mdf * 35 /fx 实际就是基线长度的xx倍
-        mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
-        cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
-    }
-
-    if(sensor==System::RGBD)
-    {
-        mDepthMapFactor = fSettings["DepthMapFactor"];
-        if(fabs(mDepthMapFactor)<1e-5)
-            mDepthMapFactor=1;
+        if (mbRGB)
+            cout << "- color order: RGB (ignored if grayscale)" << endl;
         else
-            mDepthMapFactor = 1.0f/mDepthMapFactor;
+            cout << "- color order: BGR (ignored if grayscale)" << endl;
+
+        // Load ORB parameters
+        int nFeatures = fSettings["ORBextractor.nFeatures"]; //每帧特征点数 1000
+        float fScaleFactor = fSettings["ORBextractor.scaleFactor"]; //图像金字塔的尺度 1.2
+        int nLevels = fSettings["ORBextractor.nLevels"]; //金字塔层数 8
+        int fIniThFAST = fSettings["ORBextractor.iniThFAST"]; //fast初始阈值 20
+        int fMinThFAST = fSettings["ORBextractor.minThFAST"]; //如果达不到足够的特征点数量，改用最小阈值 8
+
+        //tracking过程使用的是left实例作为特征提取器
+        mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        ///Added Module---monolidar depth debug
+        if (sensor == System::MonoLiDAR)
+            mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        ///-------------------------------------------
+
+        if (sensor == System::STEREO)
+            mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+
+        //monocular初始化过程中使用这个实例作为特征提取器，注意两倍特征数
+        if (sensor == System::MONOCULAR)
+            mpIniORBextractor = new ORBextractor(2 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+
+        cout << endl << "ORB Extractor Parameters: " << endl;
+        cout << "- Number of Features: " << nFeatures << endl;
+        cout << "- Scale Levels: " << nLevels << endl;
+        cout << "- Scale Factor: " << fScaleFactor << endl;
+        cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
+        cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+
+        ///Added Module --- monolidar depth debug
+        if (sensor == System::STEREO || sensor == System::RGBD) {
+            mThDepth = mbf * (float) fSettings["ThDepth"] / fx;
+            cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+        }
+        ///------------------------------------------------
+
+        if (sensor == System::STEREO || sensor == System::RGBD) {
+            //判断一个3D点远近的阈值，mdf * 35 /fx 实际就是基线长度的xx倍
+            mThDepth = mbf * (float) fSettings["ThDepth"] / fx;
+            cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+        }
+
+        if (sensor == System::RGBD) {
+            mDepthMapFactor = fSettings["DepthMapFactor"];
+            if (fabs(mDepthMapFactor) < 1e-5)
+                mDepthMapFactor = 1;
+            else
+                mDepthMapFactor = 1.0f / mDepthMapFactor;
+        }
     }
-}
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
 {
@@ -295,42 +295,89 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
  * @param laserTimes : laser middle time, start time and end time
  * @return Tcw
  */
-cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers)
-{
-    //mImGray 是tracking class 的成员
-    mImGray = im;
+    cv::Mat Tracking::GrabImageMonoLiDAR(const cv::Mat &im, const cv::Mat &im_r, const double &timestamp,
+                                         const vector <vector<double>> &lasers) {
+        //mImGray 是tracking class 的成员
+        mImGray = im;
+        cv::Mat imGrayRight = im_r;
+        if (mImGray.channels() == 3) {
+            if (mbRGB) {
+                cvtColor(mImGray, mImGray, CV_RGB2GRAY);
+                cvtColor(imGrayRight, imGrayRight, CV_RGB2GRAY);
+            } else {
+                cvtColor(mImGray, mImGray, CV_BGR2GRAY);
+                cvtColor(imGrayRight, imGrayRight, CV_BGR2GRAY);
+            }
+        } else if (mImGray.channels() == 4) {
+            if (mbRGB) {
+                cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
+                cvtColor(imGrayRight, imGrayRight, CV_RGBA2GRAY);
+            } else {
+                cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
+                cvtColor(imGrayRight, imGrayRight, CV_BGRA2GRAY);
+            }
+        }
 
-    if(mImGray.channels()==3)
-    {
-        if(mbRGB)
-            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
-        else
-            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+        //enum eTrackingState : Sys not ready -1, no img yet 0, not init 1, ok 2, lost 3
+//        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
+//            //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+//            ///added module
+//            mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBextractorRight, mpORBVocabulary,
+//                                  mK, mTcamlid,
+//                                  mDistCoef, mbf, mThDepth);
+//        else
+//            //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+//            ///added module
+//            mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
+//                                  mK, mTcamlid,
+//                                  mDistCoef, mbf, mThDepth);
+
+        //Init by Stereo Way instead of Mono Way
+        mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, lasers,
+                              mpORBextractorLeft, mpORBextractorRight,
+                              mpORBVocabulary, mK, mTcamlid, mDistCoef, mbf, mThDepth);
+
+        Track();
+
+        return mCurrentFrame.mTcw.clone();
     }
-    else if(mImGray.channels()==4)
-    {
-        if(mbRGB)
-            cvtColor(mImGray,mImGray,CV_RGBA2GRAY);
+
+    cv::Mat Tracking::GrabImageMonoLiDAR(const cv::Mat &im, const double &timestamp, const vector <vector<double>> &lasers) {
+        //mImGray 是tracking class 的成员
+        mImGray = im;
+        if (mImGray.channels() == 3) {
+            if (mbRGB) {
+                cvtColor(mImGray, mImGray, CV_RGB2GRAY);
+            } else {
+                cvtColor(mImGray, mImGray, CV_BGR2GRAY);
+            }
+        } else if (mImGray.channels() == 4) {
+            if (mbRGB) {
+                cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
+            } else {
+                cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
+            }
+        }
+
+        //enum eTrackingState : Sys not ready -1, no img yet 0, not init 1, ok 2, lost 3
+        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
+            //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+            ///added module
+            mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBextractorRight, mpORBVocabulary,
+                                  mK, mTcamlid,
+                                  mDistCoef, mbf, mThDepth);
         else
-            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+            //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+            ///added module
+            mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
+                                  mK, mTcamlid,
+                                  mDistCoef, mbf, mThDepth);
+
+        Track();
+
+        return mCurrentFrame.mTcw.clone();
     }
 
-    //enum eTrackingState : Sys not ready -1, no img yet 0, not init 1, ok 2, lost 3
-    if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
-        //mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
-        ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpIniORBextractor, mpORBextractorRight, mpORBVocabulary, mK, mTcamlid,
-                              mDistCoef, mbf, mThDepth);
-    else
-        //mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
-        ///added module
-        mCurrentFrame = Frame(mImGray, timestamp, lasers, mpORBextractorLeft, mpORBextractorRight,mpORBVocabulary, mK, mTcamlid,
-                              mDistCoef, mbf, mThDepth);
-
-    Track();
-
-    return mCurrentFrame.mTcw.clone();
-}
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
     //mImGray 是tracking class 的成员
@@ -382,11 +429,13 @@ void Tracking::Track()
     //* Step 1 初始化
     if(mState==NOT_INITIALIZED)
     {
-        if(mSensor==System::STEREO || mSensor==System::RGBD)
+        if (mSensor == System::STEREO || mSensor == System::RGBD)
             StereoInitialization();
-        else
+        else if (mSensor == System::MONOCULAR)
             //MonocularInitialization();
             MonoLiDARInitialization();
+        else if (mSensor == System::MonoLiDAR)
+            MonoLiDARStereoWayInitialization();
         //更新绘制器中存储的最新状态
         mpFrameDrawer->Update(this);
         //这个状态量mState在上面的初始化函数中更新
@@ -1210,6 +1259,59 @@ void Tracking::MonocularInitialization()
     }
 }
 
+    void Tracking::MonoLiDARStereoWayInitialization()
+    {
+        if(mCurrentFrame.N>500)
+        {
+            // Set Frame pose to the origin
+            mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
+
+            // Create KeyFrame
+            KeyFrame* pKFini = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
+
+            // Insert KeyFrame in the map
+            mpMap->AddKeyFrame(pKFini);
+
+            // Create MapPoints and associate to KeyFrame
+            for(int i=0; i<mCurrentFrame.N;i++)
+            {
+                float z = mCurrentFrame.mvDepth[i];
+                if(z>0)
+                {
+                    cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
+                    MapPoint* pNewMP = new MapPoint(x3D,pKFini,mpMap);
+                    pNewMP->AddObservation(pKFini,i);
+                    pKFini->AddMapPoint(pNewMP,i);
+                    pNewMP->ComputeDistinctiveDescriptors();
+                    pNewMP->UpdateNormalAndDepth();
+                    mpMap->AddMapPoint(pNewMP);
+
+                    mCurrentFrame.mvpMapPoints[i]=pNewMP;
+                }
+            }
+            //todo add Map Line
+
+            cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
+
+            mpLocalMapper->InsertKeyFrame(pKFini);
+
+            mLastFrame = Frame(mCurrentFrame);
+            mnLastKeyFrameId=mCurrentFrame.mnId;
+            mpLastKeyFrame = pKFini;
+
+            mvpLocalKeyFrames.push_back(pKFini);
+            mvpLocalMapPoints=mpMap->GetAllMapPoints();
+            mpReferenceKF = pKFini;
+            mCurrentFrame.mpReferenceKF = pKFini;
+
+            mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+            mpMap->mvpKeyFrameOrigins.push_back(pKFini);
+            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+
+            mState=OK;
+        }
+    }
+
 
 /**
  * given a origin point, a ray, a plane norn and plane point
@@ -1400,22 +1502,19 @@ void Tracking::CreateInitialMapMonocular()
     int pause = 0;
 }
 
-void Tracking::CheckReplacedInLastFrame()
-{
-    for(int i =0; i<mLastFrame.N; i++)
-    {
-        MapPoint* pMP = mLastFrame.mvpMapPoints[i];
+    //return the replaced mappoint if it is exist
+    void Tracking::CheckReplacedInLastFrame() {
+        for (int i = 0; i < mLastFrame.N; i++) {
+            MapPoint *pMP = mLastFrame.mvpMapPoints[i];
 
-        if(pMP)
-        {
-            MapPoint* pRep = pMP->GetReplaced();
-            if(pRep)
-            {
-                mLastFrame.mvpMapPoints[i] = pRep;
+            if (pMP) {
+                MapPoint *pRep = pMP->GetReplaced();
+                if (pRep) {
+                    mLastFrame.mvpMapPoints[i] = pRep;
+                }
             }
         }
     }
-}
 
 
 /**
@@ -1613,7 +1712,7 @@ void Tracking::UpdateLastFrame()
         // Project points seen in previous frame
         int th;
         if (mSensor != System::STEREO)
-            th = 30;//th=15;
+            th = 15;//origin 15, shall I increase?
         else
             th = 7;
         //*Step 2 根据上一帧的特征点对应地图点进行投影匹配
@@ -2116,18 +2215,17 @@ void Tracking::CreateNewKeyFrame()
  包括：1.k1个关键帧,k2个临近关键帧和参考关键帧
  2. 由这些关键帧观测到的Mappoints
  */
-void Tracking::UpdateLocalMap()
-{
-    // This is for visualization
-    //红色地图点
-    mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+    void Tracking::UpdateLocalMap() {
+        // This is for visualization
+        //红色地图点
+        mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
 
-    // Update
-    UpdateLocalKeyFrames();
-    UpdateLocalPoints();
-    ///Added Module
-    UpdateLocalLines();
-}
+        // Update
+        UpdateLocalKeyFrames();
+        UpdateLocalPoints();
+        ///Added Module
+        //UpdateLocalLines();
+    }
 
     void Tracking::UpdateLocalPoints() {
         //*Step1 清空局部mappoints
