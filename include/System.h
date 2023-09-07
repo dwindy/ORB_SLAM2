@@ -36,6 +36,11 @@
 #include "ORBVocabulary.h"
 #include "Viewer.h"
 
+//adds on
+#include "unistd.h"
+#include "stdio.h"
+#include "stdlib.h"
+
 namespace ORB_SLAM2
 {
 
