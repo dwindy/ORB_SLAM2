@@ -227,6 +227,119 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     AssignFeaturesToGrid();
 }
 
+///adds on
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc,
+                 cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, const string classAddress)
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
+              mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
+              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
+        // Frame ID
+        mnId = nNextId++;
+
+        // Scale Level Info
+        mnScaleLevels = mpORBextractorLeft->GetLevels();
+        mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+        mfLogScaleFactor = log(mfScaleFactor);
+        mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+
+        // ORB extraction
+        ExtractORB(0, imGray);
+
+        N = mvKeys.size();
+
+        if (mvKeys.empty())
+            return;
+
+        UndistortKeyPoints();
+
+        /* coco labels used on yolo7
+         * NOTE person label has been made to 80 in mask image, avoid mixturing with black background
+         * # class names
+         0-9 [ 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+         10-19 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+         20-29 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+         30-39 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard' 'tennis racket', 'bottle',
+         40-49 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+         50-59 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+         60-69 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+         70-79 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush' ]
+         */
+        ///Adds on
+        //get class number and labels
+        ifstream reader;
+        reader.open(classAddress, ios::in);
+        cout << classAddress << endl;
+        vector<int> classLabels;
+        int label;
+        while (reader >> label) {
+            classLabels.push_back(label);
+            cout << label << " ";
+        }
+        cout << endl;
+        //store each mask
+        std::vector<cv::Mat> allMasks;
+        string maskImgAddress;
+        for (int i = 0; i < classLabels.size(); i++) {
+            maskImgAddress = classAddress.substr(0, classAddress.length() - 9) + "mask-" + to_string(i) + ".png";
+            cv::Mat mask = cv::imread(maskImgAddress, CV_LOAD_IMAGE_UNCHANGED);
+            allMasks.push_back(mask.clone());
+            //cout<<int(allMasks[i].at<uchar>(333,471))<<endl;
+            //imshow("image", allMasks[i]);
+            //cv::waitKey(0);
+        }
+        //define which objects should be removed
+        vector<int> softlabels{80,14, 15, 16,17,18,19,20,21,22,23, 77};
+        for (int i = 0; i < mvKeysUn.size(); i++) {
+            int x = mvKeysUn[i].pt.x;
+            int y = mvKeysUn[i].pt.y;
+            for (int j = 0; j < allMasks.size(); j++) {
+                //if this pt belongs to any object
+                if(int(allMasks[j].at<uchar>(x,y))>0){
+                    int ptLabel = classLabels[j];
+                    cout<<"pt "<<i<<" : "<<x<<"."<<y<<", belongs to object "<<ptLabel<<endl;
+                    if (count(softlabels.begin(), softlabels.end(), ptLabel))
+                    {
+                        cout<<"this is a soft object"<<endl;
+                        //todo REMOVE this point from system
+                    }
+                }
+            }
+        }
+        ///-------------------------------------
+
+        // Set no stereo information
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
+
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+        mvbOutlier = vector<bool>(N, false);
+
+        // This is done only for the first Frame (or after a change in the calibration)
+        if (mbInitialComputations) {
+            ComputeImageBounds(imGray);
+
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
+
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
+
+            mbInitialComputations = false;
+        }
+
+        mb = mbf / fx;
+
+        AssignFeaturesToGrid();
+    }
+
+
 void Frame::AssignFeaturesToGrid()
 {
     int nReserve = 0.5f*N/(FRAME_GRID_COLS*FRAME_GRID_ROWS);

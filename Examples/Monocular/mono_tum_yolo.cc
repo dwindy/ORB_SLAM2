@@ -32,6 +32,9 @@ using namespace std;
 
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
+void LoadMasks(vector<string> vstrImageFilenames, vector<string> &vstrMaskFilenames);
+
+void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, string folderaddress);
 
 int main(int argc, char **argv)
 {
@@ -49,6 +52,14 @@ int main(int argc, char **argv)
 
     int nImages = vstrImageFilenames.size();
 
+    ///Adds on. load class.txt address
+//    vector<string> vstrMaskFilenames;
+//    vstrMaskFilenames.resize(nImages);
+//    LoadMasks(vstrImageFilenames, vstrMaskFilenames);
+    vector<string> vstrClassFilenames;
+    vstrClassFilenames.resize(nImages);
+    LoadClasses(vstrImageFilenames, vstrClassFilenames,string(argv[3]));
+
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
 
@@ -62,6 +73,8 @@ int main(int argc, char **argv)
 
     // Main loop
     cv::Mat im;
+    ///adds on
+    //cv::Mat mask;
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image from file
@@ -80,9 +93,15 @@ int main(int argc, char **argv)
 #else
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
+        //1311870427.199132_seg.jpg 1311870427.199132_mask-0.png 1311870427.199132_class.txt
+        ///adds on
+        //// Read image from file
+        //mask = cv::imread(string(argv[3])+"/"+vstrMaskFilenames[ni],CV_LOAD_IMAGE_GRAYSCALE);
 
-        // Pass the image to the SLAM system
-        SLAM.TrackMonocular(im,tframe);
+//        // Pass the image to the SLAM system
+//        SLAM.TrackMonocular(im,tframe);
+        ///adds on
+        SLAM.TrackMonocular(im,tframe,vstrClassFilenames[ni]);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -151,5 +170,33 @@ void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vecto
             ss >> sRGB;
             vstrImageFilenames.push_back(sRGB);
         }
+    }
+}
+
+/**
+ * generate and store mask file names, giving image file names
+ * @param vstrImageFilenames
+ * @param vstrMaskFilenames
+ */
+void LoadMasks(vector<string> vstrImageFilenames, vector<string> &vstrMaskFilenames) {
+    for (int i = 0; i < vstrImageFilenames.size(); i++) {
+        string header = vstrImageFilenames[i].substr(3, 18);
+        string maskFileName = "mask" + header + "_masks-merged.jpeg";
+        //cout<<maskFileName<<endl;
+        vstrMaskFilenames[i] = maskFileName;
+    }
+}
+
+/**
+ * generate class txt file names, giving image file names
+ * @param vstrImageFilenames
+ * @param vstrMaskFilenames
+ */
+void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, string folder) {
+    for (int i = 0; i < vstrImageFilenames.size(); i++) {
+        string header = vstrImageFilenames[i].substr(3,18);
+        string classFileName = folder + "/mask"+header + "_class.txt";
+        //cout<<maskFileName<<endl;
+        vstrClassFilenames[i]=classFileName;
     }
 }

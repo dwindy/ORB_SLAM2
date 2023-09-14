@@ -264,6 +264,48 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
+///adds on
+    cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const string classAddress) {
+        mImGray = im;
+        if (mImGray.channels() == 3) {
+            if (mbRGB)
+                cvtColor(mImGray, mImGray, CV_RGB2GRAY);
+            else
+                cvtColor(mImGray, mImGray, CV_BGR2GRAY);
+        } else if (mImGray.channels() == 4) {
+            if (mbRGB)
+                cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
+            else
+                cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
+        }
+
+        ///adds on --- load merged masks
+//        mImMask = mask;
+//        if (mImMask.channels() == 3) {
+//            if (mbRGB)
+//                cvtColor(mImMask, mImMask, CV_RGB2GRAY);
+//            else
+//                cvtColor(mImMask, mImMask, CV_BGR2GRAY);
+//        }
+
+
+        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
+//            mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+            ///adds on
+            mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth,
+                                  classAddress);
+        else
+//            mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,mThDepth);
+            ///adds on
+            mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth,
+                                  classAddress);
+
+        Track();
+
+        return mCurrentFrame.mTcw.clone();
+    }
+
+
 void Tracking::Track()
 {
     if(mState==NO_IMAGES_YET)
