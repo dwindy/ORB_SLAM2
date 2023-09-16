@@ -227,6 +227,23 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     AssignFeaturesToGrid();
 }
 
+/**
+ * delete the target row from opencv Mat
+ */
+    void deleteRow(cv::Mat mDescriptors_in, int rowID, cv::Mat &mDescriptors_out) {
+        //rowID = 2;
+        //cv::Mat test = cv::Mat::eye(5,5,CV_32F);
+        //cout<<"before"<<endl<<test<<endl;
+        cv::Mat b, c;
+        mDescriptors_in.rowRange(0, rowID).copyTo(b);
+        mDescriptors_in.rowRange(rowID + 1, mDescriptors_in.rows).copyTo(c);
+        cv::Mat test_result;
+        cv::vconcat(b, c, mDescriptors_out);
+        //cv::vconcat(b, c, test_result);
+        //cout<<"after remove row "<<rowID<<endl<<test_result<<endl;
+        //int pause = 1;
+    }
+
 ///adds on
     Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc,
                  cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, const string classAddress)
@@ -271,7 +288,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
         //get class number and labels
         ifstream reader;
         reader.open(classAddress, ios::in);
-        cout << classAddress << endl;
+        //cout << classAddress << endl;
         vector<int> classLabels;
         int label;
         while (reader >> label) {
@@ -291,23 +308,27 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
             //cv::waitKey(0);
         }
         //define which objects should be removed
-        vector<int> softlabels{80,14, 15, 16,17,18,19,20,21,22,23, 77};
+        vector<int> softlabels{80, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 77};
         for (int i = 0; i < mvKeysUn.size(); i++) {
             int x = mvKeysUn[i].pt.x;
             int y = mvKeysUn[i].pt.y;
             for (int j = 0; j < allMasks.size(); j++) {
                 //if this pt belongs to any object
-                if(int(allMasks[j].at<uchar>(x,y))>0){
+                if (int(allMasks[j].at<uchar>(x, y)) > 0) {
                     int ptLabel = classLabels[j];
-                    cout<<"pt "<<i<<" : "<<x<<"."<<y<<", belongs to object "<<ptLabel<<endl;
-                    if (count(softlabels.begin(), softlabels.end(), ptLabel))
-                    {
-                        cout<<"this is a soft object"<<endl;
-                        //todo REMOVE this point from system
+                    if (count(softlabels.begin(), softlabels.end(), ptLabel)) {
+                        //cout << "pt " << i << " : " << x << "." << y << ", belongs to object " << ptLabel << endl;
+                        //cout << "this is a soft object" << endl;
+                        //todo REMOVE this point from system。
+                        //Note This is not a smart way, because both MvKeysUn and mDescriptors size will be dynamic!!!
+                        mvKeysUn.erase(mvKeysUn.begin()+i);
+                        mvKeys.erase(mvKeys.begin()+i);
+                        deleteRow(mDescriptors,i,mDescriptors);
                     }
                 }
             }
         }
+        N = mvKeys.size();
         ///-------------------------------------
 
         // Set no stereo information

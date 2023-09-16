@@ -1052,6 +1052,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
     // Pre-compute the scale pyramid
     ComputePyramid(image);
 
+    //double vector
     vector < vector<KeyPoint> > allKeypoints;
     ComputeKeyPointsOctTree(allKeypoints);
     //ComputeKeyPointsOld(allKeypoints);
@@ -1065,7 +1066,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         _descriptors.release();
     else
     {
-        _descriptors.create(nkeypoints, 32, CV_8U);
+        _descriptors.create(nkeypoints, 32, CV_8U);//example, 2008 rows, 32 cols
         descriptors = _descriptors.getMat();
     }
 
@@ -1073,9 +1074,9 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
     _keypoints.reserve(nkeypoints);
 
     int offset = 0;
-    for (int level = 0; level < nlevels; ++level)
+    for (int level = 0; level < nlevels; ++level)//visiting all feature point in order of nlevels
     {
-        vector<KeyPoint>& keypoints = allKeypoints[level];
+        vector<KeyPoint>& keypoints = allKeypoints[level];//example 436,362,304,252,209,177,146,122
         int nkeypointsLevel = (int)keypoints.size();
 
         if(nkeypointsLevel==0)
@@ -1086,7 +1087,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         GaussianBlur(workingMat, workingMat, Size(7, 7), 2, 2, BORDER_REFLECT_101);
 
         // Compute the descriptors
-        Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
+        Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);//0+436， 436+362, 798+304, 1102+252 ......
         computeDescriptors(workingMat, keypoints, desc, pattern);
 
         offset += nkeypointsLevel;
@@ -1096,7 +1097,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         {
             float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);
             for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
-                 keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
+                         keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
                 keypoint->pt *= scale;
         }
         // And add the keypoints to the output
