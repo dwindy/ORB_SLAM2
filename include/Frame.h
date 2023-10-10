@@ -141,6 +141,9 @@ public:
     // In the RGB-D case, RGB images can be distorted.
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
     std::vector<cv::KeyPoint> mvKeysUn;
+    ///Added Module
+    std::vector<int> mvKeysLabels;
+    std::vector<bool> mvKeysSoft;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.

@@ -56,6 +56,10 @@ protected:
     cv::Mat mIm;
     int N;
     vector<cv::KeyPoint> mvCurrentKeys;
+    ///Added Modules
+    vector<int> mvKeysLabels;
+    vector<bool> mvKeysSoft;
+    ///--------------------------------
     vector<bool> mvbMap, mvbVO;
     bool mbOnlyTracking;
     int mnTracked, mnTrackedVO;

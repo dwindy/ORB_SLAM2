@@ -48,6 +48,8 @@ Frame::Frame(const Frame &frame)
      mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
      mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+     ///Added Module
+     ,mvKeysSoft(frame.mvKeysSoft),mvKeysLabels(frame.mvKeysLabels)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -293,9 +295,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
         int label;
         while (reader >> label) {
             classLabels.push_back(label);
-            cout << label << " ";
         }
-        cout << endl;
         //store each mask
         std::vector<cv::Mat> allMasks;
         string maskImgAddress;
@@ -307,28 +307,32 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
             //imshow("image", allMasks[i]);
             //cv::waitKey(0);
         }
+        mvKeysLabels = vector<int>(N,-1);
+        mvKeysSoft = vector<bool>(N,false);
         //define which objects should be removed
-        vector<int> softlabels{80, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 77};
+        vector<int> softlabels{80, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 77, 73,67,66,64,62,58,56,41,39,7,75};
         for (int i = 0; i < mvKeysUn.size(); i++) {
             int x = mvKeysUn[i].pt.x;
             int y = mvKeysUn[i].pt.y;
             for (int j = 0; j < allMasks.size(); j++) {
                 //if this pt belongs to any object
-                if (int(allMasks[j].at<uchar>(x, y)) > 0) {
+                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
                     int ptLabel = classLabels[j];
-                    if (count(softlabels.begin(), softlabels.end(), ptLabel)) {
-                        //cout << "pt " << i << " : " << x << "." << y << ", belongs to object " << ptLabel << endl;
-                        //cout << "this is a soft object" << endl;
-                        //todo REMOVE this point from system。
-                        //Note This is not a smart way, because both MvKeysUn and mDescriptors size will be dynamic!!!
-                        mvKeysUn.erase(mvKeysUn.begin()+i);
-                        mvKeys.erase(mvKeys.begin()+i);
-                        deleteRow(mDescriptors,i,mDescriptors);
-                    }
+                    //store the label for this key point.
+                    mvKeysLabels[i] = ptLabel;
+                    if (count(softlabels.begin(), softlabels.end(), ptLabel))
+//                        //cout << "pt " << i << " : " << x << "." << y << ", belongs to object " << ptLabel << endl;
+//                        //cout << "this is a soft object" << endl;
+//                        //todo REMOVE this point from system。
+//                        //Note This is not a smart way, because both MvKeysUn and mDescriptors size will be dynamic!!!
+//                        mvKeysUn.erase(mvKeysUn.begin() + i);
+//                        mvKeys.erase(mvKeys.begin() + i);
+//                        deleteRow(mDescriptors, i, mDescriptors);
+                        mvKeysSoft[i] = true;
                 }
             }
         }
-        N = mvKeys.size();
+        //N = mvKeys.size();
         ///-------------------------------------
 
         // Set no stereo information

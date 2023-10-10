@@ -41,44 +41,123 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
 
 }
 
-void MapDrawer::DrawMapPoints()
-{
-    const vector<MapPoint*> &vpMPs = mpMap->GetAllMapPoints();
-    const vector<MapPoint*> &vpRefMPs = mpMap->GetReferenceMapPoints();
+//void MapDrawer::DrawMapPoints()
+//{
+//    const vector<MapPoint*> &vpMPs = mpMap->GetAllMapPoints();
+//    const vector<MapPoint*> &vpRefMPs = mpMap->GetReferenceMapPoints();
+//
+//    set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+//
+//    if(vpMPs.empty())
+//        return;
+//
+//    glPointSize(mPointSize);
+//    glBegin(GL_POINTS);
+//    glColor3f(0.0,0.0,0.0);
+//
+//    for(size_t i=0, iend=vpMPs.size(); i<iend;i++)
+//    {
+//        if(vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
+//            continue;
+//        cv::Mat pos = vpMPs[i]->GetWorldPos();
+//        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
+//    }
+//    glEnd();
+//
+//    glPointSize(mPointSize);
+//    glBegin(GL_POINTS);
+//    glColor3f(1.0,0.0,0.0);
+//
+//    for(set<MapPoint*>::iterator sit=spRefMPs.begin(), send=spRefMPs.end(); sit!=send; sit++)
+//    {
+//        if((*sit)->isBad())
+//            continue;
+//        cv::Mat pos = (*sit)->GetWorldPos();
+//        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
+//
+//    }
+//
+//    glEnd();
+//}
 
-    set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+    void MapDrawer::DrawMapPoints() {
+        const vector<MapPoint *> &vpMPs = mpMap->GetAllMapPoints();
+        const vector<MapPoint *> &vpRefMPs = mpMap->GetReferenceMapPoints();
+        set<MapPoint *> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
-    if(vpMPs.empty())
-        return;
+        if (vpMPs.empty())
+            return;
 
-    glPointSize(mPointSize);
-    glBegin(GL_POINTS);
-    glColor3f(0.0,0.0,0.0);
-
-    for(size_t i=0, iend=vpMPs.size(); i<iend;i++)
-    {
-        if(vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
-            continue;
-        cv::Mat pos = vpMPs[i]->GetWorldPos();
-        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
+        ///Added Module
+        vector<vector<float>> colorCharts;
+        colorCharts.push_back({0.0 / 255.0, 0.0 / 255, 0.0 / 255});//Black
+        colorCharts.push_back({255.0 / 255, 218.0 / 255, 185.0 / 255});//peach puff
+        colorCharts.push_back({105.0 / 255, 105.0 / 255, 105.0 / 255});//dim gray
+        colorCharts.push_back({47.0 / 255, 79.0 / 255, 79.0 / 255});//dark green gray
+        colorCharts.push_back({0.0 / 255, 0.0 / 255, 128.0 / 255});//dark blue
+        colorCharts.push_back({0.0 / 255, 255.0 / 255, 127.0 / 255});//spring green
+        colorCharts.push_back({255.0 / 255, 255.0 / 255, 0.0 / 255});//yellow
+        colorCharts.push_back({255.0 / 255, 0.0 / 255, 147.0 / 255});//pink
+        colorCharts.push_back({160.0 / 255, 32.0 / 255, 240.0 / 255});//purple
+        colorCharts.push_back({0.0 / 255, 255.0 / 255, 255.0 / 255});//cyan
+        colorCharts.push_back({34.0 / 255, 139.0 / 255, 34.0 / 255});//forestGreen
+        colorCharts.push_back({255.0 / 255, 128.0 / 255, 0.0 / 255});//orange
+        colorCharts.push_back({255.0 / 255, 69.0 / 255, 0.0 / 255});//orange red
+        colorCharts.push_back({210.0 / 255, 105.0 / 255, 30.0 / 255});//chocolate
+        //store label to color map
+        vector<vector<int>> mPofColorPoints;
+        vector<int> mPofNormalPoints;
+        for (int i = 0; i < colorCharts.size(); i++) {
+            vector<int> colorPoints;
+            mPofColorPoints.push_back(colorPoints);
+        }
+        map<int, int> label2colorMap;
+        //Manually initial the map
+        label2colorMap.insert(pair<int, int>(-1, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(7, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(39, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(41, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(56, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(58, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(62, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(64, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(66, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(67, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(73, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(75, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(77, label2colorMap.size()));
+        for (int i = 0; i < vpMPs.size(); i++) {
+            int label = vpMPs[i]->label;
+            auto iter = label2colorMap.find(label);
+            if (iter == label2colorMap.end()) {
+                cout << "label " << label << " not in the map" << endl;
+            } else {
+                int colorIndex = iter->second;
+                mPofColorPoints[colorIndex].push_back(i);
+            }
+        }
+//        for(auto iter:label2colorMap)
+//            cout<<"label "<<iter.first<<" color index "<<iter.second<<endl;
+        //draw
+        for (int i = 0; i < mPofColorPoints.size(); i++) {
+            glPointSize(5);//mPointSize
+            glColor3f(colorCharts[i][0], colorCharts[i][1], colorCharts[i][2]);
+            glBegin(GL_POINTS);
+            for (int j = 0; j < mPofColorPoints[i].size(); j++) {
+                cv::Mat pos = vpMPs[mPofColorPoints[i][j]]->GetWorldPos();
+                glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
+            }
+            glEnd();
+        }
+//        for (int i = 0; i < mPofNormalPoints.size(); i++) {
+//            glPointSize(mPointSize);
+//            glBegin(GL_POINTS);
+//            glColor3f(0, 0, 0);
+//            cv::Mat pos = vpMPs[mPofNormalPoints[i]]->GetWorldPos();
+//            glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
+//            glEnd();
+//        }
     }
-    glEnd();
-
-    glPointSize(mPointSize);
-    glBegin(GL_POINTS);
-    glColor3f(1.0,0.0,0.0);
-
-    for(set<MapPoint*>::iterator sit=spRefMPs.begin(), send=spRefMPs.end(); sit!=send; sit++)
-    {
-        if((*sit)->isBad())
-            continue;
-        cv::Mat pos = (*sit)->GetWorldPos();
-        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
-
-    }
-
-    glEnd();
-}
 
 void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
 {

@@ -23,10 +23,19 @@
   <component name="ChangeListManager">
     <list default="true" id="d9688e28-8423-406e-b888-76af525cee58" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.sh" beforeDir="false" afterPath="$PROJECT_DIR$/build.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/Frame.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/Frame.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/FrameDrawer.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/FrameDrawer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/KeyFrame.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/KeyFrame.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/MapPoint.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/MapPoint.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Frame.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/Frame.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ORBextractor.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/ORBextractor.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/FrameDrawer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/FrameDrawer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/KeyFrame.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/KeyFrame.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/LocalMapping.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/LocalMapping.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MapDrawer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/MapDrawer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MapPoint.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/MapPoint.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Tracking.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/Tracking.cc" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,25 +66,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "last_opened_file_path": "/home/xin/Downloads/ORB_SLAM2_detailed_comments",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "settings.editor.selected.configurable": "preferences.keymap",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/xin/Downloads/ORB_SLAM2_detailed_comments&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Examples/Monocular" />
@@ -109,10 +118,10 @@
       </method>
     </configuration>
     <list>
+      <item itemvalue="CMake Application.ORB_SLAM2" />
+      <item itemvalue="CMake Application.monoLiDAR_kitti" />
       <item itemvalue="CMake Application.mono_kitti" />
       <item itemvalue="CMake Application.mono_tum_yolo" />
-      <item itemvalue="CMake Application.monoLiDAR_kitti" />
-      <item itemvalue="CMake Application.ORB_SLAM2" />
       <item itemvalue="CMake Application.stereo_kitti" />
     </list>
   </component>
@@ -268,7 +277,9 @@
       <workItem from="1694693871887" duration="426000" />
       <workItem from="1694696608716" duration="2238000" />
       <workItem from="1694785281738" duration="2143000" />
-      <workItem from="1694867063297" duration="11079000" />
+      <workItem from="1694867063297" duration="17634000" />
+      <workItem from="1694968883950" duration="18479000" />
+      <workItem from="1695047945931" duration="1216000" />
     </task>
     <servers />
   </component>
@@ -293,21 +304,6 @@
     </option>
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <condition expression="pTracker-&gt;mCurrentFrame.mvORBAttributions[i].depthSource&gt;-1" language="ObjectiveC" />
-          <url>file://$PROJECT_DIR$/src/FrameDrawer.cc</url>
-          <line>175</line>
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Frame.cc</url>
-          <line>267</line>
-          <option name="timeStamp" value="10" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="mbf" />

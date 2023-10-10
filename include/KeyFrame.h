@@ -165,6 +165,9 @@ public:
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
     const cv::Mat mDescriptors;
+    ///Added Module
+    std::vector<int> mvKeysLabels;
+    std::vector<bool> mvKeysSoft;
 
     //BoW
     DBoW2::BowVector mBowVec;

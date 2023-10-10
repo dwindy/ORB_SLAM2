@@ -447,6 +447,13 @@ void LocalMapping::CreateNewMapPoints()
             mlpRecentAddedMapPoints.push_back(pMP);
 
             nnew++;
+
+            ///Added Module
+            int label = mpCurrentKeyFrame->mvKeysLabels[idx1];
+            bool soft = mpCurrentKeyFrame->mvKeysSoft[idx1];
+            pMP->label = label;
+            pMP->soft = soft;
+
         }
     }
 }

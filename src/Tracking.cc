@@ -716,6 +716,14 @@ void Tracking::CreateInitialMapMonocular()
 
         //Add to Map
         mpMap->AddMapPoint(pMP);
+
+        ///Added module
+        int matchedPtIndex = mvIniMatches[i];
+        int label = mLastFrame.mvKeysLabels[matchedPtIndex];
+        bool soft = mLastFrame.mvKeysSoft[matchedPtIndex];
+        pMP->label = label;
+        pMP->soft = soft;
+
     }
 
     // Update Connections

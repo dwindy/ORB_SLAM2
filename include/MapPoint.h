@@ -112,6 +112,11 @@ public:
 
     static std::mutex mGlobalMutex;
 
+    ///Added Module
+    int label;
+    bool soft;
+    ///-----------------------------------
+
 protected:    
 
      // Position in absolute coordinates
