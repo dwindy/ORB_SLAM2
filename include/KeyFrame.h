@@ -45,6 +45,9 @@ class KeyFrame
 public:
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
+    ///adds on --- project 3d point from camera to image
+    cv::Mat Project2Image(cv::Mat P3Dc);
+
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
     cv::Mat GetPose();
@@ -168,7 +171,7 @@ public:
     ///Added Module
     std::vector<int> mvKeysLabels;
     std::vector<bool> mvKeysSoft;
-
+    std::vector<bool> mvKeysDynamics;
     //BoW
     DBoW2::BowVector mBowVec;
     DBoW2::FeatureVector mFeatVec;

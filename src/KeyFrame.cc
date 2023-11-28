@@ -43,7 +43,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
     ///Added Module
-    ,mvKeysSoft(F.mvKeysSoft),mvKeysLabels(F.mvKeysLabels)
+    ,mvKeysSoft(F.mvKeysSoft),mvKeysLabels(F.mvKeysLabels),mvKeysDynamics(F.mvKeysDynamic)
 {
     mnId=nNextId++;
 
@@ -663,5 +663,43 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
 
     return vDepths[(vDepths.size()-1)/q];
 }
+
+    cv::Mat KeyFrame::Project2Image(cv::Mat P3Dc) {
+        const float fx = mK.at<float>(0,0);
+        const float fy = mK.at<float>(1,1);
+        const float cx = mK.at<float>(0,2);
+        const float cy = mK.at<float>(1,2);
+        const float invz = 1/(P3Dc.at<float>(2));
+        const float x = P3Dc.at<float>(0)*invz;
+        const float y = P3Dc.at<float>(1)*invz;
+        cv::Mat P2d = (cv::Mat_<float>(2,1)<< fx*x+cx, fy*y+cy);
+        return P2d;
+    }
+
+//Ref from Sim3Solver
+//    void Sim3Solver::Project(const vector<cv::Mat> &vP3Dw, vector<cv::Mat> &vP2D, cv::Mat Tcw, cv::Mat K)
+//    {
+//        cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
+//        cv::Mat tcw = Tcw.rowRange(0,3).col(3);
+//        const float &fx = K.at<float>(0,0);
+//        const float &fy = K.at<float>(1,1);
+//        const float &cx = K.at<float>(0,2);
+//        const float &cy = K.at<float>(1,2);
+//
+//        vP2D.clear();
+//        vP2D.reserve(vP3Dw.size());
+//
+//        for(size_t i=0, iend=vP3Dw.size(); i<iend; i++)
+//        {
+//            cv::Mat P3Dc = Rcw*vP3Dw[i]+tcw;
+//            const float invz = 1/(P3Dc.at<float>(2));
+//            const float x = P3Dc.at<float>(0)*invz;
+//            const float y = P3Dc.at<float>(1)*invz;
+//
+//            vP2D.push_back((cv::Mat_<float>(2,1) << fx*x+cx, fy*y+cy));
+//        }
+//    }
+
+
 
 } //namespace ORB_SLAM

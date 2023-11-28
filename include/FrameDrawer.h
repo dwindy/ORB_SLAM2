@@ -59,6 +59,7 @@ protected:
     ///Added Modules
     vector<int> mvKeysLabels;
     vector<bool> mvKeysSoft;
+    vector<bool> mvKeysDynamics;
     ///--------------------------------
     vector<bool> mvbMap, mvbVO;
     bool mbOnlyTracking;

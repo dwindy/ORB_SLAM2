@@ -130,7 +130,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
             int label = vpMPs[i]->label;
             auto iter = label2colorMap.find(label);
             if (iter == label2colorMap.end()) {
-                cout << "label " << label << " not in the map" << endl;
+                //cout << "label " << label << " not in the color map" << endl;
             } else {
                 int colorIndex = iter->second;
                 mPofColorPoints[colorIndex].push_back(i);

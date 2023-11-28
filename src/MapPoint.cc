@@ -247,72 +247,67 @@ float MapPoint::GetFoundRatio()
     return static_cast<float>(mnFound)/mnVisible;
 }
 
-void MapPoint::ComputeDistinctiveDescriptors()
-{
-    // Retrieve all observed descriptors
-    vector<cv::Mat> vDescriptors;
+    void MapPoint::ComputeDistinctiveDescriptors() {
+        // Retrieve all observed descriptors
+        vector<cv::Mat> vDescriptors;
 
-    map<KeyFrame*,size_t> observations;
+        map<KeyFrame *, size_t> observations;
 
-    {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        if(mbBad)
+        {
+            unique_lock<mutex> lock1(mMutexFeatures);
+            if (mbBad)
+                return;
+            observations = mObservations;
+        }
+
+        if (observations.empty())
             return;
-        observations=mObservations;
-    }
 
-    if(observations.empty())
-        return;
+        vDescriptors.reserve(observations.size());
 
-    vDescriptors.reserve(observations.size());
+        for (map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
+             mit != mend; mit++) {
+            KeyFrame *pKF = mit->first;
 
-    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-    {
-        KeyFrame* pKF = mit->first;
+            if (!pKF->isBad())
+                vDescriptors.push_back(pKF->mDescriptors.row(mit->second));
+        }
 
-        if(!pKF->isBad())
-            vDescriptors.push_back(pKF->mDescriptors.row(mit->second));
-    }
+        if (vDescriptors.empty())
+            return;
 
-    if(vDescriptors.empty())
-        return;
+        // Compute distances between them
+        const size_t N = vDescriptors.size();
 
-    // Compute distances between them
-    const size_t N = vDescriptors.size();
+        float Distances[N][N];
+        for (size_t i = 0; i < N; i++) {
+            Distances[i][i] = 0;
+            for (size_t j = i + 1; j < N; j++) {
+                int distij = ORBmatcher::DescriptorDistance(vDescriptors[i], vDescriptors[j]);
+                Distances[i][j] = distij;
+                Distances[j][i] = distij;
+            }
+        }
 
-    float Distances[N][N];
-    for(size_t i=0;i<N;i++)
-    {
-        Distances[i][i]=0;
-        for(size_t j=i+1;j<N;j++)
+        // Take the descriptor with the least median distance to the rest
+        int BestMedian = INT_MAX;
+        int BestIdx = 0;
+        for (size_t i = 0; i < N; i++) {
+            vector<int> vDists(Distances[i], Distances[i] + N);//Note N-1?
+            sort(vDists.begin(), vDists.end());
+            int median = vDists[0.5 * (N - 1)];
+
+            if (median < BestMedian) {
+                BestMedian = median;
+                BestIdx = i;
+            }
+        }
+
         {
-            int distij = ORBmatcher::DescriptorDistance(vDescriptors[i],vDescriptors[j]);
-            Distances[i][j]=distij;
-            Distances[j][i]=distij;
+            unique_lock<mutex> lock(mMutexFeatures);
+            mDescriptor = vDescriptors[BestIdx].clone();
         }
     }
-
-    // Take the descriptor with least median distance to the rest
-    int BestMedian = INT_MAX;
-    int BestIdx = 0;
-    for(size_t i=0;i<N;i++)
-    {
-        vector<int> vDists(Distances[i],Distances[i]+N);
-        sort(vDists.begin(),vDists.end());
-        int median = vDists[0.5*(N-1)];
-
-        if(median<BestMedian)
-        {
-            BestMedian = median;
-            BestIdx = i;
-        }
-    }
-
-    {
-        unique_lock<mutex> lock(mMutexFeatures);
-        mDescriptor = vDescriptors[BestIdx].clone();
-    }
-}
 
 cv::Mat MapPoint::GetDescriptor()
 {
@@ -335,48 +330,169 @@ bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
     return (mObservations.count(pKF));
 }
 
-void MapPoint::UpdateNormalAndDepth()
-{
-    map<KeyFrame*,size_t> observations;
-    KeyFrame* pRefKF;
-    cv::Mat Pos;
-    {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
-        if(mbBad)
+/*
+ * Normalized all the observation vector
+ */
+    void MapPoint::UpdateNormalAndDepth() {
+        map<KeyFrame *, size_t> observations;
+        KeyFrame *pRefKF;
+        cv::Mat Pos;
+        {
+            unique_lock<mutex> lock1(mMutexFeatures);
+            unique_lock<mutex> lock2(mMutexPos);
+            if (mbBad)
+                return;
+            observations = mObservations;
+            pRefKF = mpRefKF;
+            Pos = mWorldPos.clone();
+        }
+
+        if (observations.empty())
             return;
-        observations=mObservations;
-        pRefKF=mpRefKF;
-        Pos = mWorldPos.clone();
+
+        cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
+        int n = 0;
+        for (map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
+             mit != mend; mit++) {
+            KeyFrame *pKF = mit->first;
+            cv::Mat Owi = pKF->GetCameraCenter();
+            cv::Mat normali = mWorldPos - Owi;
+            normal = normal + normali / cv::norm(normali);
+            n++;
+        }
+
+        cv::Mat PC = Pos - pRefKF->GetCameraCenter();
+        const float dist = cv::norm(PC);
+        const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+        const float levelScaleFactor = pRefKF->mvScaleFactors[level];
+        const int nLevels = pRefKF->mnScaleLevels;
+
+        {
+            unique_lock<mutex> lock3(mMutexPos);
+            mfMaxDistance = dist * levelScaleFactor;
+            mfMinDistance = mfMaxDistance / pRefKF->mvScaleFactors[nLevels - 1];
+            mNormalVector = normal / n;
+        }
     }
 
-    if(observations.empty())
-        return;
-
-    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
-    int n=0;
-    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-    {
-        KeyFrame* pKF = mit->first;
-        cv::Mat Owi = pKF->GetCameraCenter();
-        cv::Mat normali = mWorldPos - Owi;
-        normal = normal + normali/cv::norm(normali);
-        n++;
+    void calcMeanVariance(vector<float> dists, float &mean, float &variance) {
+        if (dists.size() <= 1) {
+            mean = dists[0];
+            variance = 0;
+        } else {
+            float sum = std::accumulate(dists.begin(), dists.end(), 0.0);
+            mean = sum / dists.size();
+            double sumOfSquares = 0.0;
+            for (float dist: dists)
+                sumOfSquares += std::pow(dist - mean, 2);
+            variance = sumOfSquares / (dists.size() - 1);
+        }
     }
 
-    cv::Mat PC = Pos - pRefKF->GetCameraCenter();
-    const float dist = cv::norm(PC);
-    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
-    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
-    const int nLevels = pRefKF->mnScaleLevels;
+    ///adds on
+    /* Because the depth is a predicted depth, we hope to remove/update the depth by check the consistency of depth
+     * for example, if a MapPoint MP would be observed from frame 1,2,3,4...
+     * unproject 2d pt_1, pt_2, pt_3 and pt_4 to world Frame, to get P3d_1, P3d_2,P3d_3,P3d_4.
+     * transform P3d_1 to frame2, get P3d^2_1, project to image get pt^2_1.
+     * get the distance of pt_2 and pt^2_1, and pt_3 and pt^3_1, pt_4 and pt^4_1 as well.
+     * get the median distance. of above four errors.
+     * Now we have a error matrix of 4x4.
+     * two Options, 1.each row represents the goodness of this observation, replace the MP with that row.
+     * 2.the variance of this matrix represents the consistency of this MP.
+     *
+     */
+    void MapPoint::UpdateDetphZoe() {
+        ///Get all the observations of this MapPoint
+        map<KeyFrame *, size_t> observations;
+        KeyFrame *pRefKF;
+        cv::Mat Pos;
+        {
+            unique_lock<mutex> lock1(mMutexFeatures);
+            unique_lock<mutex> lock2(mMutexPos);
+            if (mbBad)
+                return;
+            observations = mObservations;
+            pRefKF = mpRefKF;
+            Pos = mWorldPos.clone();
+        }
+        if (observations.empty())
+            return;
 
-    {
-        unique_lock<mutex> lock3(mMutexPos);
-        mfMaxDistance = dist*levelScaleFactor;
-        mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
-        mNormalVector = normal/n;
+        ///Unprojecting from each frame to world frame
+        vector<cv::Mat> all3D;//under world frame
+        vector<KeyFrame *> allKeyFrames;
+        for (auto &observation: observations) {
+            KeyFrame *pKF = observation.first;
+            unsigned long index = observation.second;
+            //float depth = pKF->mvDepth[index];
+            all3D.push_back(pKF->UnprojectStereo(index));
+            allKeyFrames.push_back(pKF);
+        }
+        int N = all3D.size();
+
+        ///Transform from world to other frame to calc the uv error
+        float Distances[N][N];
+        for (int i = 0; i < all3D.size(); i++) {
+            Distances[i][i] = 0;
+//            //Get Rotation, translation of Frame i
+//            KeyFrame *pKFi = allKeyFrames[i];
+//            int index = observations.at(pKFi);
+//            cv::Mat Riw = pKFi->GetRotation();
+//            cv::Mat tiw = pKFi->GetTranslation();
+//            cv::Mat Tiw;
+//            Tiw.rowRange(0, 3).colRange(0, 3) = Riw;
+//            Tiw.col(3).rowRange(0, 3) = tiw;
+            cv::Mat p3d_i = cv::Mat(4, 1, CV_32F);
+            p3d_i.at<float>(0, 0) = all3D[i].at<float>(0, 0);
+            p3d_i.at<float>(1, 0) = all3D[i].at<float>(1, 0);
+            p3d_i.at<float>(2, 0) = all3D[i].at<float>(2, 0);
+            p3d_i.at<float>(3, 0) = 1.0f;
+            for (size_t j = i + 1; j < N; j++) {
+                //Get Rotation, translation of Frame j
+                KeyFrame *pKFj = allKeyFrames[j];
+                int indexj = observations.at(pKFj);
+                cv::Mat Rjw = pKFj->GetRotation();
+                cv::Mat tjw = pKFj->GetTranslation();
+                //Project from world to j.
+                cv::Mat Tjw = cv::Mat::ones(4,4,CV_32F);
+                Tjw.rowRange(0, 3).colRange(0, 3) = Rjw;
+                Tjw.col(3).rowRange(0, 3) = tjw;
+                cv::Mat P3Dj = Tjw * p3d_i;
+                //todo distortion?
+                cv::Mat p2d = pKFj->Project2Image(P3Dj);
+                //todo key.pt should involves with octiave?
+                //Distance
+                cv::KeyPoint pt_obs = pKFj->mvKeysUn[indexj];
+                float distance = (pt_obs.pt.x - p2d.at<float>(0, 0)) * (pt_obs.pt.x - p2d.at<float>(0, 0))
+                                 + (pt_obs.pt.y - p2d.at<float>(1, 0)) * (pt_obs.pt.y - p2d.at<float>(1, 0));
+                Distances[i][j] = distance;
+                Distances[j][i] = distance;
+            }
+        }
+
+        ///Select the position with mean that has the least variance
+        // Take the descriptor with the least median distance to the rest
+        int BestMedian = INT_MAX;
+        int BestIdx = 0;
+        for (size_t i = 0; i < N; i++) {
+            vector<float> vDists(Distances[i], Distances[i] + N-1);//Note N-1?
+            sort(vDists.begin(), vDists.end());
+            //float mean = 0, variance = 0;
+            //calcMeanVariance(vDists, mean, variance);
+            int median = vDists[0.5 * (N - 1)];
+            if(median < BestMedian){
+                BestIdx = i;
+                BestMedian = median;
+            }
+        }
+        //Apply Best Median 3d Point to
+        {
+            unique_lock<mutex> lock(mMutexFeatures);
+            cv::Mat P3Dc = all3D[BestIdx];
+            this->mWorldPos = P3Dc;
+            //todo compare with erasing way
+        }
     }
-}
 
 float MapPoint::GetMinDistanceInvariance()
 {

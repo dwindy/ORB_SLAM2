@@ -48,6 +48,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Stereo" << endl;
     else if(mSensor==RGBD)
         cout << "RGB-D" << endl;
+    else if(mSensor==YOLOZOE)
+        cout << "YOLO-ZOE" << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -214,6 +216,55 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
     return Tcw;
 }
+
+    cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, const string classAddress) {
+        if (mSensor != RGBD) {
+            cerr << "ERROR: you called TrackRGBD-YOLO-ZOE but input sensor was not set to RGBD." << endl;
+            exit(-1);
+        }
+
+        // Check mode change
+        {
+            unique_lock<mutex> lock(mMutexMode);
+            if (mbActivateLocalizationMode) {
+                mpLocalMapper->RequestStop();
+
+                // Wait until Local Mapping has effectively stopped
+                while (!mpLocalMapper->isStopped()) {
+                    usleep(1000);
+                }
+
+                mpTracker->InformOnlyTracking(true);
+                mbActivateLocalizationMode = false;
+            }
+            if (mbDeactivateLocalizationMode) {
+                mpTracker->InformOnlyTracking(false);
+                mpLocalMapper->Release();
+                mbDeactivateLocalizationMode = false;
+            }
+        }
+
+        // Check reset
+        {
+            unique_lock<mutex> lock(mMutexReset);
+            if (mbReset) {
+                mpTracker->Reset();
+                mbReset = false;
+            }
+        }
+
+        //cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp);
+
+        ///adds on
+        cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp, classAddress);
+
+        unique_lock<mutex> lock2(mMutexState);
+        mTrackingState = mpTracker->mState;
+        mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+        mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+        return Tcw;
+    }
+
 
 cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 {

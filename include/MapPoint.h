@@ -81,6 +81,8 @@ public:
     int PredictScale(const float &currentDist, KeyFrame*pKF);
     int PredictScale(const float &currentDist, Frame* pF);
 
+    ///adds on
+    void UpdateDetphZoe();
 public:
     long unsigned int mnId;
     static long unsigned int nNextId;
@@ -122,7 +124,7 @@ protected:
      // Position in absolute coordinates
      cv::Mat mWorldPos;
 
-     // Keyframes observing the point and associated index in keyframe
+     // Keyframes observing this MapPoint and associated index in keyframe
      std::map<KeyFrame*,size_t> mObservations;
 
      // Mean viewing direction

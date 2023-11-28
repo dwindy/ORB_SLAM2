@@ -137,6 +137,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
     }
 
+    if (sensor == System::YOLOZOE) {
+        mThDepth = mbf * (float) fSettings["ThDepth"] / fx;
+        cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+    }
+
     if(sensor==System::RGBD)
     {
         mDepthMapFactor = fSettings["DepthMapFactor"];
@@ -144,6 +149,15 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor=1;
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;
+    }
+
+    ///adds on
+    if (sensor == System::YOLOZOE) {
+        mDepthMapFactor = fSettings["DepthMapFactor"];
+        if (fabs(mDepthMapFactor) < 1e-5)
+            mDepthMapFactor = 1;
+        else
+            mDepthMapFactor = 1.0f / mDepthMapFactor;
     }
 
 }
@@ -234,35 +248,60 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     return mCurrentFrame.mTcw.clone();
 }
 
+    cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp, const string classAddress) {
+        mImGray = imRGB;
+        cv::Mat imDepth = imD;
 
-cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
-{
-    mImGray = im;
+        if (mImGray.channels() == 3) {
+            if (mbRGB)
+                cvtColor(mImGray, mImGray, CV_RGB2GRAY);
+            else
+                cvtColor(mImGray, mImGray, CV_BGR2GRAY);
+        } else if (mImGray.channels() == 4) {
+            if (mbRGB)
+                cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
+            else
+                cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
+        }
 
-    if(mImGray.channels()==3)
-    {
-        if(mbRGB)
-            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
-        else
-            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+        if ((fabs(mDepthMapFactor - 1.0f) > 1e-5) || imDepth.type() != CV_32F)
+            imDepth.convertTo(imDepth, CV_32F, mDepthMapFactor);
+
+        //mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+        ///adds on
+        mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
+                              mThDepth,classAddress);
+
+        Track();
+
+        return mCurrentFrame.mTcw.clone();
     }
-    else if(mImGray.channels()==4)
-    {
-        if(mbRGB)
-            cvtColor(mImGray,mImGray,CV_RGBA2GRAY);
+
+    cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp) {
+        mImGray = im;
+
+        if (mImGray.channels() == 3) {
+            if (mbRGB)
+                cvtColor(mImGray, mImGray, CV_RGB2GRAY);
+            else
+                cvtColor(mImGray, mImGray, CV_BGR2GRAY);
+        } else if (mImGray.channels() == 4) {
+            if (mbRGB)
+                cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
+            else
+                cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
+        }
+
+        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
+            mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
         else
-            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+            mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
+                                  mThDepth);
+
+        Track();
+
+        return mCurrentFrame.mTcw.clone();
     }
-
-    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
-        mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
-    else
-        mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
-
-    Track();
-
-    return mCurrentFrame.mTcw.clone();
-}
 
 ///adds on
     cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const string classAddress) {
@@ -287,7 +326,6 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 //            else
 //                cvtColor(mImMask, mImMask, CV_BGR2GRAY);
 //        }
-
 
         if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
 //            mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
@@ -320,7 +358,8 @@ void Tracking::Track()
 
     if(mState==NOT_INITIALIZED)
     {
-        if(mSensor==System::STEREO || mSensor==System::RGBD)
+        if(mSensor==System::STEREO || mSensor==System::RGBD
+        ||mSensor==System::YOLOZOE)///adds on
             StereoInitialization();
         else
             MonocularInitialization();
@@ -561,7 +600,7 @@ void Tracking::StereoInitialization()
         // Insert KeyFrame in the map
         mpMap->AddKeyFrame(pKFini);
 
-        // Create MapPoints and asscoiate to KeyFrame
+        // Create MapPoints and associate to KeyFrame
         for(int i=0; i<mCurrentFrame.N;i++)
         {
             float z = mCurrentFrame.mvDepth[i];
@@ -602,6 +641,190 @@ void Tracking::StereoInitialization()
     }
 }
 
+    void Tracking::FilterOutDynamicMatchs(Frame &initF, Frame &curF, vector<int> &initMatches) {
+        for (int i = 0; i < initMatches.size(); i++) {
+            int labeli = initF.mvKeysLabels[i];
+            int indexj = initMatches[i];
+            if (indexj != -1) {
+                int labelj = curF.mvKeysLabels[indexj];
+                if (labeli != labelj) {
+                    cout << "init Frame pt index " << i << " label " << labeli << " dismatch curF " << indexj
+                         << " label " << labelj << " | initMatches marked -1 "<<endl;
+                    initMatches[i] = -1;
+                }
+                if (labeli == labelj) {
+                    //cout << "init Frame pt index " << i << " label " << labeli << " match curF " << indexj << " label "
+                    //     << labelj << endl;
+                    if (labelj == 0 && labeli == 0) {
+                        initMatches[i] = -1;
+                    }
+                }
+            }
+        }
+        int pause = 0;
+    }
+
+    float calculateMean(const std::vector<float>& data) {
+        float sum = 0.0;
+        for (float value : data) {
+            sum += value;
+        }
+        return sum / static_cast<float>(data.size());
+    }
+
+    double calculateStandardDeviation(const std::vector<float>& data, float mean) {
+        float sumSquaredDiff = 0.0;
+        for (float value : data) {
+            float diff = value - mean;
+            sumSquaredDiff += diff * diff;
+        }
+        return std::sqrt(sumSquaredDiff / static_cast<float>(data.size()));
+    }
+
+    /*
+     * Calc the variance mean, And CV
+     */
+    void varianceAndMean(vector<float> data, float &mean, float &std, float &CV) {
+        if (data.size() > 1) {
+            mean = calculateMean(data);
+            std = calculateStandardDeviation(data, mean);
+            CV = std/mean;
+        } else {
+            mean = data[0];
+            std = 0;
+            CV = 0;
+        }
+    }
+
+    void fitZscore(vector<float> data, float Zthreshold, vector<bool> &dynamicFlag) {
+        double mean = calculateMean(data);
+        double stdDev = calculateStandardDeviation(data, mean);
+        // Identify outliers
+        for (int i = 0; i < data.size(); i++) {
+            double zScore = std::abs((data[i] - mean) / stdDev);
+            cout<<"i "<<i<<" zsocre "<<zScore<<endl;
+            if (zScore > Zthreshold) {
+                dynamicFlag[i] = true;
+            }
+        }
+    }
+
+    void filterByVariance(vector<float> data, float varianceThres, vector<bool> &dynamicFlag) {
+        // Identify outliers
+        for (int i = 0; i < data.size(); i++) {
+            if (data[i] > varianceThres) {
+                dynamicFlag[i] = true;
+            }
+        }
+    }
+
+    /* Checking if each cluster is a moving cluster or not
+     *
+     */
+    void Tracking::CheckLabelDynamics(Frame &F_cur) {
+        ///Store data : labels of each cluster, keypoint index of each masks, mappoint of each masks
+        int keyNumCur = F_cur.mvKeysUn.size();
+        //todo change to keypoint*?
+        vector<vector<int>> ptIndexOfEachCluster(F_cur.mvClusterLabels.size());//keypoint indexes of each cluster
+        vector<vector<MapPoint*>> mapPointsOfEachMasks(F_cur.mvClusterLabels.size());//mapPoint of each cluster
+        for (int i = 0; i < keyNumCur; i++) {//Store keypoint to each cluster
+            if (F_cur.mvpMapPoints[i]) {
+                int clusteri = F_cur.mvKeysClusters[i];//todo to check
+                if (clusteri > -1) {
+                    ptIndexOfEachCluster[clusteri].push_back(i);
+                    mapPointsOfEachMasks[clusteri].push_back(F_cur.mvpMapPoints[i]);
+                }
+                int label = F_cur.mvClusterLabels[clusteri];
+                //if(label==0)
+                //    cout<<"pt "<<F_cur.mvKeysUn[i].pt<<" is person point "<<endl;
+            }
+        }
+        //cout<<"-------------"<<endl;
+        //check cluster and label
+//        for(int i=0;i<ptIndexOfEachCluster.size();i++){
+//            cout<<"label "<<F_cur.mvClusterLabels[i]<<" ptIndexOfEachCluster i "<<i<<" "<<ptIndexOfEachCluster[i].size()<<endl;
+//        }
+        //
+        ///todo check the size of indexOfEachMasks and mapPointsOfEachMasks
+        ///PROJECT FROM MAP TO LOCAL image for pixel error
+        vector<vector<float>> errorOfClusters(F_cur.mvClusterLabels.size());
+        if (mVelocity.empty())
+            mVelocity = cv::Mat::eye(4, 4, CV_32F);
+        cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
+//        cv::Mat imgClone = cv::Mat(480,640,CV_8UC3, cv::Scalar(255,255,255));
+        for (int i = 0; i < ptIndexOfEachCluster.size(); i++) {
+            int numofClu = ptIndexOfEachCluster[i].size();
+            for (int j = 0; j < numofClu ; j++) {
+                MapPoint *mp = mapPointsOfEachMasks[i][j];
+                cv::Mat pose = mp->GetWorldPos();
+                cv::Mat pose_h(4,1,CV_32F);
+                pose.copyTo(pose_h.rowRange(0,3));
+                pose_h.at<float>(3,0) = 1.0f;
+                //cout<<"pose_h"<<endl<<pose_h<<endl;
+                //cout<<"Tcw"<<endl<<Tcw<<endl;
+                cv::Mat pose_cur = Tcw * pose_h;
+                cv::Point2f predict = F_cur.project2image(pose_cur);
+                cv::Point2f observe = F_cur.mvKeysUn[ptIndexOfEachCluster[i][j]].pt;
+                float distance = sqrt((predict.x - observe.x)
+                                 * (predict.x - observe.x)
+                                 + (predict.y - observe.y)
+                                   * (predict.y - observe.y));
+                //cout<<"label "<<allLabels[i]<<" distance "<<distance<<endl;
+                errorOfClusters[i].push_back(distance);
+//                cv::circle(imgClone, predict, 2, cv::Scalar(0, 255, 255), -1);
+//                cv::circle(imgClone, observe, 2, cv::Scalar(0, 255, 0), -1);
+//                cv::line(imgClone, predict, observe, cv::Scalar(0, 255, 255),2);
+            }
+            //cout<<"cluster indenx "<<i<<" size "<<numofClu<<" label "<<F_cur.mvClusterLabels[i]<<endl;
+        }
+//        cv:imshow("test", imgClone);
+//        cv::waitKey(0);
+        ///Calc the coefficient variance for each cluster, select those with 95% confidence
+        vector<float> CVofEachCluster;
+        vector<bool> dynamicFlags(errorOfClusters.size(),false);
+        float varianceThreshold = 2.5;
+        for (int i = 0; i < errorOfClusters.size(); i++) {
+            float mean = 0, variance = 0;
+            float CV = 0;//coefficient variance
+            if (errorOfClusters[i].size() > 0) {
+                varianceAndMean(errorOfClusters[i], mean, variance, CV);
+            }
+            CVofEachCluster.push_back(CV);
+            int label = F_cur.mvClusterLabels[i];
+            cout << "label " << label << " size " << errorOfClusters[i].size() << " mean " << mean << " variance " << variance << " CV " << CV << endl;
+            if (variance >= 2.5)
+                dynamicFlags[i] = true;
+        }
+        ///find the dynamic points by Z scroe
+//        float Zthreshold = 1.5;
+//        fitZscore(CVofEachCluster, Zthreshold, dynamicFlags);
+//        for (int i = 0; i < dynamicFlags.size(); i++) {
+//            cout << "CV " << CVofEachCluster[i] << " ";
+//            cout << "cluster label " << F_cur.mvClusterLabels[i] << " ";
+//            cout << dynamicFlags[i] << endl;
+//        }
+//        cout << endl;
+
+//        //mark dynamic points red color
+        ///mark dynamics
+        for (int i = 0; i < dynamicFlags.size(); i++) {
+            if (dynamicFlags[i]) {
+                for (int j = 0; j < ptIndexOfEachCluster[i].size(); j++) {
+                    //darw cluster i
+                    //cv::circle(imgClone, F_cur.mvKeysUn[ptIndexOfEachCluster[i][j]].pt, 2, cv::Scalar(0, 0, 255), -1);
+                    //mark dynamic
+                    int ptIndex = ptIndexOfEachCluster[i][j];
+                    F_cur.mvKeysDynamic[ptIndex] = true;
+                }
+            }
+        }
+//        cv::imshow("test", imgClone);
+//        cv::waitKey(0);
+//        cout<<"---------------------------------------------------"<<endl;
+        int pause = 0;
+    }
+
+
 void Tracking::MonocularInitialization()
 {
 
@@ -641,6 +864,18 @@ void Tracking::MonocularInitialization()
         ORBmatcher matcher(0.9,true);
         int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
 
+        ///adds on
+        int Counter = 0;
+        for(int i=0;i<mvIniMatches.size();i++)
+            if(mvIniMatches[i]>-1)
+                Counter = Counter+1;
+        cout<<"before filter "<<Counter<<endl;
+        FilterOutDynamicMatchs(mInitialFrame, mCurrentFrame, mvIniMatches);
+        Counter=0;
+        for(int i=0;i<mvIniMatches.size();i++)
+            if(mvIniMatches[i]>-1)
+                Counter = Counter+1;
+        cout<<"after filter "<<Counter<<endl;
         // Check if there are enough correspondences
         if(nmatches<100)
         {
@@ -816,13 +1051,16 @@ bool Tracking::TrackReferenceKeyFrame()
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
+    CheckLabelDynamics(mCurrentFrame);
+
     if(nmatches<15)
         return false;
 
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    //Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization_dynamic(&mCurrentFrame);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -934,6 +1172,8 @@ bool Tracking::TrackWithMotionModel()
         th=7;
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
 
+    CheckLabelDynamics(mCurrentFrame);
+
     // If few matches, uses a wider window search
     if(nmatches<20)
     {
@@ -945,7 +1185,8 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    //Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization_dynamic(&mCurrentFrame);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -986,10 +1227,14 @@ bool Tracking::TrackLocalMap()
 
     SearchLocalPoints();
 
-    // Optimize Pose
-    Optimizer::PoseOptimization(&mCurrentFrame);
-    mnMatchesInliers = 0;
+    //todo --- check dynamics
+    CheckLabelDynamics(mCurrentFrame);
 
+    // Optimize Pose
+    //Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization_dynamic(&mCurrentFrame);
+
+    mnMatchesInliers = 0;
     // Update MapPoints Statistics
     for(int i=0; i<mCurrentFrame.N; i++)
     {
@@ -1190,67 +1435,59 @@ void Tracking::CreateNewKeyFrame()
     mpLastKeyFrame = pKF;
 }
 
-void Tracking::SearchLocalPoints()
-{
-    // Do not search map points already matched
-    for(vector<MapPoint*>::iterator vit=mCurrentFrame.mvpMapPoints.begin(), vend=mCurrentFrame.mvpMapPoints.end(); vit!=vend; vit++)
-    {
-        MapPoint* pMP = *vit;
-        if(pMP)
-        {
-            if(pMP->isBad())
-            {
-                *vit = static_cast<MapPoint*>(NULL);
+    void Tracking::SearchLocalPoints() {
+        // Do not search map points already matched
+        for (vector<MapPoint *>::iterator vit = mCurrentFrame.mvpMapPoints.begin(), vend = mCurrentFrame.mvpMapPoints.end();
+             vit != vend; vit++) {
+            MapPoint *pMP = *vit;
+            if (pMP) {
+                if (pMP->isBad()) {
+                    *vit = static_cast<MapPoint *>(NULL);
+                } else {
+                    pMP->IncreaseVisible();
+                    pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                    pMP->mbTrackInView = false;
+                }
             }
-            else
-            {
+        }
+
+        int nToMatch = 0;
+
+        // Project points in frame and check its visibility
+        for (vector<MapPoint *>::iterator vit = mvpLocalMapPoints.begin(), vend = mvpLocalMapPoints.end();
+             vit != vend; vit++) {
+            MapPoint *pMP = *vit;
+            if (pMP->mnLastFrameSeen == mCurrentFrame.mnId)
+                continue;
+            if (pMP->isBad())
+                continue;
+            // Project (this fills MapPoint variables for matching)
+            if (mCurrentFrame.isInFrustum(pMP, 0.5)) {
                 pMP->IncreaseVisible();
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                pMP->mbTrackInView = false;
+                nToMatch++;
             }
         }
-    }
 
-    int nToMatch=0;
-
-    // Project points in frame and check its visibility
-    for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++)
-    {
-        MapPoint* pMP = *vit;
-        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
-            continue;
-        if(pMP->isBad())
-            continue;
-        // Project (this fills MapPoint variables for matching)
-        if(mCurrentFrame.isInFrustum(pMP,0.5))
-        {
-            pMP->IncreaseVisible();
-            nToMatch++;
+        if (nToMatch > 0) {
+            ORBmatcher matcher(0.8);
+            int th = 1;
+            if (mSensor == System::RGBD)
+                th = 3;
+            // If the camera has been relocalised recently, perform a coarser search
+            if (mCurrentFrame.mnId < mnLastRelocFrameId + 2)
+                th = 5;
+            matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th);
         }
     }
 
-    if(nToMatch>0)
-    {
-        ORBmatcher matcher(0.8);
-        int th = 1;
-        if(mSensor==System::RGBD)
-            th=3;
-        // If the camera has been relocalised recently, perform a coarser search
-        if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
-            th=5;
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+    void Tracking::UpdateLocalMap() {
+        // This is for visualization
+        mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+
+        // Update
+        UpdateLocalKeyFrames();
+        UpdateLocalPoints();
     }
-}
-
-void Tracking::UpdateLocalMap()
-{
-    // This is for visualization
-    mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
-    // Update
-    UpdateLocalKeyFrames();
-    UpdateLocalPoints();
-}
 
 void Tracking::UpdateLocalPoints()
 {

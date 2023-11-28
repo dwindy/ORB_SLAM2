@@ -32,6 +32,9 @@
 
 #include <opencv2/opencv.hpp>
 
+///Adds on
+#include <map>
+
 namespace ORB_SLAM2
 {
 #define FRAME_GRID_ROWS 48
@@ -53,6 +56,8 @@ public:
 
     // Constructor for RGB-D cameras.
     Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    //adds on
+    Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, const string classAddress);
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
@@ -103,6 +108,9 @@ public:
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
 
+    ///ads on
+    cv::Point2f project2image(cv::Mat P3DC);
+
 public:
     // Vocabulary used for relocalization.
     ORBVocabulary* mpORBvocabulary;
@@ -142,8 +150,11 @@ public:
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
     std::vector<cv::KeyPoint> mvKeysUn;
     ///Added Module
-    std::vector<int> mvKeysLabels;
+    std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
+    std::vector<int> mvKeysClusters;//cluster of each keypoint
+    std::vector<int> mvKeysLabels;//label of this cluster. same label didn't means same cluster
     std::vector<bool> mvKeysSoft;
+    std::vector<bool> mvKeysDynamic;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.

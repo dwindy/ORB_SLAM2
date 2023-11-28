@@ -80,11 +80,16 @@ target_link_libraries(${PROJECT_NAME}
 
 # Build examples
 
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
-#
-#add_executable(rgbd_tum
-#        Examples/RGB-D/rgbd_tum.cc)
-#target_link_libraries(rgbd_tum ${PROJECT_NAME})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
+
+add_executable(rgbd_tum Examples/RGB-D/rgbd_tum.cc)
+target_link_libraries(rgbd_tum ${PROJECT_NAME})
+
+add_executable(rgbd_tum_yolo Examples/RGB-D/rgbd_tum_yolo.cc)
+target_link_libraries(rgbd_tum_yolo ${PROJECT_NAME})
+
+add_executable(rgbd_tum_yolo_zoe Examples/RGB-D/rgbd_tum_yolo_zoe.cc)
+target_link_libraries(rgbd_tum_yolo_zoe ${PROJECT_NAME})
 #
 #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 #
@@ -103,9 +108,8 @@ target_link_libraries(${PROJECT_NAME}
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
 
-#add_executable(mono_tum
-#        Examples/Monocular/mono_tum.cc)
-#target_link_libraries(mono_tum ${PROJECT_NAME})
+add_executable(mono_tum Examples/Monocular/mono_tum.cc)
+target_link_libraries(mono_tum ${PROJECT_NAME})
 #
 #add_executable(mono_kitti
 #        Examples/Monocular/mono_kitti.cc)
@@ -116,7 +120,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
 #target_link_libraries(mono_euroc ${PROJECT_NAME})
 
 #Adds on
-add_executable(mono_tum_yolo
-        Examples/Monocular/mono_tum_yolo.cc)
+add_executable(mono_tum_yolo Examples/Monocular/mono_tum_yolo.cc)
 target_link_libraries(mono_tum_yolo ${PROJECT_NAME})
 

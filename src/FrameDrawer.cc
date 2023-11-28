@@ -45,6 +45,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
         ///Added Module
         vector<bool> vbKeysSoft;
         vector<int> viKeysLabels;
+        vector<bool> vbKeysDynamic;
 
         //Copy variables within scoped mutex
         {
@@ -66,6 +67,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                 ///Added Module
                 vbKeysSoft = mvKeysSoft;
                 viKeysLabels = mvKeysLabels;
+                vbKeysDynamic = mvKeysDynamics;
                 ///--------------------------
             } else if (mState == Tracking::LOST) {
                 vCurrentKeys = mvCurrentKeys;
@@ -101,7 +103,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                     // This is a match to a MapPoint in the map
                     if (vbMap[i]) {
                         ///Added Modules
-                        if (vbKeysSoft[i]) { //if soft point, draw red
+                        if (vbKeysDynamic[i]) { //if soft point, draw red
                             cv::rectangle(im, pt1, pt2, cv::Scalar(0, 0, 255));
                             cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
                             mnTracked++;
@@ -173,6 +175,7 @@ void FrameDrawer::Update(Tracking *pTracker)
     ///Added Module------------------------------
     mvKeysLabels = pTracker->mCurrentFrame.mvKeysLabels;
     mvKeysSoft = pTracker->mCurrentFrame.mvKeysSoft;
+    mvKeysDynamics = pTracker->mCurrentFrame.mvKeysDynamic;
     ///------------------------------------------
     N = mvCurrentKeys.size();
     mvbVO = vector<bool>(N,false);
