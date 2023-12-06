@@ -136,6 +136,7 @@ protected:
     ///for mono init
     void FilterOutDynamicMatchs(Frame &initF, Frame &curF, vector<int> &initMatches);
     void CheckLabelDynamics(Frame &F);
+    void UpdateMapDynamics(Frame &F, Map &mpMap);
     ///-------------------------------------------------------------------------------
     void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();

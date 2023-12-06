@@ -116,6 +116,25 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
         nObs++;
 }
 
+    void MapPoint::AddObservationDynamic(KeyFrame *pKF, size_t idx) {
+        unique_lock<mutex> lock(mMutexFeatures);
+        if (mDynamicObservations.count(pKF))
+            return;
+        mDynamicObservations[pKF] = idx;
+
+        dynamicObs++;
+    }
+
+    void MapPoint::AddObservationStatic(KeyFrame *pKF, size_t idx) {
+        unique_lock<mutex> lock(mMutexFeatures);
+        if (mStaticObservations.count(pKF))
+            return;
+        mStaticObservations[pKF] = idx;
+
+        staticObs++;
+    }
+
+
 void MapPoint::EraseObservation(KeyFrame* pKF)
 {
     bool bBad=false;
@@ -492,6 +511,14 @@ bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
             this->mWorldPos = P3Dc;
             //todo compare with erasing way
         }
+    }
+
+    /*
+     * this function used to update the dynamic rate of this mappoint
+     * by counting the dynamic frame / all observed frame
+     */
+    void MapPoint::UpdateDynamicRate(){
+
     }
 
 float MapPoint::GetMinDistanceInvariance()

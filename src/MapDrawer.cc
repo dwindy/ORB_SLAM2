@@ -104,6 +104,17 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         colorCharts.push_back({255.0 / 255, 128.0 / 255, 0.0 / 255});//orange
         colorCharts.push_back({255.0 / 255, 69.0 / 255, 0.0 / 255});//orange red
         colorCharts.push_back({210.0 / 255, 105.0 / 255, 30.0 / 255});//chocolate
+        colorCharts.push_back({255.0 / 255, 215.0 / 255, 0.0 / 255}); // Gold
+        colorCharts.push_back({112.0 / 255, 128.0 / 255, 144.0 / 255}); // Slate Gray
+        colorCharts.push_back({25.0 / 255, 25.0 / 255, 112.0 / 255}); // Midnight Blue
+        colorCharts.push_back({230.0 / 255, 230.0 / 255, 250.0 / 255}); // Lavender
+        colorCharts.push_back({143.0 / 255, 188.0 / 255, 143.0 / 255}); // Dark Sea Green
+        colorCharts.push_back({205.0 / 255, 92.0 / 255, 92.0 / 255}); // Indian Red
+        colorCharts.push_back({153.0 / 255, 50.0 / 255, 204.0 / 255}); // Dark Orchid
+        colorCharts.push_back({0.0 / 255, 250.0 / 255, 154.0 / 255}); // Medium Spring Green
+        colorCharts.push_back({123.0 / 255, 104.0 / 255, 238.0 / 255}); // Medium Slate Blue
+        colorCharts.push_back({250.0 / 255, 128.0 / 255, 114.0 / 255}); // Salmon
+
         //store label to color map
         vector<vector<int>> mPofColorPoints;
         vector<int> mPofNormalPoints;
@@ -114,23 +125,32 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         map<int, int> label2colorMap;
         //Manually initial the map
         label2colorMap.insert(pair<int, int>(-1, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(0, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(7, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(32, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(39, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(41, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(45, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(56, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(58, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(61, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(62, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(63, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(64, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(65, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(66, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(67, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(71, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(72, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(73, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(74, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(75, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(77, label2colorMap.size()));
         for (int i = 0; i < vpMPs.size(); i++) {
             int label = vpMPs[i]->label;
             auto iter = label2colorMap.find(label);
             if (iter == label2colorMap.end()) {
-                //cout << "label " << label << " not in the color map" << endl;
+                cout << "label " << label << " not in the color map" << endl;
             } else {
                 int colorIndex = iter->second;
                 mPofColorPoints[colorIndex].push_back(i);
@@ -138,14 +158,18 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         }
 //        for(auto iter:label2colorMap)
 //            cout<<"label "<<iter.first<<" color index "<<iter.second<<endl;
-        //draw
+        //draw by each color group
         for (int i = 0; i < mPofColorPoints.size(); i++) {
-            glPointSize(5);//mPointSize
-            glColor3f(colorCharts[i][0], colorCharts[i][1], colorCharts[i][2]);
+            glPointSize(10);//mPointSize
+
+            //glColor3f(colorCharts[i][0], colorCharts[i][1], colorCharts[i][2]);
+
             glBegin(GL_POINTS);
             for (int j = 0; j < mPofColorPoints[i].size(); j++) {
                 cv::Mat pos = vpMPs[mPofColorPoints[i][j]]->GetWorldPos();
                 glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
+                float static_rate = float(vpMPs[mPofColorPoints[i][j]]->staticObs) / (float(vpMPs[mPofColorPoints[i][j]]->staticObs) + float(vpMPs[mPofColorPoints[i][j]]->dynamicObs));
+                glColor4f(colorCharts[i][0], colorCharts[i][1], colorCharts[i][2],static_rate);
             }
             glEnd();
         }

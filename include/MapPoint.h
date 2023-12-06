@@ -54,6 +54,13 @@ public:
     void AddObservation(KeyFrame* pKF,size_t idx);
     void EraseObservation(KeyFrame* pKF);
 
+    ///adds
+    void AddObservationDynamic(KeyFrame* pKF, size_t idx);
+    void EraseObservationDynamic(KeyFrame* pKF);
+    void AddObservationStatic(KeyFrame* pKF, size_t idx);
+    void EraseObservationStatic(KeyFrame* pKF);
+
+
     int GetIndexInKeyFrame(KeyFrame* pKF);
     bool IsInKeyFrame(KeyFrame* pKF);
 
@@ -83,6 +90,8 @@ public:
 
     ///adds on
     void UpdateDetphZoe();
+    void UpdateDynamicRate();
+
 public:
     long unsigned int mnId;
     static long unsigned int nNextId;
@@ -116,7 +125,11 @@ public:
 
     ///Added Module
     int label;
+    int sublabel;
     bool soft;
+    int dynamicObs;
+    int staticObs;
+    float dynamicRate;
     ///-----------------------------------
 
 protected:    
@@ -126,6 +139,10 @@ protected:
 
      // Keyframes observing this MapPoint and associated index in keyframe
      std::map<KeyFrame*,size_t> mObservations;
+
+     ///adds on
+     std::map<KeyFrame *, size_t> mDynamicObservations;
+     std::map<KeyFrame *, size_t> mStaticObservations;
 
      // Mean viewing direction
      cv::Mat mNormalVector;

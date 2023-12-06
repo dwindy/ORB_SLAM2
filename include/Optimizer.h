@@ -45,6 +45,7 @@ public:
     void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
     int static PoseOptimization(Frame* pFrame);
     ///adds on
+    void static LocalBundleAdjustment_dynamic(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
     int static PoseOptimization_dynamic(Frame* pFrame);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
