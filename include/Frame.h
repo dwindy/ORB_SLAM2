@@ -152,9 +152,13 @@ public:
     ///Added Module
     std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
     std::vector<int> mvKeysClusters;//cluster of each keypoint
-    std::vector<int> mvKeysLabels;//label of this cluster. same label didn't means same cluster
+    std::vector<int> mvKeysLabels;//label of this keypoint. same label didn't mean same cluster
     std::vector<bool> mvKeysSoft;
     std::vector<bool> mvKeysDynamic;
+    cv::Mat frameImGray;
+    std::vector<cv::Point2f> mvOpFlwKyPt;
+    std::vector<int> mvOpFlowKyClusters;
+    std::vector<int> mvOpFlowKyLabels;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.

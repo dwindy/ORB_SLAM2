@@ -49,8 +49,10 @@ Frame::Frame(const Frame &frame)
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
      mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
      ///Added Module
-     ,mvKeysSoft(frame.mvKeysSoft),mvKeysLabels(frame.mvKeysLabels)
-{
+     ,mvKeysSoft(frame.mvKeysSoft),mvKeysLabels(frame.mvKeysLabels),mvKeysDynamic(frame.mvKeysDynamic),
+     mvKeysClusters(frame.mvKeysClusters), mvClusterLabels(frame.mvClusterLabels),
+     frameImGray(frame.frameImGray),mvOpFlwKyPt(frame.mvOpFlwKyPt),mvOpFlowKyClusters(frame.mvOpFlowKyClusters),mvOpFlowKyLabels(frame.mvOpFlowKyLabels)
+    {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
             mGrid[i][j]=frame.mGrid[i][j];
@@ -179,6 +181,9 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
+        ///Added
+        frameImGray = imGray;
+
         // Frame ID
         mnId = nNextId++;
 
@@ -255,6 +260,24 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
                         //deleteRow(mDescriptors, i, mDescriptors);
                         //Mark with soft instead
                         mvKeysSoft[i] = true;
+                }
+            }
+        }
+        //Step 4 allocation label/cluster for optical flow features
+        ///Step 1 calc optical Flow
+        //cal features for last frame
+        int opflowFeatureNum = 2000;
+        cv::goodFeaturesToTrack(frameImGray, mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
+        mvOpFlowKyClusters = vector<int>(opflowFeatureNum, -1);
+        mvOpFlowKyLabels = vector<int>(opflowFeatureNum, -1);
+        for (int i = 0; i < mvOpFlwKyPt.size(); i++) {
+            int x = int(mvOpFlwKyPt[i].x), y = int(mvOpFlwKyPt[i].y);
+            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
+                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
+                    //store the cluster index and label for this key point.
+                    int ptLabel = mvClusterLabels[j];
+                    mvOpFlowKyClusters[i] = j;
+                    mvOpFlowKyLabels[i] = ptLabel;
                 }
             }
         }

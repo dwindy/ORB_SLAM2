@@ -249,6 +249,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 }
 
     cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp, const string classAddress) {
+        mImGray.copyTo(mImGray_prev);
         mImGray = imRGB;
         cv::Mat imDepth = imD;
 
@@ -599,6 +600,173 @@ void Tracking::StereoInitialization()
     }
 }
 
+    void pointMean(vector<cv::Point2f> point_prev, cv::Point2f &meanPoint) {
+        // Initialize sum vectors
+        cv::Point2f sumPoint(0, 0);
+        // Calculate the sum of vectors
+        for (int i = 0; i < point_prev.size(); ++i) {
+            sumPoint += point_prev[i];
+        }
+        // Calculate the mean vector
+        meanPoint = sumPoint / static_cast<float>(point_prev.size());
+    }
+
+    void vectorMean(vector<cv::Point2f> point_prev, vector<cv::Point2f> point_cur, cv::Point2f &meanVector) {
+        // Ensure that both vectors have the same size
+        if (point_prev.size() != point_cur.size()) {
+            // Handle the case where the vectors have different sizes
+            std::cerr << "vectorMean() Error: Vectors must have the same size." << std::endl;
+            return;
+        }
+
+        // Initialize sum vectors
+        cv::Point2f sumVector(0, 0);
+
+        // Calculate the sum of vectors
+        for (int i = 0; i < point_prev.size(); ++i) {
+            sumVector += point_cur[i] - point_prev[i];
+        }
+
+        // Calculate the mean vector
+        meanVector = sumVector / static_cast<float>(point_prev.size());
+    }
+
+    void vectorVariance(vector<cv::Point2f> point_prev, vector<cv::Point2f> point_cur, cv::Point2f meanVector, cv::Point2f &varianceVector) {
+        // Ensure that both vectors have the same size
+        if (point_prev.size() != point_cur.size()) {
+            // Handle the case where the vectors have different sizes
+            std::cerr << "vectorVariance() Error: Vectors must have the same size." << std::endl;
+            return;
+        }
+
+        // Initialize sum squared differences vector
+        cv::Point2f sumSquaredDifferences(0, 0);
+
+        // Calculate the sum of squared differences
+        for (int i = 0; i < point_prev.size(); ++i) {
+            cv::Point2f difference = point_cur[i] - point_prev[i] - meanVector;
+            sumSquaredDifferences += cv::Point2f(difference.x * difference.x, difference.y * difference.y);
+        }
+
+        // Calculate the variance vector
+        varianceVector = sumSquaredDifferences / static_cast<float>(point_prev.size());
+
+    }
+
+    void Tracking::CheckOpticalFlow(Frame &curF, KeyFrame &lastKeyF) {
+        ///Step 1 calc the optical flow
+        vector<uchar> status;
+        vector<float> err;
+        vector<cv::Point2f> matchedPt;
+        cv::calcOpticalFlowPyrLK(lastKeyF.frameImGray, curF.frameImGray, lastKeyF.mvOpFlwKyPt, matchedPt,
+                                 status, err, cv::Size(21, 21), 3);
+        ///Step 2 check the dynamics of each cluster/label
+        ///step 2.1 for each cluster store the last frame feature and cur frame corresponding feature
+        std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastKeyF.mvClusterLabels.size());
+        std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastKeyF.mvClusterLabels.size());
+        for (int i = 0; i < status.size(); i++) {
+            if (status[i] == 1) {
+                //todo label -1 points?
+                int clusterIndex = lastKeyF.mvOpFlowKyClusters[i];
+                if(clusterIndex>-1){
+                    pointOfClusters_prev[clusterIndex].push_back( lastKeyF.mvOpFlwKyPt[i]);
+                    pointOfClusters_cur[clusterIndex].push_back( matchedPt[i]);
+                }
+            }
+        }
+        ///step 2.2 calc the mean vector for each cluster
+        vector<cv::Point2f> clusterMeans;
+        vector<cv::Point2f> clusterVariance;
+        vector<cv::Point2f> clusterMeanPoints;
+        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+            cv::Point2f meanVector(0, 0), varianceVector(0, 0);
+            cv::Point2f meanPoint(0, 0);
+            pointMean(pointOfClusters_prev[i], meanPoint);
+            vectorMean(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector);
+            vectorVariance(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector, varianceVector);
+            clusterMeans.push_back(meanVector);
+            clusterVariance.push_back(varianceVector);
+            clusterMeanPoints.push_back(meanPoint);
+        }
+        ///test draw.
+        cv::Mat imgclone = curF.frameImGray.clone();
+        cv::Mat imgclone_color;
+        cv::cvtColor(imgclone, imgclone_color, cv::COLOR_GRAY2BGR);
+        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
+//                cv::circle(imgclone_color, pointOfClusters_prev[i][j], 2, cv::Scalar(0, 255, 0), -1);
+//                cv::line(imgclone_color, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 0, 255), 2);
+                //cv::circle(imgclone_color, clusterMeanPoints[i], 2, cv::Scalar(0, 255, 0), -1);
+                cv::circle(imgclone_color, clusterMeanPoints[i]+clusterVariance[i], 2, cv::Scalar(0, 255, 0), -1);
+                cv::line(imgclone_color,clusterMeanPoints[i], clusterMeanPoints[i]+clusterVariance[i], cv::Scalar(0, 0, 255), 2);
+            }
+        }
+        imshow("optical flow Keyframe ", imgclone_color);
+        cv::waitKey(1);
+    }
+
+    void Tracking::CheckOpticalFlow(Frame &curF, Frame &lastF) {
+        ///Step 1 calc the optical flow
+        vector<uchar> status;
+        vector<float> err;
+        vector<cv::Point2f> matchedPt;
+        cv::calcOpticalFlowPyrLK(lastF.frameImGray, curF.frameImGray, lastF.mvOpFlwKyPt, matchedPt,
+                                 status, err, cv::Size(21, 21), 3);
+        ///Step 2 check the dynamics of each cluster/label
+        ///step 2.1 for each cluster store the last frame feature and cur frame corresponding feature
+        std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastF.mvClusterLabels.size());
+        std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastF.mvClusterLabels.size());
+        for (int i = 0; i < status.size(); i++) {
+            if (status[i] == 1) {
+                int clusterIndex = lastF.mvOpFlowKyClusters[i];
+                if (clusterIndex > -1) {
+                    pointOfClusters_prev[clusterIndex].push_back(lastF.mvOpFlwKyPt[i]);
+                    pointOfClusters_cur[clusterIndex].push_back(matchedPt[i]);
+                }
+            }
+        }
+        ///step 2.2 calc the mean vector for each cluster
+        vector<cv::Point2f> clusterMeans;
+        vector<cv::Point2f> clusterVariance;
+        vector<cv::Point2f> clusterMeanPoints;
+        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+            cv::Point2f meanVector, varianceVector;
+            cv::Point2f meanPoint(0, 0);
+            pointMean(pointOfClusters_prev[i], meanPoint);
+            vectorMean(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector);
+            vectorVariance(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector, varianceVector);
+            clusterMeans.push_back(meanVector);
+            clusterVariance.push_back(varianceVector);
+            clusterMeanPoints.push_back(meanPoint);
+        }
+        for (int i = 0; i < lastF.mvClusterLabels.size(); i++) {
+            cout<<"cluster label "<<lastF.mvClusterLabels[i]
+            <<" "<<sqrt(clusterVariance[i].x*clusterVariance[i].x + clusterVariance[i].y*clusterVariance[i].y)<<endl;
+        }
+        cout<<"-----------------------------------------------------"<<endl;
+        ///test draw.
+        cv::Mat imgclone = curF.frameImGray.clone();
+        cv::Mat imgclone_color;
+        cv::cvtColor(imgclone, imgclone_color, cv::COLOR_GRAY2BGR);
+        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
+//                cv::circle(imgclone_color, pointOfClusters_prev[i][j], 2, cv::Scalar(0, 255, 0), -1);
+//                cv::line(imgclone_color, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 0, 255), 2);
+                cv::circle(imgclone_color, clusterMeanPoints[i]+clusterVariance[i], 2, cv::Scalar(0, 255, 0), -1);
+                cv::line(imgclone_color,clusterMeanPoints[i], clusterMeanPoints[i]+clusterVariance[i], cv::Scalar(0, 0, 255), 2);
+            }
+        }
+        imshow("optical flow frame", imgclone_color);
+        cv::waitKey(1);
+    }
+
+/**
+ * This function check the variance of re-projection error
+ * mark the large variance cluster(label) with dynamic flag
+ * @param initF
+ * @param curF
+ * @param initMatches
+ */
     void Tracking::FilterOutDynamicMatchs(Frame &initF, Frame &curF, vector<int> &initMatches) {
         for (int i = 0; i < initMatches.size(); i++) {
             int labeli = initF.mvKeysLabels[i];
@@ -850,6 +1018,7 @@ void Tracking::StereoInitialization()
                 mpInitializer = static_cast<Initializer *>(NULL);
                 return;
             }
+            ///adds on ends
 
             cv::Mat Rcw; // Current Camera Rotation
             cv::Mat tcw; // Current Camera Translation
@@ -1016,6 +1185,7 @@ bool Tracking::TrackReferenceKeyFrame()
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
     CheckLabelDynamics(mCurrentFrame);
+    CheckOpticalFlow(mCurrentFrame, *mpReferenceKF);
 
     if(nmatches<15)
         return false;
@@ -1134,6 +1304,7 @@ bool Tracking::TrackWithMotionModel()
 
     ///adds on
     CheckLabelDynamics(mCurrentFrame);
+    CheckOpticalFlow(mCurrentFrame, mLastFrame);
     ///adds on end
 
     // If few matches, uses a wider window search

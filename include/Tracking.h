@@ -101,6 +101,7 @@ public:
     cv::Mat mImGray;
     ///adds on
     cv::Mat mImMask;
+    cv::Mat mImGray_prev;
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
@@ -137,6 +138,8 @@ protected:
     void FilterOutDynamicMatchs(Frame &initF, Frame &curF, vector<int> &initMatches);
     void CheckLabelDynamics(Frame &F);
     void UpdateMapDynamics(Frame &F, Map &mpMap);
+    void CheckOpticalFlow(Frame &curF, Frame &lastF);
+    void CheckOpticalFlow(Frame &curF, KeyFrame &lastKeyF);
     ///-------------------------------------------------------------------------------
     void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();

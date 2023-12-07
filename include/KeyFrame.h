@@ -168,10 +168,19 @@ public:
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
     const cv::Mat mDescriptors;
-    ///Added Module
-    std::vector<int> mvKeysLabels;
+    ///Added Module-------------------------
+    cv::Mat frameImGray;
+    std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
+    std::vector<int> mvKeysClusters;//cluster of each keypoint
+    std::vector<int> mvKeysLabels;//label of this cluster. same label didn't means same cluster
     std::vector<bool> mvKeysSoft;
     std::vector<bool> mvKeysDynamics;
+    std::vector<cv::Point2f> mvOpFlwKyPt;
+    std::vector<int> mvOpFlowKyClusters;
+    std::vector<int> mvOpFlowKyLabels;
+    std::vector<int> mvOpFlowDynamics;
+    ///Adds on end--------------------------
+
     //BoW
     DBoW2::BowVector mBowVec;
     DBoW2::FeatureVector mFeatVec;

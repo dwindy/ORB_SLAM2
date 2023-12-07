@@ -43,7 +43,9 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
     ///Added Module
-    ,mvKeysSoft(F.mvKeysSoft),mvKeysLabels(F.mvKeysLabels),mvKeysDynamics(F.mvKeysDynamic)
+    ,mvKeysSoft(F.mvKeysSoft),mvKeysLabels(F.mvKeysLabels),mvKeysDynamics(F.mvKeysDynamic),
+    mvKeysClusters(F.mvKeysClusters), mvClusterLabels(F.mvClusterLabels),
+    frameImGray(F.frameImGray),mvOpFlwKyPt(F.mvOpFlwKyPt),mvOpFlowKyClusters(F.mvOpFlowKyClusters),mvOpFlowKyLabels(F.mvOpFlowKyLabels)
 {
     mnId=nNextId++;
 
