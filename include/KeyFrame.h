@@ -179,6 +179,7 @@ public:
     std::vector<int> mvOpFlowKyClusters;
     std::vector<int> mvOpFlowKyLabels;
     std::vector<int> mvOpFlowDynamics;
+    std::vector<cv::Point2f> mvClusterOpFlowVariance;
     ///Adds on end--------------------------
 
     //BoW

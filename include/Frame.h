@@ -154,11 +154,15 @@ public:
     std::vector<int> mvKeysClusters;//cluster of each keypoint
     std::vector<int> mvKeysLabels;//label of this keypoint. same label didn't mean same cluster
     std::vector<bool> mvKeysSoft;
-    std::vector<bool> mvKeysDynamic;
+    std::vector<float> mvKeysDyncmicNumeric;//todo
+    std::vector<bool> mvKeysDynamic;//both reprojt & opticalflow flag set true
+    std::vector<float> mvRePjtMeanofClusters;//Reproject error mean of each cluster, same size of masks
+    std::vector<float> mvRePjtVarianceofClusters;//Reproject error variance of each cluster, same size of masks
     cv::Mat frameImGray;
     std::vector<cv::Point2f> mvOpFlwKyPt;
     std::vector<int> mvOpFlowKyClusters;
     std::vector<int> mvOpFlowKyLabels;
+    std::vector<cv::Point2f> mvClusterOpFlowVariance;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.
