@@ -573,6 +573,10 @@ void System::SaveTrajectoryKITTI(const string &filename)
     cout << endl << "trajectory saved!" << endl;
 }
 
+void System::SaveMapPoints(){
+    mpMap->SaveMapPoints();
+}
+
 int System::GetTrackingState()
 {
     unique_lock<mutex> lock(mMutexState);

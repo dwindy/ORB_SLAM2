@@ -544,61 +544,59 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     }
 
 
-void Tracking::StereoInitialization()
-{
-    if(mCurrentFrame.N>500)
-    {
-        // Set Frame pose to the origin
-        mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
+    void Tracking::StereoInitialization() {
+        if (mCurrentFrame.N > 500) {
+            // Set Frame pose to the origin
+            mCurrentFrame.SetPose(cv::Mat::eye(4, 4, CV_32F));
 
-        // Create KeyFrame
-        KeyFrame* pKFini = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
+            // Create KeyFrame
+            KeyFrame *pKFini = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
 
-        // Insert KeyFrame in the map
-        mpMap->AddKeyFrame(pKFini);
+            // Insert KeyFrame in the map
+            mpMap->AddKeyFrame(pKFini);
 
-        // Create MapPoints and associate to KeyFrame
-        for (int i = 0; i < mCurrentFrame.N; i++) {
-            float z = mCurrentFrame.mvDepth[i];
-            if (z > 0) {
-                cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
-                MapPoint *pNewMP = new MapPoint(x3D, pKFini, mpMap);
-                pNewMP->AddObservation(pKFini, i);
-                pKFini->AddMapPoint(pNewMP, i);
-                pNewMP->ComputeDistinctiveDescriptors();
-                pNewMP->UpdateNormalAndDepth();
-                mpMap->AddMapPoint(pNewMP);
+            // Create MapPoints and associate to KeyFrame
+            for (int i = 0; i < mCurrentFrame.N; i++) {
+                float z = mCurrentFrame.mvDepth[i];
+                if (z > 0) {
+                    cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
+                    MapPoint *pNewMP = new MapPoint(x3D, pKFini, mpMap);
+                    pNewMP->AddObservation(pKFini, i);
+                    pKFini->AddMapPoint(pNewMP, i);
+                    pNewMP->ComputeDistinctiveDescriptors();
+                    pNewMP->UpdateNormalAndDepth();
+                    mpMap->AddMapPoint(pNewMP);
+                    mCurrentFrame.mvpMapPoints[i] = pNewMP;
 
-                mCurrentFrame.mvpMapPoints[i] = pNewMP;
-
-                ///adds on - init the mappoint dynamic rate - given label
-                pNewMP->AddObservationStatic(pKFini, i);
-                pNewMP->label = pKFini->mvKeysLabels[i];
+                    ///Adds on - init the mappoint's dynamic rate and given label
+                    pNewMP->AddObservationStatic(pKFini, i);
+                    pNewMP->label = pKFini->mvKeysLabels[i];
+                    ///------------------------------------------------------
+                }
             }
+
+            cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
+
+            mpLocalMapper->InsertKeyFrame(pKFini);
+
+            mLastFrame = Frame(mCurrentFrame);
+            mnLastKeyFrameId = mCurrentFrame.mnId;
+            mpLastKeyFrame = pKFini;
+
+            mvpLocalKeyFrames.push_back(pKFini);
+            mvpLocalMapPoints = mpMap->GetAllMapPoints();
+            mpReferenceKF = pKFini;
+            mCurrentFrame.mpReferenceKF = pKFini;
+
+            mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+
+            mpMap->mvpKeyFrameOrigins.push_back(pKFini);
+
+            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+
+            mState = OK;
         }
-
-        cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
-
-        mpLocalMapper->InsertKeyFrame(pKFini);
-
-        mLastFrame = Frame(mCurrentFrame);
-        mnLastKeyFrameId=mCurrentFrame.mnId;
-        mpLastKeyFrame = pKFini;
-
-        mvpLocalKeyFrames.push_back(pKFini);
-        mvpLocalMapPoints=mpMap->GetAllMapPoints();
-        mpReferenceKF = pKFini;
-        mCurrentFrame.mpReferenceKF = pKFini;
-
-        mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
-        mpMap->mvpKeyFrameOrigins.push_back(pKFini);
-
-        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
-
-        mState=OK;
     }
-}
 
     void pointMean(vector<cv::Point2f> point_prev, cv::Point2f &meanPoint) {
         // Initialize sum vectors
@@ -959,9 +957,9 @@ void Tracking::StereoInitialization()
 
     /*
      * combine the reproject variance and opticalflow vector variance of each cluster
-     * and determing a dynamic flag for each keypoints
+     * and determining a dynamic flag for each keypoints
      */
-    void Tracking::DetermineDynamics(Frame &curF){
+    void Tracking::DetermineDynamics(Frame &curF) {
         //normalize the cluster reproject error
         vector<float> normlaizedRePjtVar;
         normalizeData(curF.mvRePjtVarianceofClusters, normlaizedRePjtVar);
@@ -974,16 +972,26 @@ void Tracking::StereoInitialization()
             float varianceVector = sqrt(curF.mvClusterOpFlowVariance[i].x * curF.mvClusterOpFlowVariance[i].x +
                                         curF.mvClusterOpFlowVariance[i].y + curF.mvClusterOpFlowVariance[i].y);
             if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) {
-                clusterDynamicFlags[i]=true;
+                clusterDynamicFlags[i] = true;
+                curF.mvClusterDynamic[i] = true;
             }
         }
         //apply to each point
         for (int i = 0; i < curF.mvKeysClusters.size(); i++) {
             int clusterIndex = curF.mvKeysClusters[i];
-            if(clusterDynamicFlags[clusterIndex]){
-                curF.mvKeysDynamic[i]=true;
+            if (clusterDynamicFlags[clusterIndex]) {
+                curF.mvKeysDynamic[i] = true;
             }
         }
+    }
+
+    void Tracking::RecordClusterDynamics(Frame &F){
+        ofstream writer;
+        writer.open(F.clusterDynamicName);
+        for(int i=0;i<F.mvClusterDynamic.size();i++){
+            writer<<F.mvClusterDynamic[i]<<" ";
+        }
+        writer.close();
     }
 
     /*
@@ -1126,6 +1134,9 @@ void Tracking::CreateInitialMapMonocular()
         bool soft = mLastFrame.mvKeysSoft[matchedPtIndex];
         pMP->label = label;
         pMP->soft = soft;
+        pMP->AddObservationStatic(pKFini,i);
+        pMP->AddObservationStatic(pKFcur,mvIniMatches[i]);
+        ///---------------------------------------------------
 
     }
 
@@ -1219,9 +1230,12 @@ bool Tracking::TrackReferenceKeyFrame()
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
+    ///Added module
     CheckReprojectDynamic(mCurrentFrame);
     CheckOpticalFlowDynamic(mCurrentFrame, *mpReferenceKF);
     DetermineDynamics(mCurrentFrame);
+    RecordClusterDynamics(mCurrentFrame);
+    ///---------------------------------------------------
 
     if(nmatches<15)
         return false;
@@ -1342,6 +1356,7 @@ bool Tracking::TrackWithMotionModel()
     CheckReprojectDynamic(mCurrentFrame);
     CheckOpticalFlowDynamic(mCurrentFrame, mLastFrame);
     DetermineDynamics(mCurrentFrame);
+    RecordClusterDynamics(mCurrentFrame);
     ///adds on end
 
     // If few matches, uses a wider window search

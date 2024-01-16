@@ -422,7 +422,22 @@ void LocalMapping::MapPointCulling()
 
                 pMP->AddObservation(mpCurrentKeyFrame, idx1);
                 pMP->AddObservation(pKF2, idx2);
-
+                ///Added Module
+                if (mpCurrentKeyFrame->mvKeysDynamics[idx1])
+                    pMP->AddObservationDynamic(mpCurrentKeyFrame, idx1);
+                else
+                    pMP->AddObservationStatic(mpCurrentKeyFrame, idx1);
+                if (pKF2->mvKeysDynamics[idx2])
+                    pMP->AddObservationDynamic(pKF2, idx2);
+                else
+                    pMP->AddObservationStatic(pKF2, idx2);
+                ///---------------------------------------
+                ///Added Module
+                int label = mpCurrentKeyFrame->mvKeysLabels[idx1];
+                bool soft = mpCurrentKeyFrame->mvKeysSoft[idx1];
+                pMP->label = label;
+                pMP->soft = soft;
+                ///---------------------------------------
                 mpCurrentKeyFrame->AddMapPoint(pMP, idx1);
                 pKF2->AddMapPoint(pMP, idx2);
 
@@ -433,13 +448,6 @@ void LocalMapping::MapPointCulling()
                 mlpRecentAddedMapPoints.push_back(pMP);
 
                 nnew++;
-
-                ///Added Module
-                int label = mpCurrentKeyFrame->mvKeysLabels[idx1];
-                bool soft = mpCurrentKeyFrame->mvKeysSoft[idx1];
-                pMP->label = label;
-                pMP->soft = soft;
-
             }
         }
     }

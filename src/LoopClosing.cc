@@ -522,6 +522,13 @@ bool LoopClosing::ComputeSim3()
                         mpCurrentKF->AddMapPoint(pLoopMP, i);
                         pLoopMP->AddObservation(mpCurrentKF, i);
                         pLoopMP->ComputeDistinctiveDescriptors();
+                        ///Added module
+                        if (mpCurrentKF->mvKeysDynamics, i)
+                            pLoopMP->AddObservationDynamic(mpCurrentKF, i);
+                        else
+                            pLoopMP->AddObservationStatic(mpCurrentKF, i);
+                        //pLoopMP->label = mpCurrentKF->mvKeysLabels[i];
+                        ///---------------------
                     }
                 }
             }

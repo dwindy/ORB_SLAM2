@@ -45,6 +45,9 @@ MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
     ///Added module
     label = -1;
     soft = false;
+    dynamicObs = 0;
+    staticObs = 0;
+    ///-------------------
 }
 
 MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF):
@@ -76,6 +79,9 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     ///Added module
     label = -1;
     soft = false;
+    dynamicObs = 0;
+    staticObs = 0;
+    //----------------
 }
 
 void MapPoint::SetWorldPos(const cv::Mat &Pos)
@@ -201,45 +207,46 @@ MapPoint* MapPoint::GetReplaced()
     return mpReplaced;
 }
 
-void MapPoint::Replace(MapPoint* pMP)
-{
-    if(pMP->mnId==this->mnId)
-        return;
+    void MapPoint::Replace(MapPoint *pMP) {
+        if (pMP->mnId == this->mnId)
+            return;
 
-    int nvisible, nfound;
-    map<KeyFrame*,size_t> obs;
-    {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
-        obs=mObservations;
-        mObservations.clear();
-        mbBad=true;
-        nvisible = mnVisible;
-        nfound = mnFound;
-        mpReplaced = pMP;
-    }
-
-    for(map<KeyFrame*,size_t>::iterator mit=obs.begin(), mend=obs.end(); mit!=mend; mit++)
-    {
-        // Replace measurement in keyframe
-        KeyFrame* pKF = mit->first;
-
-        if(!pMP->IsInKeyFrame(pKF))
+        int nvisible, nfound;
+        map<KeyFrame *, size_t> obs;
         {
-            pKF->ReplaceMapPointMatch(mit->second, pMP);
-            pMP->AddObservation(pKF,mit->second);
+            unique_lock<mutex> lock1(mMutexFeatures);
+            unique_lock<mutex> lock2(mMutexPos);
+            obs = mObservations;
+            mObservations.clear();
+            mbBad = true;
+            nvisible = mnVisible;
+            nfound = mnFound;
+            mpReplaced = pMP;
         }
-        else
-        {
-            pKF->EraseMapPointMatch(mit->second);
-        }
-    }
-    pMP->IncreaseFound(nfound);
-    pMP->IncreaseVisible(nvisible);
-    pMP->ComputeDistinctiveDescriptors();
 
-    mpMap->EraseMapPoint(this);
-}
+        for (map<KeyFrame *, size_t>::iterator mit = obs.begin(), mend = obs.end(); mit != mend; mit++) {
+            // Replace measurement in keyframe
+            KeyFrame *pKF = mit->first;
+
+            if (!pMP->IsInKeyFrame(pKF)) {
+                pKF->ReplaceMapPointMatch(mit->second, pMP);
+                pMP->AddObservation(pKF, mit->second);
+                ///Added
+                if(pKF->mvKeysDynamics[mit->second])
+                    pMP->AddObservationDynamic(pKF, mit->second);
+                else
+                    pMP->AddObservationStatic(pKF, mit->second);
+                ///----------------------------------
+            } else {
+                pKF->EraseMapPointMatch(mit->second);
+            }
+        }
+        pMP->IncreaseFound(nfound);
+        pMP->IncreaseVisible(nvisible);
+        pMP->ComputeDistinctiveDescriptors();
+
+        mpMap->EraseMapPoint(this);
+    }
 
 bool MapPoint::isBad()
 {

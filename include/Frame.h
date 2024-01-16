@@ -150,7 +150,9 @@ public:
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
     std::vector<cv::KeyPoint> mvKeysUn;
     ///Added Module
+    std::string clusterDynamicName;
     std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
+    std::vector<bool> mvClusterDynamic;//label of dynamic of each cluster, same size of masks
     std::vector<int> mvKeysClusters;//cluster of each keypoint
     std::vector<int> mvKeysLabels;//label of this keypoint. same label didn't mean same cluster
     std::vector<bool> mvKeysSoft;

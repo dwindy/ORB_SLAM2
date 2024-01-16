@@ -170,6 +170,7 @@ public:
     const cv::Mat mDescriptors;
     ///Added Module-------------------------
     cv::Mat frameImGray;
+    string clusterDynamicName;//actually keyframe not use this yet?
     std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
     std::vector<int> mvKeysClusters;//cluster of each keypoint
     std::vector<int> mvKeysLabels;//label of this cluster. same label didn't means same cluster

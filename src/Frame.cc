@@ -207,7 +207,6 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         UndistortKeyPoints();
 
         /* coco labels used on yolo7
-        * todo in my yolo script, person label has been made to 80 in mask image, avoid been mixing with black background, in merged case
         * # class names
         0-9 [ 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
         10-19 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
@@ -219,12 +218,18 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         70-79 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush' ]
         */
         ///Adds on
+        //step 0 record address for storing dynamics
+        int headlength = classAddress.length() - 9;
+        clusterDynamicName = classAddress.substr(0,headlength) + "dynamics.txt";
+        //cout<<"clusterDynamicName "<<clusterDynamicName<<endl;
         //step 1 get all class labels
         ifstream reader;
         reader.open(classAddress, ios::in);
         int label;
-        while (reader >> label)
+        while (reader >> label){
             mvClusterLabels.push_back(label);
+            mvClusterDynamic.push_back(false);
+        }
         //step 2 read each mask image
         std::vector<cv::Mat> allMasks;
         string maskImgAddress;
@@ -284,7 +289,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         //Note didn't need to update the size because didn't removing any points
         //N = mvKeys.size();
         ///-------------------------------------
-        //check label allocation
+        //imshow check label allocation
 //        cv::Mat testIMG = imGray.clone();
 //        cv::cvtColor(testIMG,testIMG,CV_GRAY2RGB);
 //
@@ -318,7 +323,6 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
 //        cv::waitKey(0);
         //----------------------------------------
         ComputeStereoFromRGBD(imDepth);
-        //TODO Shall I check the detph in the beginning? like initialization?
 
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         mvbOutlier = vector<bool>(N, false);

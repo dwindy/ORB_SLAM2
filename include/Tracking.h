@@ -138,6 +138,7 @@ protected:
     void FilterOutDynamicMatchs(Frame &initF, Frame &curF, vector<int> &initMatches);
     void CheckReprojectDynamic(Frame &F);
     void DetermineDynamics(Frame &F);
+    void RecordClusterDynamics(Frame &F);
     void UpdateMapDynamics(Frame &F, Map &mpMap);
     void CheckOpticalFlowDynamic(Frame &curF, Frame &lastF);
     void CheckOpticalFlowDynamic(Frame &curF, KeyFrame &lastKeyF);

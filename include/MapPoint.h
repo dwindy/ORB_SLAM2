@@ -129,6 +129,7 @@ public:
     bool soft;
     int dynamicObs;
     int staticObs;
+    //Not in Use
     float dynamicRate;
     ///-----------------------------------
 

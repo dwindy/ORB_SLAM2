@@ -29,6 +29,24 @@ Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)
 {
 }
 
+    void SaveMapPoint(ofstream &f, MapPoint *pMP) {
+        //save mappoint Id and world Pose
+        cv::Mat mpWorldPos = pMP->GetWorldPos();
+        f << pMP->mnId << " "<<pMP->label <<" "<<pMP->dynamicObs<<" "<<pMP->staticObs <<" "<<pMP->nObs<<" "
+            <<mpWorldPos.at<float>(0) << " " << mpWorldPos.at<float>(1) << " "<< mpWorldPos.at<float>(2) << endl;
+    }
+
+    void Map::SaveMapPoints() {
+        unique_lock<mutex> lock(mMutexMap);
+        unsigned long int nMapPoints = mspMapPoints.size();
+        cout << "Saving " << nMapPoints << " map points" << endl;
+        ofstream fout("mappoints.txt");
+        //fout<<nMapPoints;
+        for (auto mp: mspMapPoints)
+            SaveMapPoint(fout, mp);
+        fout.close();
+    }
+
 void Map::AddKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexMap);

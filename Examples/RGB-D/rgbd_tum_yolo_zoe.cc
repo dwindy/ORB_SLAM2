@@ -42,10 +42,8 @@ void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFil
 
 void LoadDepthZoe(vector<string> vstrImageFilenames, vector<string> &vstrDepthFilenames, const string &folder);
 
-int main(int argc, char **argv)
-{
-    if(argc != 4)
-    {
+int main(int argc, char **argv) {
+    if (argc != 4) {
         cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence" << endl;
         return 1;
     }
@@ -58,16 +56,16 @@ int main(int argc, char **argv)
     //LoadImages(strAssociationFilename, vstrImageFilenamesRGB, vstrImageFilenamesD, vTimestamps);
 
     //adds on
-    string strFile = string(argv[3])+"/rgb.txt";
+    string strFile = string(argv[3]) + "/rgb.txt";
     LoadImages(strFile, vstrImageFilenamesRGB, vTimestamps);
     int nImages = vstrImageFilenamesRGB.size();
     ///Adds on. load class.txt address and predict depth
     vector<string> vstrClassFilenames;
     vstrClassFilenames.resize(nImages);
-    LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames,string(argv[3]));
+    LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]));
     vector<string> vstrDepthFilenames;
     vstrDepthFilenames.resize(nImages);
-    LoadDepthZoe(vstrImageFilenamesRGB, vstrDepthFilenames,string(argv[3]));
+    LoadDepthZoe(vstrImageFilenamesRGB, vstrDepthFilenames, string(argv[3]));
 
 
     // Check consistency in the number of images and depthmaps
@@ -156,6 +154,7 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
+    SLAM.SaveMapPoints();
     SLAM.SaveTrajectoryTUM("CameraTrajectory.txt");
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");   
 
