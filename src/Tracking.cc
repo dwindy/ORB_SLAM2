@@ -159,6 +159,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         else
             mDepthMapFactor = 1.0f / mDepthMapFactor;
     }
+    kfGlobalID = 0;
 
 }
 
@@ -344,6 +345,12 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         return mCurrentFrame.mTcw.clone();
     }
 
+    ///Addes on
+    cv::Point2f getCentroid(const cv::Mat &mask) {
+        cv::Moments moments = cv::moments(mask, true);
+        cv::Point2f centroid(moments.m10 / moments.m00, moments.m01 / moments.m00);
+        return centroid;
+    }
 
     void Tracking::Track() {
         if (mState == NO_IMAGES_YET) {
@@ -386,6 +393,10 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                         if (!bOK)
                             bOK = TrackReferenceKeyFrame();
                     }
+                    ///Adds on Kalman filter tracking
+                    trackKalmanFilter();
+                    ///-----------------------------------
+
                 } else {
                     bOK = Relocalization();
                 }
@@ -533,6 +544,9 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             mlpReferences.push_back(mpReferenceKF);
             mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
             mlbLost.push_back(mState == LOST);
+            ///added
+            Frame *newFrame = new Frame(mCurrentFrame);
+            allFrames.push_back(newFrame);//is this released?
         } else {
             // This can happen if tracking is lost
             mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
@@ -595,6 +609,17 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
             mState = OK;
+
+            ///Added Module----init Kalman filter
+            for (int i = 0; i < mCurrentFrame.maskCentres.size(); i++) {
+                KalmanFilter *newKF = new KalmanFilter(kfGlobalID, mCurrentFrame.mvClusterLabels[i],
+                                                  mCurrentFrame.maskCentres[i].x, mCurrentFrame.maskCentres[i].y);
+                allKFs.push_back(newKF);
+                kfGlobalID++;
+                mCurrentFrame.mvKalFilts[i] = newKF;//init frame, same order as mvClusterlabels
+                newKF->frame = &mCurrentFrame;
+            }
+            ///---------------------------------
         }
     }
 
@@ -636,36 +661,32 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             std::cerr << "vectorVariance() Error: Vectors must have the same size." << std::endl;
             return;
         }
-
         // Initialize sum squared differences vector
         cv::Point2f sumSquaredDifferences(0, 0);
-
         // Calculate the sum of squared differences
         for (int i = 0; i < point_prev.size(); ++i) {
             cv::Point2f difference = point_cur[i] - point_prev[i] - meanVector;
             sumSquaredDifferences += cv::Point2f(difference.x * difference.x, difference.y * difference.y);
         }
-
         // Calculate the variance vector
         varianceVector = sumSquaredDifferences / static_cast<float>(point_prev.size());
-
     }
 
     void Tracking::CheckOpticalFlowDynamic(Frame &curF, KeyFrame &lastKeyF) {
-        ///Step 1 calc the optical flow
+        ///Step 1 calc the optical flow vector
         vector<uchar> status;
         vector<float> err;
         vector<cv::Point2f> matchedPt;
         cv::calcOpticalFlowPyrLK(lastKeyF.frameImGray, curF.frameImGray, lastKeyF.mvOpFlwKyPt, matchedPt,
                                  status, err, cv::Size(21, 21), 3);
         ///Step 2 check the dynamics of each cluster/label
-        ///step 2.1 for each cluster store the last frame feature and cur frame corresponding feature
+        ///step 2.1 for each cluster, store the last frame feature and cur frame corresponding feature
         std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastKeyF.mvClusterLabels.size());
         std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastKeyF.mvClusterLabels.size());
         for (int i = 0; i < status.size(); i++) {
             if (status[i] == 1) {
                 //todo label -1 points?
-                int clusterIndex = lastKeyF.mvOpFlowKyClusters[i];
+                int clusterIndex = lastKeyF.mvOpFlowKyClusters[i];//optical keypoint i, belongs to which cluster
                 if(clusterIndex>-1){
                     pointOfClusters_prev[clusterIndex].push_back( lastKeyF.mvOpFlwKyPt[i]);
                     pointOfClusters_cur[clusterIndex].push_back( matchedPt[i]);
@@ -677,6 +698,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         vector<cv::Point2f> clusterVariance;
         vector<cv::Point2f> clusterMeanPoints;
         for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+            //mean error vector
             cv::Point2f meanVector(0, 0), varianceVector(0, 0);
             cv::Point2f meanPoint(0, 0);
             pointMean(pointOfClusters_prev[i], meanPoint);
@@ -834,7 +856,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         }
     }
 
-    /* checking clusters' keypoints' reproject error
+    /* checking clusters' keypoints' re-project error
      * if each cluster is a moving cluster or static
      */
     void Tracking::CheckReprojectDynamic(Frame &F) {
@@ -866,7 +888,11 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         vector<vector<float>> errorOfClusters(F.mvClusterLabels.size());
         if (mVelocity.empty())
             mVelocity = cv::Mat::eye(4, 4, CV_32F);
-        cv::Mat Tcw = mVelocity * mLastFrame.mTcw;
+        cv::Mat Tcw;
+        if (mLastFrame.mTcw.empty())//in relocate case?
+            Tcw = mVelocity * cv::Mat::eye(4, 4, CV_32F);
+        else
+            Tcw = mVelocity * mLastFrame.mTcw;
 //        cv::Mat imgClone = cv::Mat(480,640,CV_8UC3, cv::Scalar(255,255,255));
         for (int i = 0; i < ptIndexOfEachCluster.size(); i++) {
             int numofClu = ptIndexOfEachCluster[i].size();
@@ -960,12 +986,12 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
      * and determining a dynamic flag for each keypoints
      */
     void Tracking::DetermineDynamics(Frame &curF) {
-        //normalize the cluster reproject error
-        vector<float> normlaizedRePjtVar;
-        normalizeData(curF.mvRePjtVarianceofClusters, normlaizedRePjtVar);
-        //normalize the optical flow variance
-        vector<cv::Point2f> normlaizedOptFlwVar;
-        normalizeVector(curF.mvClusterOpFlowVariance, normlaizedOptFlwVar);
+        ///normalize the cluster reproject error
+//        vector<float> normlaizedRePjtVar;
+//        normalizeData(curF.mvRePjtVarianceofClusters, normlaizedRePjtVar);
+//        //normalize the optical flow variance
+//        vector<cv::Point2f> normlaizedOptFlwVar;
+//        normalizeVector(curF.mvClusterOpFlowVariance, normlaizedOptFlwVar);
         //todo, normalized is not used yet
         vector<bool> clusterDynamicFlags(curF.mvClusterLabels.size(), false);
         for (int i = 0; i < clusterDynamicFlags.size(); i++) {
@@ -976,10 +1002,10 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                 curF.mvClusterDynamic[i] = true;
             }
         }
-        //apply to each point
+        //apply to each keypoint
         for (int i = 0; i < curF.mvKeysClusters.size(); i++) {
             int clusterIndex = curF.mvKeysClusters[i];
-            if (clusterDynamicFlags[clusterIndex]) {
+            if (clusterIndex >-1 && clusterDynamicFlags[clusterIndex]) {
                 curF.mvKeysDynamic[i] = true;
             }
         }
@@ -1008,6 +1034,13 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 //            }
 //        }
 //    }
+
+///added-----------------------
+    void Tracking::kalmanFilterUpdateDynamics() {
+        for (int i = 0; i < allKFs.size(); i++) {
+            allKFs[i]->updateDynamics();
+        }
+    }
 
     void Tracking::MonocularInitialization() {
 
@@ -1217,58 +1250,149 @@ void Tracking::CheckReplacedInLastFrame()
     }
 }
 
-
-bool Tracking::TrackReferenceKeyFrame()
-{
-    // Compute Bag of Words vector
-    mCurrentFrame.ComputeBoW();
-
-    // We perform first an ORB matching with the reference keyframe
-    // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.7,true);
-    vector<MapPoint*> vpMapPointMatches;
-
-    int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
-
-    ///Added module
-    CheckReprojectDynamic(mCurrentFrame);
-    CheckOpticalFlowDynamic(mCurrentFrame, *mpReferenceKF);
-    DetermineDynamics(mCurrentFrame);
-    RecordClusterDynamics(mCurrentFrame);
-    ///---------------------------------------------------
-
-    if(nmatches<15)
-        return false;
-
-    mCurrentFrame.mvpMapPoints = vpMapPointMatches;
-    mCurrentFrame.SetPose(mLastFrame.mTcw);
-
-    //Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimization_dynamic(&mCurrentFrame);
-
-    // Discard outliers
-    int nmatchesMap = 0;
-    for(int i =0; i<mCurrentFrame.N; i++)
-    {
-        if(mCurrentFrame.mvpMapPoints[i])
-        {
-            if(mCurrentFrame.mvbOutlier[i])
-            {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-
-                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                mCurrentFrame.mvbOutlier[i]=false;
-                pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                nmatches--;
+///adds on
+    bool checkIfExistingMatches(int obserIndice, double distance, vector<vector<double>> &kf_observation_pairs) {
+        bool flag = false;
+        for (int n = 0; n < kf_observation_pairs.size(); n++) {
+            if (kf_observation_pairs[n][0] == obserIndice) {
+                if (kf_observation_pairs[n][1] > distance) {
+                    kf_observation_pairs[n][0] = -1;
+                    kf_observation_pairs[n][1] = 10000;
+                } else {
+                    flag = true;
+                }
             }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
-                nmatchesMap++;
         }
+        return flag;
     }
 
-    return nmatchesMap>=10;
-}
+    bool Tracking::TrackReferenceKeyFrame() {
+        // Compute Bag of Words vector
+        mCurrentFrame.ComputeBoW();
+
+        // We perform first an ORB matching with the reference keyframe
+        // If enough matches are found we setup a PnP solver
+        ORBmatcher matcher(0.7, true);
+        vector<MapPoint *> vpMapPointMatches;
+        int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
+
+        ///Added module---------------------------------------
+        CheckReprojectDynamic(mCurrentFrame);
+        CheckOpticalFlowDynamic(mCurrentFrame, *mpReferenceKF);
+        DetermineDynamics(mCurrentFrame);
+        //RecordClusterDynamics(mCurrentFrame);
+        ///---------------------------------------------------
+
+        if (nmatches < 15)
+            return false;
+
+        mCurrentFrame.mvpMapPoints = vpMapPointMatches;
+        mCurrentFrame.SetPose(mLastFrame.mTcw);
+
+        //Optimizer::PoseOptimization(&mCurrentFrame);
+        Optimizer::PoseOptimization_dynamic(&mCurrentFrame);
+
+        // Discard outliers
+        int nmatchesMap = 0;
+        for (int i = 0; i < mCurrentFrame.N; i++) {
+            if (mCurrentFrame.mvpMapPoints[i]) {
+                if (mCurrentFrame.mvbOutlier[i]) {
+                    MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
+                    mCurrentFrame.mvbOutlier[i] = false;
+                    pMP->mbTrackInView = false;
+                    pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                    nmatches--;
+                } else if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
+                    nmatchesMap++;
+            }
+        }
+        return nmatchesMap >= 10;
+    }
+
+    ///adds on ---- kalman filter
+    void Tracking::trackKalmanFilter() {
+        ///step 1 store the indices of matched observation, and distance. same size as allKFs
+        vector<vector<double>> kf_observation_pairs(allKFs.size());
+        for(int k=0;k<allKFs.size();k++){
+            vector<double> tempPair{-1,10000};
+            kf_observation_pairs[k]=tempPair;
+        }
+        ///step 2 search the nearest observation for each kf instance
+        for (int k = 0; k < allKFs.size(); k++) {
+            if (allKFs[k]->lost)
+                continue;
+            ///step 2.1 predict status
+            allKFs[k]->predictStatus();
+            ///step 2.2 search the observation
+            cv::Point2f centre_predict(allKFs[k]->X.at<double>(0,0),allKFs[k]->X.at<double>(1,0));
+            int minIndex = -1;
+            float minDistance = 50;
+            bool found = false;
+            for(int o = 0; o < mCurrentFrame.maskCentres.size();o++){
+                float distance = cv::norm(centre_predict - mCurrentFrame.maskCentres[o]);
+                if(distance < minDistance){
+                    //note: placing the checking function in the loop,
+                    //note: would enable the kf to check for next close observation
+                    //note: if this observation has been taken.
+                    bool taken = checkIfExistingMatches(o,distance,kf_observation_pairs);
+                    if(!taken){
+                        minDistance = distance;
+                        minIndex = o;
+                        found  = true;
+                    }
+                }
+            }
+            if (found) {
+                kf_observation_pairs[k][0] = minIndex;
+                kf_observation_pairs[k][1] = minDistance;
+            } else {
+                allKFs[k]->lostCounter++;
+                if(allKFs[k]->lostCounter > 3)
+                    allKFs[k]->lost = true;
+            }
+        }
+        ///step 3 update status of each kf instance
+        ///and add unmatched observation as new kf instance
+        vector<int> obserMatchFlags(mCurrentFrame.mvClusterLabels.size(), false);
+        for (int k = 0; k < allKFs.size(); k++) {
+            int index = kf_observation_pairs[k][0];
+            if (index > -1) {
+                cv::Point2f observationPoint = mCurrentFrame.maskCentres[index];
+                cv::Mat thisObserv = (cv::Mat_<double>(2, 1) << observationPoint.x, observationPoint.y);
+                allKFs[k]->updateStatus(thisObserv);
+                obserMatchFlags[index] = true;
+
+                //store the dynamic status
+                if (mCurrentFrame.mvClusterDynamic[index])
+                    allKFs[k]->dynamics.push_back(1);
+                else
+                    allKFs[k]->dynamics.push_back(0);
+                //connecting currentFrame to this kalman filter instance
+                mCurrentFrame.mvKalFilts[index]=allKFs[k];
+            } else
+                allKFs[k]->lostCounter++;
+        }
+
+        ///step 4 add unmatched observation as new kf instance
+        for (int l = 0; l < mCurrentFrame.mvClusterLabels.size(); l++) {
+            if (!obserMatchFlags[l]) {
+                cv::Point2f observationPoint = mCurrentFrame.maskCentres[l];
+                KalmanFilter *newKF = new KalmanFilter(kfGlobalID, mCurrentFrame.mvClusterLabels[l],
+                                                  observationPoint.x, observationPoint.y);
+                allKFs.push_back(newKF);
+                kfGlobalID++;
+                //store the dynamic status
+                if(mCurrentFrame.mvClusterDynamic[l])
+                    newKF->dynamics.push_back(1);
+                else
+                    newKF->dynamics.push_back(0);
+                //store the kalman filter instance to frame
+                mCurrentFrame.mvKalFilts[l]=newKF;
+            }
+        }
+    }
+    ///---------------------------
 
     /*
      * update the Transform of ref to last keyframe
@@ -1356,8 +1480,8 @@ bool Tracking::TrackWithMotionModel()
     CheckReprojectDynamic(mCurrentFrame);
     CheckOpticalFlowDynamic(mCurrentFrame, mLastFrame);
     DetermineDynamics(mCurrentFrame);
-    RecordClusterDynamics(mCurrentFrame);
-    ///adds on end
+    //RecordClusterDynamics(mCurrentFrame);
+    ///adds on end--------------------------------------
 
     // If few matches, uses a wider window search
     if(nmatches<20)
@@ -1371,6 +1495,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Optimize frame pose with all matches
     //Optimizer::PoseOptimization(&mCurrentFrame);
+    ///adds on
     Optimizer::PoseOptimization_dynamic(&mCurrentFrame);
 
     // Discard outliers

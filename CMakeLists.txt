@@ -68,6 +68,8 @@ add_library(${PROJECT_NAME} SHARED
         src/Sim3Solver.cc
         src/Initializer.cc
         src/Viewer.cc
+        #added
+        src/KalmanFilter.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

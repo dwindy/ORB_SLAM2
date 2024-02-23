@@ -36,6 +36,7 @@ Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)
             <<mpWorldPos.at<float>(0) << " " << mpWorldPos.at<float>(1) << " "<< mpWorldPos.at<float>(2) << endl;
     }
 
+    ///adds on
     void Map::SaveMapPoints() {
         unique_lock<mutex> lock(mMutexMap);
         unsigned long int nMapPoints = mspMapPoints.size();

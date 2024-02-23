@@ -51,7 +51,8 @@ Frame::Frame(const Frame &frame)
      ///Added Module
      ,mvKeysSoft(frame.mvKeysSoft),mvKeysLabels(frame.mvKeysLabels),mvKeysDynamic(frame.mvKeysDynamic),
      mvKeysClusters(frame.mvKeysClusters), mvClusterLabels(frame.mvClusterLabels),
-     frameImGray(frame.frameImGray),mvOpFlwKyPt(frame.mvOpFlwKyPt),mvOpFlowKyClusters(frame.mvOpFlowKyClusters),mvOpFlowKyLabels(frame.mvOpFlowKyLabels)
+     frameImGray(frame.frameImGray),mvOpFlwKyPt(frame.mvOpFlwKyPt),mvOpFlowKyClusters(frame.mvOpFlowKyClusters),mvOpFlowKyLabels(frame.mvOpFlowKyLabels),
+     mvKalFilts(frame.mvKalFilts),mvClusterDynamic(frame.mvClusterDynamic),clusterDynamicName(frame.clusterDynamicName)
     {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -174,6 +175,13 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     AssignFeaturesToGrid();
 }
 
+///adds on
+    cv::Point2f Frame::getCentroid(const cv::Mat &mask) {
+        cv::Moments moments = cv::moments(mask, true);
+        cv::Point2f centroid(moments.m10 / moments.m00, moments.m01 / moments.m00);
+        return centroid;
+    }
+
 ///adds on --- rgbd with zeo depth and yolo class
     Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
                  ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
@@ -231,13 +239,17 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
             mvClusterDynamic.push_back(false);
         }
         //step 2 read each mask image
-        std::vector<cv::Mat> allMasks;
+        //std::vector<cv::Mat> allMasks;
         string maskImgAddress;
         for (int i = 0; i < mvClusterLabels.size(); i++) {
             maskImgAddress = classAddress.substr(0, classAddress.length() - 9) + "mask-" + to_string(i) + ".png";
             cv::Mat mask = cv::imread(maskImgAddress, CV_LOAD_IMAGE_UNCHANGED);
             allMasks.push_back(mask.clone());
+            cv::Point2f centroid = getCentroid(mask);
+            maskCentres.push_back(centroid);
         }
+        //step 2.5 init the kalman filters
+        mvKalFilts = vector<KalmanFilter*>(allMasks.size(),nullptr);//init as same size as vector<cv::Mat> allMasks;
         //step 3 init the attributions
         mvKeysClusters = vector<int>(N, -1);
         mvKeysLabels = vector<int>(N,-1);

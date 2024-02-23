@@ -34,6 +34,7 @@
 
 ///Adds on
 #include <map>
+#include "KalmanFilter.h"
 
 namespace ORB_SLAM2
 {
@@ -42,6 +43,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+//added
+class KalmanFilter;
 
 class Frame
 {
@@ -110,7 +113,9 @@ public:
 
     ///ads on
     cv::Point2f project2image(cv::Mat P3DC);
-
+    cv::Point2f getCentroid(const cv::Mat &mask);
+    std::vector<cv::Mat> allMasks;//label masks from yolo
+    std::vector<cv::Point2f> maskCentres;
 public:
     // Vocabulary used for relocalization.
     ORBVocabulary* mpORBvocabulary;
@@ -150,10 +155,11 @@ public:
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
     std::vector<cv::KeyPoint> mvKeysUn;
     ///Added Module
+    std::vector<KalmanFilter *> mvKalFilts;
     std::string clusterDynamicName;
     std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
     std::vector<bool> mvClusterDynamic;//label of dynamic of each cluster, same size of masks
-    std::vector<int> mvKeysClusters;//cluster of each keypoint
+    std::vector<int> mvKeysClusters;//cluster index of each keypoint
     std::vector<int> mvKeysLabels;//label of this keypoint. same label didn't mean same cluster
     std::vector<bool> mvKeysSoft;
     std::vector<float> mvKeysDyncmicNumeric;//todo

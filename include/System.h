@@ -127,6 +127,7 @@ public:
 
     ///Added module
     void SaveMapPoints();
+    void SaveClusterDynamics();
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)

@@ -90,31 +90,40 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
 
         ///Added Module
         vector<vector<float>> colorCharts;
-        colorCharts.push_back({0.0 / 255.0, 0.0 / 255, 0.0 / 255});//Black
-        colorCharts.push_back({255.0 / 255, 218.0 / 255, 185.0 / 255});//peach puff
-        colorCharts.push_back({105.0 / 255, 105.0 / 255, 105.0 / 255});//dim gray
-        colorCharts.push_back({47.0 / 255, 79.0 / 255, 79.0 / 255});//dark green gray
-        colorCharts.push_back({0.0 / 255, 0.0 / 255, 128.0 / 255});//dark blue
-        colorCharts.push_back({0.0 / 255, 255.0 / 255, 127.0 / 255});//spring green
-        colorCharts.push_back({255.0 / 255, 255.0 / 255, 0.0 / 255});//yellow
-        colorCharts.push_back({255.0 / 255, 0.0 / 255, 147.0 / 255});//pink
-        colorCharts.push_back({160.0 / 255, 32.0 / 255, 240.0 / 255});//purple
-        colorCharts.push_back({0.0 / 255, 255.0 / 255, 255.0 / 255});//cyan
-        colorCharts.push_back({34.0 / 255, 139.0 / 255, 34.0 / 255});//forestGreen
-        colorCharts.push_back({255.0 / 255, 128.0 / 255, 0.0 / 255});//orange
-        colorCharts.push_back({255.0 / 255, 69.0 / 255, 0.0 / 255});//orange red
-        colorCharts.push_back({210.0 / 255, 105.0 / 255, 30.0 / 255});//chocolate
-        colorCharts.push_back({255.0 / 255, 215.0 / 255, 0.0 / 255}); // Gold
-        colorCharts.push_back({112.0 / 255, 128.0 / 255, 144.0 / 255}); // Slate Gray
-        colorCharts.push_back({25.0 / 255, 25.0 / 255, 112.0 / 255}); // Midnight Blue
-        colorCharts.push_back({230.0 / 255, 230.0 / 255, 250.0 / 255}); // Lavender
-        colorCharts.push_back({143.0 / 255, 188.0 / 255, 143.0 / 255}); // Dark Sea Green
-        colorCharts.push_back({205.0 / 255, 92.0 / 255, 92.0 / 255}); // Indian Red
-        colorCharts.push_back({153.0 / 255, 50.0 / 255, 204.0 / 255}); // Dark Orchid
-        colorCharts.push_back({0.0 / 255, 250.0 / 255, 154.0 / 255}); // Medium Spring Green
-        colorCharts.push_back({123.0 / 255, 104.0 / 255, 238.0 / 255}); // Medium Slate Blue
-        colorCharts.push_back({250.0 / 255, 128.0 / 255, 114.0 / 255}); // Salmon
-
+        colorCharts.push_back({0.0 / 255.0, 0.0 / 255, 0.0 / 255});           // Black
+        colorCharts.push_back({255.0 / 255, 218.0 / 255, 185.0 / 255});     // Peach Puff
+        colorCharts.push_back({105.0 / 255, 105.0 / 255, 105.0 / 255});     // Dim Gray
+        colorCharts.push_back({255.0 / 255, 69.0 / 255, 0.0 / 255});       // Red-Orange
+        colorCharts.push_back({255.0 / 255, 215.0 / 255, 0.0 / 255});      // Gold
+        colorCharts.push_back({112.0 / 255, 128.0 / 255, 144.0 / 255});    // Slate Gray
+        colorCharts.push_back({25.0 / 255, 25.0 / 255, 112.0 / 255});      // Midnight Blue
+        colorCharts.push_back({230.0 / 255, 230.0 / 255, 250.0 / 255});    // Lavender
+        colorCharts.push_back({143.0 / 255, 188.0 / 255, 143.0 / 255});    // Dark Sea Green
+        colorCharts.push_back({205.0 / 255, 92.0 / 255, 92.0 / 255});     // Indian Red
+        colorCharts.push_back({153.0 / 255, 50.0 / 255, 204.0 / 255});    // Dark Orchid
+        colorCharts.push_back({0.0 / 255, 250.0 / 255, 154.0 / 255});     // Medium Spring Green
+        colorCharts.push_back({123.0 / 255, 104.0 / 255, 238.0 / 255});   // Medium Slate Blue
+        colorCharts.push_back({250.0 / 255, 128.0 / 255, 114.0 / 255});   // Salmon
+        colorCharts.push_back({240.0 / 255, 128.0 / 255, 128.0 / 255});   // Light Coral
+        colorCharts.push_back({102.0 / 255, 205.0 / 255, 170.0 / 255});   // Medium Aquamarine
+        colorCharts.push_back({0.0 / 255, 206.0 / 255, 209.0 / 255});   // Dark Turquoise
+        colorCharts.push_back({218.0 / 255, 112.0 / 255, 214.0 / 255});   // Orchid
+        colorCharts.push_back({47.0 / 255, 79.0 / 255, 79.0 / 255});       // Dark Green Gray
+        colorCharts.push_back({0.0 / 255, 0.0 / 255, 128.0 / 255});        // Dark Blue
+        colorCharts.push_back({0.0 / 255, 255.0 / 255, 127.0 / 255});      // Spring Green
+        colorCharts.push_back({255.0 / 255, 255.0 / 255, 0.0 / 255});      // Yellow
+        colorCharts.push_back({255.0 / 255, 0.0 / 255, 147.0 / 255});      // Pink
+        colorCharts.push_back({0.0 / 255, 128.0 / 255, 128.0 / 255});      // Teal
+        colorCharts.push_back({160.0 / 255, 32.0 / 255, 240.0 / 255});     // Purple
+        colorCharts.push_back({75.0 / 255, 0.0 / 255, 130.0 / 255});      // Indigo
+        colorCharts.push_back({255.0 / 255, 255.0 / 255, 255.0 / 255});      // Cyan
+        colorCharts.push_back({34.0 / 255, 139.0 / 255, 34.0 / 255});      // Forest Green
+        colorCharts.push_back({255.0 / 255, 128.0 / 255, 0.0 / 255});     // Orange
+        colorCharts.push_back({255.0 / 255, 0.0 / 255, 69.0 / 255});      // Orange Red
+        colorCharts.push_back({210.0 / 255, 105.0 / 255, 30.0 / 255});     // Chocolate
+        colorCharts.push_back({100.0 / 255, 149.0 / 255, 237.0 / 255});     // Cornflower Blue
+        colorCharts.push_back({85.0 / 255, 107.0 / 255, 47.0 / 255});     // Dark Olive Green
+        colorCharts.push_back({188.0 / 255, 143.0 / 255, 143.0 / 255});     // Rosy Brown
         //store label to color map
         vector<vector<int>> mPofColorPoints;
         vector<int> mPofNormalPoints;
@@ -126,13 +135,24 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         //Manually initial the map
         label2colorMap.insert(pair<int, int>(-1, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(0, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(4, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(6, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(7, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(16, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(25, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(26, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(27, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(28, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(29, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(32, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(36, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(39, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(41, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(45, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(56, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(57, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(58, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(60, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(61, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(62, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(63, label2colorMap.size()));
@@ -140,6 +160,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(65, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(66, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(67, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(68, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(71, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(72, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(73, label2colorMap.size()));

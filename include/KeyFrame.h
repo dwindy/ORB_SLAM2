@@ -47,6 +47,8 @@ public:
 
     ///adds on --- project 3d point from camera to image
     cv::Mat Project2Image(cv::Mat P3Dc);
+    //todo check if the instance construction function would copy this?
+    std::vector<cv::Mat> allMasks;//label masks from yolo
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
