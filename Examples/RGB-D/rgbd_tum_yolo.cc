@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
     cout << "Start processing sequence ..." << endl;
     cout << "Images in the sequence: " << nImages << endl << endl;
 
+    int framecounter = 0;
     // Main loop
     cv::Mat imRGB, imD;
     for (int ni = 0; ni < nImages; ni++) {
@@ -119,6 +120,12 @@ int main(int argc, char **argv) {
 
         if (ttrack < T)
             usleep((T - ttrack) * 1e6);
+
+        framecounter++;
+//        cout << "framecounter " << framecounter << endl;
+//        if (framecounter == 5) {
+//            int pause = 0;
+//        }
     }
 
     // Stop all threads
@@ -173,7 +180,8 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
  */
 void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folder) {
     for (int i = 0; i < vstrImageFilenames.size(); i++) {
-        string header = vstrImageFilenames[i].substr(3, 18);
+        //string header = vstrImageFilenames[i].substr(3, 18); TUM dataset
+        string header = vstrImageFilenames[i].substr(3, 17);
         string classFileName = folder + "/mask" + header + "_class.txt";
         //cout<<maskFileName<<endl;
         vstrClassFilenames[i] = classFileName;

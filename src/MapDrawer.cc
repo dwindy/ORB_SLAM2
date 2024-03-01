@@ -124,6 +124,20 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         colorCharts.push_back({100.0 / 255, 149.0 / 255, 237.0 / 255});     // Cornflower Blue
         colorCharts.push_back({85.0 / 255, 107.0 / 255, 47.0 / 255});     // Dark Olive Green
         colorCharts.push_back({188.0 / 255, 143.0 / 255, 143.0 / 255});     // Rosy Brown
+        colorCharts.push_back({72.0 / 255, 61.0 / 255, 219.0 / 255});      //  Dark Slate Blue
+        colorCharts.push_back({147.0 / 255, 112.0 / 255, 219.0 / 255});     // Medium Purple
+        colorCharts.push_back({0.0 / 255, 139.0 / 255, 139.0 / 255});     // Dark Cyan
+        colorCharts.push_back({178.0 / 255, 34.0 / 255, 34.0 / 255});     //  FireBrick
+        colorCharts.push_back({32.0 / 255, 178.0 / 255, 170.0 / 255});     //  Light Sea Green
+        colorCharts.push_back({199.0/255,21.0/255,133.0/255}); //Medium Violet Red
+        colorCharts.push_back({135.0/255,206.0/255,250.0/255}); //Light Sky Blue;
+        colorCharts.push_back({189.0 / 255, 183.0 / 255, 107.0 / 255});  // Dark Khaki (for label 8)
+        colorCharts.push_back({139.0 / 255, 0.0 / 255, 0.0 / 255});      // Dark Red (for label 13)
+        colorCharts.push_back({176.0 / 255, 196.0 / 255, 222.0 / 255});  // Light Steel Blue (for label 14)
+        colorCharts.push_back({123.0 / 255, 104.0 / 255, 238.0 / 255});  // Medium Slate Blue (for label 24)
+        colorCharts.push_back({72.0 / 255, 61.0 / 255, 219.0 / 255});   // Dark Slate Blue (for label 30)
+        colorCharts.push_back({0.0 / 255, 139.0 / 255, 139.0 / 255});   // Dark Cyan (for label 33)
+        colorCharts.push_back({255.0 / 255, 160.0 / 255, 122.0 / 255});  // Light Salmon (for label 69)
         //store label to color map
         vector<vector<int>> mPofColorPoints;
         vector<int> mPofNormalPoints;
@@ -135,16 +149,24 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         //Manually initial the map
         label2colorMap.insert(pair<int, int>(-1, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(0, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(1, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(3, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(4, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(6, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(8, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(7, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(13, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(14, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(16, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(24, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(25, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(26, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(27, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(28, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(29, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(30, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(32, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(33, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(36, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(39, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(41, label2colorMap.size()));
@@ -161,6 +183,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(66, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(67, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(68, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(69, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(71, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(72, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(73, label2colorMap.size()));

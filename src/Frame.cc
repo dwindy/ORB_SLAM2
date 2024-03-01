@@ -227,7 +227,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         */
         ///Adds on
         //step 0 record address for storing dynamics
-        int headlength = classAddress.length() - 9;
+        int headlength = classAddress.length() - 9; //-9 for TUM
         clusterDynamicName = classAddress.substr(0,headlength) + "dynamics.txt";
         //cout<<"clusterDynamicName "<<clusterDynamicName<<endl;
         //step 1 get all class labels
@@ -280,24 +280,30 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
                 }
             }
         }
+        //Step 4 init the mvClusterOpFlowVariance
+        for(int i=0;i<allMasks.size();i++)
+            mvClusterOpFlowVariance.push_back(cv::Point2f(0.0));
+
+        //Step 5 init the mvClusterOpFlowMean
         //Step 4 allocation label/cluster for optical flow features
         ///Step 1 calc optical Flow
         //cal features for last frame
-        int opflowFeatureNum = 2000;
-        cv::goodFeaturesToTrack(frameImGray, mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
-        mvOpFlowKyClusters = vector<int>(opflowFeatureNum, -1);
-        mvOpFlowKyLabels = vector<int>(opflowFeatureNum, -1);
-        for (int i = 0; i < mvOpFlwKyPt.size(); i++) {
-            int x = int(mvOpFlwKyPt[i].x), y = int(mvOpFlwKyPt[i].y);
-            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
-                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
-                    //store the cluster index and label for this key point.
-                    int ptLabel = mvClusterLabels[j];
-                    mvOpFlowKyClusters[i] = j;
-                    mvOpFlowKyLabels[i] = ptLabel;
-                }
-            }
-        }
+//        int opflowFeatureNum = 2000;
+//        cv::goodFeaturesToTrack(frameImGray, mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
+//allocate not here, in check optical flow dynamic check
+//        mvOpFlowKyClusters = vector<int>(opflowFeatureNum, -1);
+//        mvOpFlowKyLabels = vector<int>(opflowFeatureNum, -1);
+//        for (int i = 0; i < mvOpFlwKyPt.size(); i++) {
+//            int x = int(mvOpFlwKyPt[i].x), y = int(mvOpFlwKyPt[i].y);
+//            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
+//                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
+//                    //store the cluster index and label for this key point.
+//                    int ptLabel = mvClusterLabels[j];
+//                    mvOpFlowKyClusters[i] = j;
+//                    mvOpFlowKyLabels[i] = ptLabel;
+//                }
+//            }
+//        }
         //Note didn't need to update the size because didn't removing any points
         //N = mvKeys.size();
         ///-------------------------------------

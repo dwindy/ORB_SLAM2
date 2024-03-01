@@ -673,117 +673,252 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     }
 
     void Tracking::CheckOpticalFlowDynamic(Frame &curF, KeyFrame &lastKeyF) {
+        ///Step 0 prepare last frame key features
+        int opflowFeatureNum = 2000;
+        cv::goodFeaturesToTrack(lastKeyF.frameImGray, lastKeyF.mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
+        //cout<<"lastKeyF.mvOpFlwKyPt size "<<lastKeyF.mvOpFlwKyPt.size()<<endl;
+        int opfeatureNumbefore = lastKeyF.mvOpFlwKyPt.size();
         ///Step 1 calc the optical flow vector
         vector<uchar> status;
         vector<float> err;
         vector<cv::Point2f> matchedPt;
         cv::calcOpticalFlowPyrLK(lastKeyF.frameImGray, curF.frameImGray, lastKeyF.mvOpFlwKyPt, matchedPt,
                                  status, err, cv::Size(21, 21), 3);
-        ///Step 2 check the dynamics of each cluster/label
-        ///step 2.1 for each cluster, store the last frame feature and cur frame corresponding feature
-        std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastKeyF.mvClusterLabels.size());
-        std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastKeyF.mvClusterLabels.size());
-        for (int i = 0; i < status.size(); i++) {
-            if (status[i] == 1) {
-                //todo label -1 points?
-                int clusterIndex = lastKeyF.mvOpFlowKyClusters[i];//optical keypoint i, belongs to which cluster
-                if(clusterIndex>-1){
-                    pointOfClusters_prev[clusterIndex].push_back( lastKeyF.mvOpFlwKyPt[i]);
-                    pointOfClusters_cur[clusterIndex].push_back( matchedPt[i]);
+        //cout<<"lastKeyF.mvOpFlwKyPt size "<<lastKeyF.mvOpFlwKyPt.size()<<endl;
+        int opfeatureNumafter = lastKeyF.mvOpFlwKyPt.size();
+        if(opfeatureNumbefore!=opfeatureNumafter)
+            cout<<"opfeatureNumbefore!=opfeatureNumafter in CheckOpticalFlowDynamic() function"<<endl;
+        ///Step 2, allocate the current optical flow feature to current clusters
+        curF.mvOpFlowKyClusters = vector<int>(matchedPt.size(), -1);
+        curF.mvOpFlowKyLabels = vector<int>(matchedPt.size(), -1);
+        std::vector<vector<cv::Point2f>> pointOfClusters_cur(curF.mvClusterLabels.size());
+        std::vector<vector<cv::Point2f>> pointOfClusters_last(curF.mvClusterLabels.size());
+        for (int i = 0; i < matchedPt.size(); i++) {
+            if(status[i]){
+                for (int j = 0; j < curF.allMasks.size(); j++) {
+                    //cout<<"matchedPt[i].y, matchedPt[i].x "<<matchedPt[i].y<<" "<<matchedPt[i].x<<endl;
+                    int x = int(matchedPt[i].x), y = int(matchedPt[i].y);
+                    if (int(curF.allMasks[j].at<uchar>(y, x)) > 0) {
+                        ///Step 2.1 for each key point, store the cluster index and object label
+                        int ptLabel = curF.mvClusterLabels[j];
+                        curF.mvOpFlowKyLabels[i] = ptLabel;
+                        curF.mvOpFlowKyClusters[i] = j;
+                        ///Step 2.2 for each cluster, store the optical features
+                        pointOfClusters_cur[j].push_back(matchedPt[i]);
+                        pointOfClusters_last[j].push_back(lastKeyF.mvOpFlwKyPt[i]);
+                    }
                 }
             }
         }
-        ///step 2.2 calc the mean vector for each cluster
+        ///Step 3, for each cluster, calc the vector mean and vector variance
         vector<cv::Point2f> clusterMeans;
         vector<cv::Point2f> clusterVariance;
         vector<cv::Point2f> clusterMeanPoints;
-        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+        for (int i = 0; i < pointOfClusters_cur.size(); i++) {
             //mean error vector
             cv::Point2f meanVector(0, 0), varianceVector(0, 0);
             cv::Point2f meanPoint(0, 0);
-            pointMean(pointOfClusters_prev[i], meanPoint);
-            vectorMean(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector);
-            vectorVariance(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector, varianceVector);
+            pointMean(pointOfClusters_cur[i], meanPoint);
+            vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
+            vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
             clusterMeans.push_back(meanVector);
-            //clusterVariance.push_back(varianceVector);
-            //lastKeyF.mvClusterOpFlowVariance.push_back(varianceVector);
-            curF.mvClusterOpFlowVariance.push_back(varianceVector);
+            clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
+            curF.mvClusterOpFlowVariance[i]=varianceVector;
         }
-        ///test draw.
-//        cv::Mat imgclone = curF.frameImGray.clone();
-//        cv::Mat imgclone_color;
-//        cv::cvtColor(imgclone, imgclone_color, cv::COLOR_GRAY2BGR);
-//        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
-//            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
-////                cv::circle(imgclone_color, pointOfClusters_prev[i][j], 2, cv::Scalar(0, 255, 0), -1);
-////                cv::line(imgclone_color, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 0, 255), 2);
-//                //cv::circle(imgclone_color, clusterMeanPoints[i], 2, cv::Scalar(0, 255, 0), -1);
-//                cv::circle(imgclone_color, clusterMeanPoints[i]+clusterVariance[i], 2, cv::Scalar(0, 255, 0), -1);
-//                cv::line(imgclone_color,clusterMeanPoints[i], clusterMeanPoints[i]+clusterVariance[i], cv::Scalar(0, 0, 255), 2);
-//            }
-//        }
-//        imshow("optical flow Keyframe ", imgclone_color);
-//        cv::waitKey(1);
     }
 
     void Tracking::CheckOpticalFlowDynamic(Frame &curF, Frame &lastF) {
-        ///Step 1 calc the optical flow
+        ///Step 0 prepare last frame key features
+        int opflowFeatureNum = 2000;
+        cv::goodFeaturesToTrack(lastF.frameImGray, lastF.mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
+        //cout<<"lastKeyF.mvOpFlwKyPt size "<<lastKeyF.mvOpFlwKyPt.size()<<endl;
+        int opfeatureNumbefore = lastF.mvOpFlwKyPt.size();
+        ///Step 1 calc the optical flow vector
         vector<uchar> status;
         vector<float> err;
         vector<cv::Point2f> matchedPt;
         cv::calcOpticalFlowPyrLK(lastF.frameImGray, curF.frameImGray, lastF.mvOpFlwKyPt, matchedPt,
                                  status, err, cv::Size(21, 21), 3);
-        ///Step 2 check the dynamics of each cluster/label
-        ///step 2.1 for each cluster store the last frame feature and cur frame corresponding feature
-        std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastF.mvClusterLabels.size());
-        std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastF.mvClusterLabels.size());
-        for (int i = 0; i < status.size(); i++) {
-            if (status[i] == 1) {
-                int clusterIndex = lastF.mvOpFlowKyClusters[i];
-                if (clusterIndex > -1) {
-                    pointOfClusters_prev[clusterIndex].push_back(lastF.mvOpFlwKyPt[i]);
-                    pointOfClusters_cur[clusterIndex].push_back(matchedPt[i]);
+        //cout<<"lastKeyF.mvOpFlwKyPt size "<<lastKeyF.mvOpFlwKyPt.size()<<endl;
+        int opfeatureNumafter = lastF.mvOpFlwKyPt.size();
+        if(opfeatureNumbefore!=opfeatureNumafter)
+            cout<<"opfeatureNumbefore!=opfeatureNumafter in CheckOpticalFlowDynamic() function"<<endl;
+        ///Step 2, allocate the current optical flow feature to current clusters
+        curF.mvOpFlowKyClusters = vector<int>(matchedPt.size(), -1);
+        curF.mvOpFlowKyLabels = vector<int>(matchedPt.size(), -1);
+        std::vector<vector<cv::Point2f>> pointOfClusters_cur(curF.mvClusterLabels.size());
+        std::vector<vector<cv::Point2f>> pointOfClusters_last(curF.mvClusterLabels.size());
+        for (int i = 0; i < matchedPt.size(); i++) {
+            if(status[i]){
+                for(int j=0;j<curF.allMasks.size();j++){
+                    int x = int(matchedPt[i].x), y = int(matchedPt[i].y);
+                    if(int(curF.allMasks[j].at<uchar>(y,x)) > 0){
+                        ///Step 2.1 for each key point, store the cluster index and object label
+                        int ptLabel = curF.mvClusterLabels[j];
+                        curF.mvOpFlowKyLabels[i] = ptLabel;
+                        curF.mvOpFlowKyClusters[i] = j;
+                        ///Step 2.2 for each cluster, store the optical features
+                        pointOfClusters_cur[j].push_back(matchedPt[i]);
+                        pointOfClusters_last[j].push_back(lastF.mvOpFlwKyPt[i]);
+                    }
                 }
             }
         }
-        ///step 2.2 calc the mean vector for each cluster
+        ///Step 3, for each cluster, calc the vector mean and vector variance
         vector<cv::Point2f> clusterMeans;
         vector<cv::Point2f> clusterVariance;
         vector<cv::Point2f> clusterMeanPoints;
-        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
-            cv::Point2f meanVector, varianceVector;
+        for (int i = 0; i < pointOfClusters_cur.size(); i++) {
+            //mean error vector
+            cv::Point2f meanVector(0, 0), varianceVector(0, 0);
             cv::Point2f meanPoint(0, 0);
-            pointMean(pointOfClusters_prev[i], meanPoint);
-            vectorMean(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector);
-            vectorVariance(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector, varianceVector);
+            pointMean(pointOfClusters_cur[i], meanPoint);
+            vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
+            vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
             clusterMeans.push_back(meanVector);
-            //clusterVariance.push_back(varianceVector);
-            //lastF.mvClusterOpFlowVariance.push_back(varianceVector);
-            curF.mvClusterOpFlowVariance.push_back(varianceVector);
+            clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
+            curF.mvClusterOpFlowVariance[i]=varianceVector;
         }
-        ///test printout the vector variance
-//        for (int i = 0; i < lastF.mvClusterLabels.size(); i++) {
-//            cout<<"cluster label "<<lastF.mvClusterLabels[i]
-//            <<" "<<sqrt(clusterVariance[i].x*clusterVariance[i].x + clusterVariance[i].y*clusterVariance[i].y)<<endl;
-//        }
-//        cout<<"-----------------------------------------------------"<<endl;
-        ///test draw.
-//        cv::Mat imgclone = curF.frameImGray.clone();
-//        cv::Mat imgclone_color;
-//        cv::cvtColor(imgclone, imgclone_color, cv::COLOR_GRAY2BGR);
-//        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
-//            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
-////                cv::circle(imgclone_color, pointOfClusters_prev[i][j], 2, cv::Scalar(0, 255, 0), -1);
-////                cv::line(imgclone_color, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 0, 255), 2);
-//                cv::circle(imgclone_color, clusterMeanPoints[i]+clusterVariance[i], 2, cv::Scalar(0, 255, 0), -1);
-//                cv::line(imgclone_color,clusterMeanPoints[i], clusterMeanPoints[i]+clusterVariance[i], cv::Scalar(0, 0, 255), 2);
+    }
+
+    //Old Code with error, I group the features by last frame cluster not for current frame.
+//    void Tracking::CheckOpticalFlowDynamic(Frame &curF, KeyFrame &lastKeyF) {
+//        ///Step 1 calc the optical flow vector
+//        vector<uchar> status;
+//        vector<float> err;
+//        vector<cv::Point2f> matchedPt;
+//        cv::calcOpticalFlowPyrLK(lastKeyF.frameImGray, curF.frameImGray, lastKeyF.mvOpFlwKyPt, matchedPt,
+//                                 status, err, cv::Size(21, 21), 3);
+//        ///Step 2 check the dynamics of each cluster/label
+//        ///step 2.1 for each cluster, store the last frame feature and cur frame corresponding feature
+//        std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastKeyF.mvClusterLabels.size());
+//        std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastKeyF.mvClusterLabels.size());
+//        for (int i = 0; i < status.size(); i++) {
+//            if (status[i] == 1) {
+//                //todo label -1 points?
+//                int clusterIndex = lastKeyF.mvOpFlowKyClusters[i];//optical keypoint i, belongs to which cluster
+//                if(clusterIndex>-1){
+//                    pointOfClusters_prev[clusterIndex].push_back( lastKeyF.mvOpFlwKyPt[i]);
+//                    pointOfClusters_cur[clusterIndex].push_back( matchedPt[i]);
+//                }
 //            }
 //        }
-//        imshow("optical flow frame", imgclone_color);
-//        cv::waitKey(1);
-    }
+//        ///step 2.2 calc the mean vector for each cluster
+//        vector<cv::Point2f> clusterMeans;
+//        vector<cv::Point2f> clusterVariance;
+//        vector<cv::Point2f> clusterMeanPoints;
+//        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+//            //mean error vector
+//            cv::Point2f meanVector(0, 0), varianceVector(0, 0);
+//            cv::Point2f meanPoint(0, 0);
+//            pointMean(pointOfClusters_prev[i], meanPoint);
+//            vectorMean(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector);
+//            vectorVariance(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector, varianceVector);
+//            clusterMeans.push_back(meanVector);
+//            //clusterVariance.push_back(varianceVector);
+//            //lastKeyF.mvClusterOpFlowVariance.push_back(varianceVector);
+//            //curF.mvClusterOpFlowVariance.push_back(varianceVector);
+//            clusterMeanPoints.push_back(meanPoint);
+//        }
+//        ///test draw
+//        cv::Mat curImgclone = curF.frameImGray.clone();
+//        cv::Mat lastImgClone = mLastFrame.frameImGray.clone();
+//        cv::Mat curImgColor, lastImgColor;
+//        cv::cvtColor(curImgclone, curImgColor, cv::COLOR_GRAY2BGR);
+//        cv::cvtColor(lastImgClone, lastImgColor, cv::COLOR_GRAY2BGR);
+//        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+//            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
+//                cv::circle(lastImgColor, pointOfClusters_prev[i][j], 1, cv::Scalar(0, 0, 255), -1);
+//                cv::line(lastImgColor, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 255, 0), 1);
+//            }
+//        }
+//        for (int i = 0; i < pointOfClusters_cur.size(); i++) {
+//            for (int j = 0; j < pointOfClusters_cur[i].size(); j++) {
+//                cv::circle(curImgColor, pointOfClusters_cur[i][j], 1, cv::Scalar(0, 255, 0), -1);
+//            }
+//        }
+//        imshow("optical flow last frame ", lastImgColor);
+//        imshow("optical flow cur frame ", curImgColor);
+//        cv::waitKey(0);
+//        int pause = 0;
+//        ///old test draw.
+////        cv::Mat imgclone = curF.frameImGray.clone();
+////        cv::Mat imgclone_color;
+////        cv::cvtColor(imgclone, imgclone_color, cv::COLOR_GRAY2BGR);
+////        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+////            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
+////                cv::circle(imgclone_color, pointOfClusters_prev[i][j], 2, cv::Scalar(0, 255, 0), -1);
+////                cv::line(imgclone_color, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 0, 255), 2);
+////                cv::circle(imgclone_color, clusterMeanPoints[i], 10, cv::Scalar(0, 255, 0), -1);
+//////                cv::circle(imgclone_color, clusterMeanPoints[i]+clusterVariance[i], 2, cv::Scalar(0, 255, 0), -1);
+//////                cv::line(imgclone_color,clusterMeanPoints[i], clusterMeanPoints[i]+clusterVariance[i], cv::Scalar(0, 0, 255), 2);
+////            }
+////        }
+////        imshow("optical flow Keyframe ", imgclone_color);
+////        cv::waitKey(0);
+////        int pause = 0;
+//    }
+
+//    void Tracking::CheckOpticalFlowDynamic(Frame &curF, Frame &lastF) {
+//        ///Step 1 calc the optical flow
+//        vector<uchar> status;
+//        vector<float> err;
+//        vector<cv::Point2f> matchedPt;
+//        //returns status stands for if the current feature matched with last frame feature
+//        cv::calcOpticalFlowPyrLK(lastF.frameImGray, curF.frameImGray, lastF.mvOpFlwKyPt, matchedPt,
+//                                 status, err, cv::Size(21, 21), 3);
+//        ///Step 2 check the dynamics of each feature, allocate it to cluster/label
+//        ///step 2.1 for each cluster store the last frame feature and cur frame corresponding feature
+//        std::vector<vector<cv::Point2f>> pointOfClusters_prev(lastF.mvClusterLabels.size());
+//        std::vector<vector<cv::Point2f>> pointOfClusters_cur(lastF.mvClusterLabels.size());
+//        for (int i = 0; i < status.size(); i++) {
+//            if (status[i] == 1) {
+//                int clusterIndex = lastF.mvOpFlowKyClusters[i];
+//                if (clusterIndex > -1) {
+//                    pointOfClusters_prev[clusterIndex].push_back(lastF.mvOpFlwKyPt[i]);
+//                    pointOfClusters_cur[clusterIndex].push_back(matchedPt[i]);
+//                }
+//            }
+//        }
+//        ///step 2.2 calc the mean vector for each cluster
+//        vector<cv::Point2f> clusterMeans;
+//        vector<cv::Point2f> clusterVariance;
+//        vector<cv::Point2f> clusterMeanPoints;
+//        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+//            cv::Point2f meanVector, varianceVector;
+//            cv::Point2f meanPoint(0, 0);
+//            pointMean(pointOfClusters_prev[i], meanPoint);//mean point of last frame cluster
+//            vectorMean(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector);//mean of the difference vector along last frame and cur frame
+//            vectorVariance(pointOfClusters_prev[i], pointOfClusters_cur[i], meanVector, varianceVector);
+//            clusterMeans.push_back(meanVector);
+//            //clusterVariance.push_back(varianceVector);
+//            //lastF.mvClusterOpFlowVariance.push_back(varianceVector);
+//            curF.mvClusterOpFlowVariance.push_back(varianceVector);
+//            clusterMeanPoints.push_back(meanPoint);
+//        }
+//        ///test printout the vector variance
+////        for (int i = 0; i < lastF.mvClusterLabels.size(); i++) {
+////            cout<<"cluster label "<<lastF.mvClusterLabels[i]
+////            <<" "<<sqrt(clusterVariance[i].x*clusterVariance[i].x + clusterVariance[i].y*clusterVariance[i].y)<<endl;
+////        }
+////        cout<<"-----------------------------------------------------"<<endl;
+//        ///test draw.
+////        cv::Mat imgclone = curF.frameImGray.clone();
+////        cv::Mat imgclone_color;
+////        cv::cvtColor(imgclone, imgclone_color, cv::COLOR_GRAY2BGR);
+////        for (int i = 0; i < pointOfClusters_prev.size(); i++) {
+////            for (int j = 0; j < pointOfClusters_prev[i].size(); j++) {
+//////                cv::circle(imgclone_color, pointOfClusters_prev[i][j], 2, cv::Scalar(0, 255, 0), -1);
+//////                cv::line(imgclone_color, pointOfClusters_prev[i][j], pointOfClusters_cur[i][j], cv::Scalar(0, 0, 255), 2);
+////                cv::circle(imgclone_color, clusterMeanPoints[i]+clusterVariance[i], 2, cv::Scalar(0, 255, 0), -1);
+////                cv::line(imgclone_color,clusterMeanPoints[i], clusterMeanPoints[i]+clusterVariance[i], cv::Scalar(0, 0, 255), 2);
+////            }
+////        }
+////        imshow("optical flow frame", imgclone_color);
+////        cv::waitKey(1);
+//    }
 
 /**
  * This function check the variance of re-projection error
@@ -872,7 +1007,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                     ptIndexOfEachCluster[clusteri].push_back(i);
                     mapPointsOfEachMasks[clusteri].push_back(F.mvpMapPoints[i]);
                 }
-                int label = F.mvClusterLabels[clusteri];
+                //int label = F.mvClusterLabels[clusteri]; ///error i forget comment the first line why orb has no this error while boon met?
                 //if(label==0)
                 //    cout<<"pt "<<F_cur.mvKeysUn[i].pt<<" is person point "<<endl;
             }
@@ -997,7 +1132,11 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         for (int i = 0; i < clusterDynamicFlags.size(); i++) {
             float varianceVector = sqrt(curF.mvClusterOpFlowVariance[i].x * curF.mvClusterOpFlowVariance[i].x +
                                         curF.mvClusterOpFlowVariance[i].y + curF.mvClusterOpFlowVariance[i].y);
-            if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) {
+            //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) { //TUM and most Bonn
+            if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
+            //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
+            //    if (varianceVector > 1.0 ) {
+            //if(curF.mvClusterLabels[i]==0){
                 clusterDynamicFlags[i] = true;
                 curF.mvClusterDynamic[i] = true;
             }
