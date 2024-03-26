@@ -1137,6 +1137,8 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
             //    if (varianceVector > 1.0 ) {
             //if(curF.mvClusterLabels[i]==0){
+            //if(curF.mvRePjtVarianceofClusters[i] > 5.0){
+            //if(varianceVector > 1.0){
                 clusterDynamicFlags[i] = true;
                 curF.mvClusterDynamic[i] = true;
             }
@@ -1182,7 +1184,6 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     }
 
     void Tracking::MonocularInitialization() {
-
         if (!mpInitializer) {
             // Set Reference Frame
             if (mCurrentFrame.mvKeys.size() > 100) {
@@ -1191,14 +1192,10 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                 mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
                 for (size_t i = 0; i < mCurrentFrame.mvKeysUn.size(); i++)
                     mvbPrevMatched[i] = mCurrentFrame.mvKeysUn[i].pt;
-
                 if (mpInitializer)
                     delete mpInitializer;
-
                 mpInitializer = new Initializer(mCurrentFrame, 1.0, 200);
-
                 fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
-
                 return;
             }
         } else {
@@ -1209,12 +1206,9 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                 fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
                 return;
             }
-
             // Find correspondences
             ORBmatcher matcher(0.9, true);
-            int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
-                                                           100);
-
+            int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,100);
             ///adds on
             int Counter = 0;
             for (int i = 0; i < mvIniMatches.size(); i++)
