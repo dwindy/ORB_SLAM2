@@ -71,10 +71,10 @@ long unsigned int KeyFrame::nNextId=0;
             mnMaxY(F.mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
             mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
             mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap),
-            ///added modules
-            mLaserPoints(F.mLaserPoints),mLaserPt_cam(F.mLaserPt_cam)//,mLaserPtsUndis(F.mLaserPtsUndis),
-            //mLaserTimes(F.mLaserTimes), mPjcLaserPts(F.mPjcLaserPts), mPjcLaserPtsUndis(F.mPjcLaserPtsUndis),
-            //planNorms(F.planNorms)//, mvPlanes(mvPlanes)
+            //added LiDAR and Segment modules
+            mTcamlid(F.mTcamlid), mvORBAttributions(F.mvORBAttributions),
+            mSegmentsInfo(F.mSegmentsInfo), mvLiDARPoints(F.mvLiDARPoints),
+            mvPlanes(F.mvPlanes)
     {
         //关键帧ID
         mnId=nNextId++;

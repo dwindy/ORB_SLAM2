@@ -39,24 +39,24 @@ class Map;
 class MapPoint;
 class Frame;
 class KeyFrameDatabase;
-class PtLsr;
-
+    ///Added
+    struct mORBAttribution;
+    struct mLiDARPoint;
+    class SegmentInfo;
+    class mPlane;
+    ///------------------
 class KeyFrame
 {
 public:
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     ///added module
-    cv::Mat mTcamlid;
-    void ProjectLiDARtoCam();
-    vector<std::vector<double>> mLaserPoints;
-    vector<PtLsr> mLaserPt_cam;
-    vector<std::vector<double>> mLaserPtsUndis;//Todo member transfer to PCL::PointXYZ?
-    vector<double> mLaserTimes; //{middle time, start, end}
-    vector<cv::Point> mPjcLaserPts;
-    vector<cv::KeyPoint> mPjcLaserPtsUndis;
-    vector<vector<cv::Point>> planNorms;
-    //std::vector<ORB_SLAM2::Plane> mvPlanes;
+    cv::Mat mTcamlid;//Transform from LiDAR to Camera
+    vector<mORBAttribution*> mvORBAttributions; //store ORB-LiDAR related attributions
+    vector<SegmentInfo*> mSegmentsInfo;
+    vector<mLiDARPoint*> mvLiDARPoints;
+    vector<mPlane*> mvPlanes;
+    ///----------------------------------------
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);

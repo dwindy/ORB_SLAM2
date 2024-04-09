@@ -75,11 +75,13 @@ namespace ORB_SLAM2
         // Preprocess the input and call Track(). Extract features and performs stereo matching.
         cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
         cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
+        ///Added
+        cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp,
+                              const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
+        cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp,
+                                const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
+        ///-----------------------
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
-        ///added module
-        cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
-        void ProjectLiDARtoImage();
-        void ProjectPlanetoImage();
 
         void SetLocalMapper(LocalMapping* pLocalMapper);
         void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -163,16 +165,6 @@ namespace ORB_SLAM2
         bool NeedNewKeyFrame();
         void CreateNewKeyFrame();
 
-        ///Added Module
-        void UndisLiDAR();
-        //void ApplyLiDARRatio();
-        void RegionGrowing(Frame &inputFrame,bool Undistored);
-        int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, Plane &foundPlane, pcl::PointIndices &inliersOUT);
-        void LidarICP(Frame &inputFrame1, Frame &inputFrame2, cv::Mat &transformation);
-        bool associateVisionLiDAR();
-        void AssociateLiDARInit(float);
-        vector<float> RayPlaneDis(vector<float> ray_dir, vector<float> origin, vector<float> PlaneN, vector<float> PlaneP);
-
         // In case of performing only localization, this flag is true when there are no matches to
         // points in the map. Still tracking will continue if there are enough matches with temporal points.
         // In that case we are doing visual odometry. The system will try to do relocalization to recover
@@ -218,6 +210,7 @@ namespace ORB_SLAM2
         ///added module
         //LiDAR to Camera Transform
         cv::Mat mTcamlid;
+        ///---------------------
 
         //New KeyFrame rules (according to fps)
         int mMinFrames;

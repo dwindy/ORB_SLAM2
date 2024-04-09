@@ -123,175 +123,193 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpLoopCloser->SetLocalMapper(mpLocalMapper);
 }
 
-cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp)
-{
-    if(mSensor!=STEREO)
-    {
-        cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO." << endl;
-        exit(-1);
-    }   
+    cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp) {
+        if (mSensor != STEREO) {
+            cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO." << endl;
+            exit(-1);
+        }
 
-    // Check mode change
-    {
-        unique_lock<mutex> lock(mMutexMode);
-        if(mbActivateLocalizationMode)
+        // Check mode change
         {
-            mpLocalMapper->RequestStop();
+            unique_lock<mutex> lock(mMutexMode);
+            if (mbActivateLocalizationMode) {
+                mpLocalMapper->RequestStop();
 
-            // Wait until Local Mapping has effectively stopped
-            while(!mpLocalMapper->isStopped())
-            {
-                usleep(1000);
+                // Wait until Local Mapping has effectively stopped
+                while (!mpLocalMapper->isStopped()) {
+                    usleep(1000);
+                }
+
+                mpTracker->InformOnlyTracking(true);
+                mbActivateLocalizationMode = false;
             }
-
-            mpTracker->InformOnlyTracking(true);
-            mbActivateLocalizationMode = false;
-        }
-        if(mbDeactivateLocalizationMode)
-        {
-            mpTracker->InformOnlyTracking(false);
-            mpLocalMapper->Release();
-            mbDeactivateLocalizationMode = false;
-        }
-    }
-
-    // Check reset
-    {
-    unique_lock<mutex> lock(mMutexReset);
-    if(mbReset)
-    {
-        mpTracker->Reset();
-        mbReset = false;
-    }
-    }
-
-    cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
-
-    unique_lock<mutex> lock2(mMutexState);
-    mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-    return Tcw;
-}
-
-cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp)
-{
-    if(mSensor!=RGBD)
-    {
-        cerr << "ERROR: you called TrackRGBD but input sensor was not set to RGBD." << endl;
-        exit(-1);
-    }    
-
-    // Check mode change
-    {
-        unique_lock<mutex> lock(mMutexMode);
-        if(mbActivateLocalizationMode)
-        {
-            mpLocalMapper->RequestStop();
-
-            // Wait until Local Mapping has effectively stopped
-            while(!mpLocalMapper->isStopped())
-            {
-                usleep(1000);
+            if (mbDeactivateLocalizationMode) {
+                mpTracker->InformOnlyTracking(false);
+                mpLocalMapper->Release();
+                mbDeactivateLocalizationMode = false;
             }
-
-            mpTracker->InformOnlyTracking(true);
-            mbActivateLocalizationMode = false;
         }
-        if(mbDeactivateLocalizationMode)
+
+        // Check reset
         {
-            mpTracker->InformOnlyTracking(false);
-            mpLocalMapper->Release();
-            mbDeactivateLocalizationMode = false;
-        }
-    }
-
-    // Check reset
-    {
-    unique_lock<mutex> lock(mMutexReset);
-    if(mbReset)
-    {
-        mpTracker->Reset();
-        mbReset = false;
-    }
-    }
-
-    cv::Mat Tcw = mpTracker->GrabImageRGBD(im,depthmap,timestamp);
-
-    unique_lock<mutex> lock2(mMutexState);
-    mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-    return Tcw;
-}
-
-///Added LiDAR module
-/**
- * input image, image time, lasers, laser times(middle time, start time and end time),
- * return pose
- * @param im [in] : current image frame
- * @param timestamp [in] : current frame time
- * @param lasers [in] : current laser points
- * @return pose [out]: robot pose
- */
-cv::Mat System::TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers)
-{
-    if(mSensor!=MONOCULAR)
-    {
-        cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular." << endl;
-        exit(-1);
-    }
-
-    // Check mode change
-    {
-        //独占锁，主要是为了mbActivateLocalizationMode和mbDeactivateLocalizationMode不发生混乱
-        unique_lock<mutex> lock(mMutexMode);
-        if (mbActivateLocalizationMode) //true则关闭局部地图线程
-        {
-            mpLocalMapper->RequestStop();
-
-            // Wait until Local Mapping has effectively stopped
-            while (!mpLocalMapper->isStopped())
-            {
-                usleep(1000);
+            unique_lock<mutex> lock(mMutexReset);
+            if (mbReset) {
+                mpTracker->Reset();
+                mbReset = false;
             }
-            //mpLocalMapper停止后，只tracking，不更新局部地图
-            mpTracker->InformOnlyTracking(true);
-            //说是可以释放更多资源？
-            mbActivateLocalizationMode = false;
         }
-        //同理，如果deactive localization mode TRUE,又释放一些资源。
-        if (mbDeactivateLocalizationMode)
-        {
-            mpTracker->InformOnlyTracking(false);
-            mpLocalMapper->Release();
-            mbDeactivateLocalizationMode = false;
-        }
+
+        cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft, imRight, timestamp);
+
+        unique_lock<mutex> lock2(mMutexState);
+        mTrackingState = mpTracker->mState;
+        mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+        mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+        return Tcw;
     }
 
-    // Check reset
-    {
-        unique_lock<mutex> lock(mMutexReset);
-        if(mbReset)
-        {
-            mpTracker->Reset();
-            mbReset = false;
+
+    ///Added module---------------------------------------------
+    cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp,
+                                const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName) {
+        if (mSensor != STEREO) {
+            cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO." << endl;
+            exit(-1);
         }
+
+        // Check mode change
+        {
+            unique_lock<mutex> lock(mMutexMode);
+            if (mbActivateLocalizationMode) {
+                mpLocalMapper->RequestStop();
+
+                // Wait until Local Mapping has effectively stopped
+                while (!mpLocalMapper->isStopped()) {
+                    usleep(1000);
+                }
+
+                mpTracker->InformOnlyTracking(true);
+                mbActivateLocalizationMode = false;
+            }
+            if (mbDeactivateLocalizationMode) {
+                mpTracker->InformOnlyTracking(false);
+                mpLocalMapper->Release();
+                mbDeactivateLocalizationMode = false;
+            }
+        }
+
+        // Check reset
+        {
+            unique_lock<mutex> lock(mMutexReset);
+            if (mbReset) {
+                mpTracker->Reset();
+                mbReset = false;
+            }
+        }
+
+        //cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft, imRight, timestamp);
+        ///Added-----------------
+        cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft, imRight, timestamp,
+                                               LiDARRaw, ImageFileNAme, SegInfoFileName);
+        ///--------------
+        unique_lock<mutex> lock2(mMutexState);
+        mTrackingState = mpTracker->mState;
+        mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+        mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+        return Tcw;
     }
+    ///-----------------------------
+    cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp) {
+        if (mSensor != RGBD) {
+            cerr << "ERROR: you called TrackRGBD but input sensor was not set to RGBD." << endl;
+            exit(-1);
+        }
 
-    //获取相机的位姿
-    //cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
-    ///added module
-    cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp,lasers);
+        // Check mode change
+        {
+            unique_lock<mutex> lock(mMutexMode);
+            if (mbActivateLocalizationMode) {
+                mpLocalMapper->RequestStop();
 
-    //获取完后更新状态
-    unique_lock<mutex> lock2(mMutexState);
-    mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+                // Wait until Local Mapping has effectively stopped
+                while (!mpLocalMapper->isStopped()) {
+                    usleep(1000);
+                }
 
-    return Tcw;
-}
+                mpTracker->InformOnlyTracking(true);
+                mbActivateLocalizationMode = false;
+            }
+            if (mbDeactivateLocalizationMode) {
+                mpTracker->InformOnlyTracking(false);
+                mpLocalMapper->Release();
+                mbDeactivateLocalizationMode = false;
+            }
+        }
+
+        // Check reset
+        {
+            unique_lock<mutex> lock(mMutexReset);
+            if (mbReset) {
+                mpTracker->Reset();
+                mbReset = false;
+            }
+        }
+
+        cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp);
+
+        unique_lock<mutex> lock2(mMutexState);
+        mTrackingState = mpTracker->mState;
+        mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+        mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+        return Tcw;
+    }
+    ///Added
+    ///Add module of LiDAR and Image Segmentation
+    cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp,
+                              const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName) {
+        if (mSensor != RGBD) {
+            cerr << "ERROR: you called TrackRGBD but input sensor was not set to RGBD." << endl;
+            exit(-1);
+        }
+        // Check mode change
+        {
+            unique_lock<mutex> lock(mMutexMode);
+            if (mbActivateLocalizationMode) {
+                mpLocalMapper->RequestStop();
+                // Wait until Local Mapping has effectively stopped
+                while (!mpLocalMapper->isStopped()) {
+                    usleep(1000);
+                }
+                mpTracker->InformOnlyTracking(true);
+                mbActivateLocalizationMode = false;
+            }
+            if (mbDeactivateLocalizationMode) {
+                mpTracker->InformOnlyTracking(false);
+                mpLocalMapper->Release();
+                mbDeactivateLocalizationMode = false;
+            }
+        }
+        // Check reset
+        {
+            unique_lock<mutex> lock(mMutexReset);
+            if (mbReset) {
+                mpTracker->Reset();
+                mbReset = false;
+            }
+        }
+
+        //cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp);
+        ///Added-----------------
+        cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp,
+                                               LiDARRaw, ImageFileNAme, SegInfoFileName);
+        ///--------------
+        unique_lock<mutex> lock2(mMutexState);
+        mTrackingState = mpTracker->mState;
+        mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+        mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+        return Tcw;
+    }
+    ///------------------
 
 cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 {

@@ -76,15 +76,19 @@ namespace ORB_SLAM2
         // Input depthmap: Float (CV_32F).
         // Returns the camera pose (empty if tracking fails).
         cv::Mat TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp);
+        ///Added
+        cv::Mat TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp,
+                                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
+        cv::Mat TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp,
+                            const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
+
+        ///----------
+
 
         // Proccess the given monocular frame
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
         // Returns the camera pose (empty if tracking fails).
         cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp);
-        ///Added module
-        //Input image, image time, laser, laser time, laser start time, laser end time
-        cv::Mat TrackMonucular(const cv::Mat &im, const double &timestamp, const vector<vector<double>> &lasers);
-
         // This stops local mapping thread (map building) and performs only camera tracking.
         void ActivateLocalizationMode();
         // This resumes local mapping thread and performs SLAM again.

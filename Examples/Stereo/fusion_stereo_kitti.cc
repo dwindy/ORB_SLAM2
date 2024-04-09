@@ -22,6 +22,7 @@
 #include<iostream>
 #include<algorithm>
 #include<fstream>
+#include<iomanip>
 #include<chrono>
 
 #include<opencv2/core/core.hpp>
@@ -30,9 +31,8 @@
 
 using namespace std;
 
-void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
-                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
-
+void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
+                vector<string> &vstrImageRight, vector<double> &vTimestamps);
 ///Added Modes
 void LoadLaserScans(const string strPathToLiDARScans, vector<string> &vstrLiDARFilenames, const vector<string> &vstrImageFilenames);
 
@@ -40,42 +40,33 @@ void LoadSegmentInfo(const string strPathToSegmentInfo, vector<string> &vstrSegm
 
 void LoadLaserScans_KITTI(const string strPathToLiDARScans, vector<vector<float>> &datas);
 ///------------------
-
-int main(int argc, char **argv) {
-    if (argc != 5) {
-        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association"
-             << endl;
+int main(int argc, char **argv)
+{
+    if(argc != 4)
+    {
+        cerr << endl << "Usage: ./stereo_kitti path_to_vocabulary path_to_settings path_to_sequence" << endl;
         return 1;
     }
 
     // Retrieve paths to images
-    vector<string> vstrImageFilenamesRGB;
-    vector<string> vstrImageFilenamesD;
+    vector<string> vstrImageLeft;
+    vector<string> vstrImageRight;
     vector<double> vTimestamps;
-    string strAssociationFilename = string(argv[4]);
-    LoadImages(strAssociationFilename, vstrImageFilenamesRGB, vstrImageFilenamesD, vTimestamps);
+    LoadImages(string(argv[3]), vstrImageLeft, vstrImageRight, vTimestamps);
 
     ///Added
     // Retrieve paths to lidars
     vector<string> vstrLiDARFilenames;
-    LoadLaserScans(string(argv[3]), vstrLiDARFilenames, vstrImageFilenamesRGB);
+    LoadLaserScans(string(argv[3]), vstrLiDARFilenames, vstrImageLeft);
     // Retrieve paths to segment info
     vector<string> vstrSegFilenames;
-    LoadSegmentInfo(string(argv[3]), vstrSegFilenames, vstrImageFilenamesRGB);
+    LoadSegmentInfo(string(argv[3]), vstrSegFilenames, vstrImageLeft);
     ///-----------------
 
-    // Check consistency in the number of images and depthmaps
-    int nImages = vstrImageFilenamesRGB.size();
-    if (vstrImageFilenamesRGB.empty()) {
-        cerr << endl << "No images found in provided path." << endl;
-        return 1;
-    } else if (vstrImageFilenamesD.size() != vstrImageFilenamesRGB.size()) {
-        cerr << endl << "Different number of images for rgb and depth." << endl;
-        return 1;
-    }
+    const int nImages = vstrImageLeft.size();
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1], argv[2], ORB_SLAM2::System::RGBD, true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;
@@ -87,16 +78,20 @@ int main(int argc, char **argv) {
     ///added
     cout << "LiDAR in the sequence: "<< vstrLiDARFilenames.size() << endl << endl;
     ///----------------
+
     // Main loop
-    cv::Mat imRGB, imD;
-    for (int ni = 0; ni < nImages; ni++) {
-        // Read image and depthmap from file
-        imRGB = cv::imread(string(argv[3]) + "/" + vstrImageFilenamesRGB[ni], CV_LOAD_IMAGE_UNCHANGED);
-        imD = cv::imread(string(argv[3]) + "/" + vstrImageFilenamesD[ni], CV_LOAD_IMAGE_UNCHANGED);
+    cv::Mat imLeft, imRight;
+    for(int ni=0; ni<nImages; ni++)
+    {
+        // Read left and right images from file
+        imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_UNCHANGED);
+        imRight = cv::imread(vstrImageRight[ni],CV_LOAD_IMAGE_UNCHANGED);
         double tframe = vTimestamps[ni];
-        if (imRGB.empty()) {
+
+        if(imLeft.empty())
+        {
             cerr << endl << "Failed to load image at: "
-                 << string(argv[3]) << "/" << vstrImageFilenamesRGB[ni] << endl;
+                 << string(vstrImageLeft[ni]) << endl;
             return 1;
         }
 
@@ -113,72 +108,79 @@ int main(int argc, char **argv) {
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #endif
 
-        // Pass the image to the SLAM system
-        //SLAM.TrackRGBD(imRGB, imD, tframe);
-        SLAM.TrackRGBD(imRGB, imD, tframe, liDARdata, vstrImageFilenamesRGB[ni], vstrSegFilenames[ni]);
-
+        // Pass the images to the SLAM system
+        //SLAM.TrackStereo(imLeft,imRight,tframe);
+        SLAM.TrackStereo(imLeft,imRight,tframe,liDARdata, vstrImageLeft[ni], vstrSegFilenames[ni]);
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 #else
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 #endif
 
-        double ttrack = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+        double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 
-        vTimesTrack[ni] = ttrack;
+        vTimesTrack[ni]=ttrack;
 
         // Wait to load the next frame
-        double T = 0;
-        if (ni < nImages - 1)
-            T = vTimestamps[ni + 1] - tframe;
-        else if (ni > 0)
-            T = tframe - vTimestamps[ni - 1];
+        double T=0;
+        if(ni<nImages-1)
+            T = vTimestamps[ni+1]-tframe;
+        else if(ni>0)
+            T = tframe-vTimestamps[ni-1];
 
-        if (ttrack < T)
-            usleep((T - ttrack) * 1e6);
+        if(ttrack<T)
+            usleep((T-ttrack)*1e6);
     }
 
     // Stop all threads
     SLAM.Shutdown();
 
     // Tracking time statistics
-    sort(vTimesTrack.begin(), vTimesTrack.end());
+    sort(vTimesTrack.begin(),vTimesTrack.end());
     float totaltime = 0;
-    for (int ni = 0; ni < nImages; ni++) {
-        totaltime += vTimesTrack[ni];
+    for(int ni=0; ni<nImages; ni++)
+    {
+        totaltime+=vTimesTrack[ni];
     }
     cout << "-------" << endl << endl;
-    cout << "median tracking time: " << vTimesTrack[nImages / 2] << endl;
-    cout << "mean tracking time: " << totaltime / nImages << endl;
+    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
+    cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveTrajectoryTUM("CameraTrajectory.txt");
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
 
     return 0;
 }
 
-void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
-                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps) {
-    ifstream fAssociation;
-    fAssociation.open(strAssociationFilename.c_str());
-    while (!fAssociation.eof()) {
+void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
+                vector<string> &vstrImageRight, vector<double> &vTimestamps) {
+    ifstream fTimes;
+    string strPathTimeFile = strPathToSequence + "/times.txt";
+    fTimes.open(strPathTimeFile.c_str());
+    while (!fTimes.eof()) {
         string s;
-        getline(fAssociation, s);
+        getline(fTimes, s);
         if (!s.empty()) {
             stringstream ss;
             ss << s;
             double t;
-            string sRGB, sD;
             ss >> t;
             vTimestamps.push_back(t);
-            ss >> sRGB;
-            vstrImageFilenamesRGB.push_back(sRGB);
-            ss >> t;
-            ss >> sD;
-            vstrImageFilenamesD.push_back(sD);
-
         }
+    }
+
+    string strPrefixLeft = strPathToSequence + "/image_0/";
+    string strPrefixRight = strPathToSequence + "/image_1/";
+
+    const int nTimes = vTimestamps.size();
+    vstrImageLeft.resize(nTimes);
+    vstrImageRight.resize(nTimes);
+
+    for (int i = 0; i < nTimes; i++) {
+        stringstream ss;
+        ss << setfill('0') << setw(6) << i;
+        vstrImageLeft[i] = strPrefixLeft + ss.str() + ".png";
+        vstrImageRight[i] = strPrefixRight + ss.str() + ".png";
     }
 }
 
@@ -229,4 +231,4 @@ void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegment
     }
 }
 
-///---------------------
+///-----------------------------

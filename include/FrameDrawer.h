@@ -44,14 +44,9 @@ public:
 
     // Update info from the last processed frame.
     void Update(Tracking *pTracker);
-    ///added module
-    void UpdateLiDAR(Tracking *pTracker);
 
     // Draw last processed frame.
     cv::Mat DrawFrame();
-
-    //temporaly added for show dis and undis lidar
-    cv::Mat DrawLiDAR();
 
 protected:
 
@@ -67,10 +62,12 @@ protected:
     vector<cv::KeyPoint> mvIniKeys;
     vector<int> mvIniMatches;
     int mState;
-    ///added module
-    vector<cv::KeyPoint> mvPjcLsrPts;
-    vector<cv::KeyPoint> mvPjcLsrPtsUndis;
-    vector<vector<cv::Point2d>> mvPlanePoints;//TODO update to plane structure in the future?
+    ///Added Modules
+    vector<mORBAttribution*> mvORBattributions;
+    vector<SegmentInfo*> mSegmentsInfo;
+    vector<mLiDARPoint*> mvLiDARPoints;
+    vector<mPlane*> mvPlanes;
+    ///----------------------------
 
     Map* mpMap;
 

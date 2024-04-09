@@ -57,7 +57,7 @@ namespace ORB_SLAM2
 //            SetPose(frame.mTcw);
 //    }
 
-    ///added module
+    ///TODO - update the Frame Copy Constructor
     //Copy Constructor
     Frame::Frame(const Frame &frame)
             :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
@@ -71,10 +71,10 @@ namespace ORB_SLAM2
              mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
              mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
              mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
-             //added LiDAR modules
-             mLaserPt_cam(frame.mLaserPt_cam),mLaserPoints(frame.mLaserPoints)//,mLaserPtsUndis(frame.mLaserPtsUndis),
-             //mLaserTimes(frame.mLaserTimes),mPjcLaserPts(frame.mPjcLaserPts),mPjcLaserPtsUndis(frame.mPjcLaserPtsUndis),
-             //mvPlanes(frame.mvPlanes)
+             //added LiDAR and Segment modules
+             mTcamlid(frame.mTcamlid), mvORBAttributions(frame.mvORBAttributions),
+             mSegmentsInfo(frame.mSegmentsInfo), mvLiDARPoints(frame.mvLiDARPoints),
+             mvPlanes(frame.mvPlanes)
     {
         for(int i=0;i<FRAME_GRID_COLS;i++)
             for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -85,12 +85,14 @@ namespace ORB_SLAM2
     }
 
 
-    Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
-            :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
-             mpReferenceKF(static_cast<KeyFrame*>(NULL))
-    {
+    Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor *extractorLeft,
+                 ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf,
+                 const float &thDepth)
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractorLeft), mpORBextractorRight(extractorRight),
+              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+              mpReferenceKF(static_cast<KeyFrame *>(NULL)) {
         // Frame ID
-        mnId=nNextId++;
+        mnId = nNextId++;
 
         // Scale Level Info
         mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -103,14 +105,14 @@ namespace ORB_SLAM2
 
         // ORB extraction
         //分两个线程提取
-        thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
-        thread threadRight(&Frame::ExtractORB,this,1,imRight);
+        thread threadLeft(&Frame::ExtractORB, this, 0, imLeft);
+        thread threadRight(&Frame::ExtractORB, this, 1, imRight);
         threadLeft.join();
         threadRight.join();
 
         N = mvKeys.size();
 
-        if(mvKeys.empty())
+        if (mvKeys.empty())
             return;
 
         UndistortKeyPoints();
@@ -118,32 +120,124 @@ namespace ORB_SLAM2
         //特征点匹配，计算深度放进mvDpeth
         ComputeStereoMatches();
 
-        mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
-        mvbOutlier = vector<bool>(N,false);
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+        mvbOutlier = vector<bool>(N, false);
 
 
         // This is done only for the first Frame (or after a change in the calibration)
-        if(mbInitialComputations)
-        {
+        if (mbInitialComputations) {
             ComputeImageBounds(imLeft);
 
-            mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/(mnMaxX-mnMinX);
-            mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/(mnMaxY-mnMinY);
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / (mnMaxX - mnMinX);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / (mnMaxY - mnMinY);
 
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
-            invfx = 1.0f/fx;
-            invfy = 1.0f/fy;
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
 
-            mbInitialComputations=false;
+            mbInitialComputations = false;
         }
 
-        mb = mbf/fx;
+        mb = mbf / fx;
 
         AssignFeaturesToGrid();
     }
+
+    ///Added Module-------------------------------------
+    Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor *extractorLeft,
+                 ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
+                 ///Added----------
+                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress)
+                 ///---------------
+            : mpORBvocabulary(voc), mpORBextractorLeft(extractorLeft), mpORBextractorRight(extractorRight),
+              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+              mpReferenceKF(static_cast<KeyFrame *>(NULL)) {
+        // Frame ID
+        mnId = nNextId++;
+
+        // Scale Level Info
+        mnScaleLevels = mpORBextractorLeft->GetLevels();
+        mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+        mfLogScaleFactor = log(mfScaleFactor);
+        mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+
+        // ORB extraction
+        //分两个线程提取
+        thread threadLeft(&Frame::ExtractORB, this, 0, imLeft);
+        thread threadRight(&Frame::ExtractORB, this, 1, imRight);
+        threadLeft.join();
+        threadRight.join();
+
+        N = mvKeys.size();
+
+        if (mvKeys.empty())
+            return;
+
+        UndistortKeyPoints();
+
+        ///Added modes--------------------
+        ///init ORB attributions
+        mvORBAttributions.resize(N, nullptr); // Resize and initialize with nullptr
+        for (int i = 0; i < N; ++i) {
+            mvORBAttributions[i] = new mORBAttribution(); // Create new mORBAttribution objects
+        }
+        for(int i=0; i<N; i++){
+            mvORBAttributions[i]->keyPt = &mvKeysUn[i];
+            mvORBAttributions[i]->orbID = i;
+        }
+        ///read image segmentation
+        readSegmentsInfo(mSegmentsInfo, SegFileAddress);
+        vector<cv::Mat*> segmentImages(mSegmentsInfo.size());
+        cout<<"segmentImage number "<<segmentImages.size()<<endl;
+        readSegmentImages(segmentImages, SegFileAddress);
+        ///Read LiDAR construct LiDAR member
+        processLiDARPts(LiDARRaw);
+        ProjectLiDARtoCamtoImage_KITTI(imLeft.cols,imLeft.rows);
+        ///Pair LiDAR and Segments
+        groupLiDARandSegment(segmentImages);
+        planeFitEachSegment();
+        cout<<"mvPlanes num "<<mvPlanes.size()<<endl;
+        ORBdetphFromPlane(mvPlanes, mSegmentsInfo, segmentImages);
+        ORBdetphFromSegments(mvLiDARPoints, mSegmentsInfo, segmentImages, imLeft);
+        //ComputeStereoFromFusion(mvORBAttributions);
+        //MarkStereoFromFusion(mvORBAttributions);
+        ///---------------------------
+
+        //特征点匹配，计算深度放进mvDpeth
+        ComputeStereoMatches();
+
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+        mvbOutlier = vector<bool>(N, false);
+
+
+        // This is done only for the first Frame (or after a change in the calibration)
+        if (mbInitialComputations) {
+            ComputeImageBounds(imLeft);
+
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / (mnMaxX - mnMinX);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / (mnMaxY - mnMinY);
+
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
+
+            mbInitialComputations = false;
+        }
+
+        mb = mbf / fx;
+
+        AssignFeaturesToGrid();
+    }
+    ///-------------------------------------------------
 
     Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
                  const float &bf,                                                                                      //baseline * f
@@ -201,174 +295,92 @@ namespace ORB_SLAM2
         AssignFeaturesToGrid();
     }
 
-///added module
-/**
- * @brief 单目帧构造函数
- *
- * @param[in] imGray //灰度图
- * @param[in] timeStamp //时间戳
- * @param[in] lasers //激光点云
- * @param[in] laserTimes //激光点云的中间时间，开始时间，结束时间
- * @param[in & out] extractor //ORB特征点提取器的句柄
- * @param[in] voc //ORB字典句柄
- * @param[in] K //相机内参矩阵
- * @param[in] bf //baseline*f
- * @param[int]thDepth //区分远近点的深度阈值
- */
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const vector<vector<double>> &lasers,
-                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &Tcamlid, cv::Mat &distCoef,
-                 const float &bf, const float &thDepth)
+    //TODO check if the added vector<*> member has been initialized
+    ///Added
+    //add lidar, image segmentation
+    Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
+                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
+                 const float &bf, const float &thDepth,
+                 ///Added
+                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress)
+                 ///------
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
-              mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
-              mTimeStamp(timeStamp), mLaserPoints(lasers), mK(K.clone()),
-              mTcamlid(Tcamlid.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
+              mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //单目没有右相机
+              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
-        //Step 1 帧ID增加
-        mnId=nNextId++;
-
+        mnId = nNextId++;
         // Scale Level Info
-        //Step 2 图像金字塔参数
-        mnScaleLevels = mpORBextractorLeft->GetLevels(); //层数
-        mfScaleFactor = mpORBextractorLeft->GetScaleFactor(); //缩放因子
-        mfLogScaleFactor = log(mfScaleFactor); //缩放因子的自然数对数
-        mvScaleFactors = mpORBextractorLeft->GetScaleFactors(); //缩放因子 again?
-        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors(); //缩放因子的倒数
-        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares(); //sigma^2
-        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares(); //sigma^2倒数
-
+        mnScaleLevels = mpORBextractorLeft->GetLevels();
+        mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+        mfLogScaleFactor = log(mfScaleFactor);
+        mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
         // ORB extraction
-        //Step 3 提取特征点 0 左图 1 右图
-        //提取ORB特征
-        ExtractORB(0,imGray);
-
+        ExtractORB(0, imGray);
         N = mvKeys.size();
-
-        if(mvKeys.empty())
+        if (mvKeys.empty())
             return;
-
-        //Step 4 OpenCV的去畸变函数
         UndistortKeyPoints();
 
-        // Set no stereo information
-        //单目，右边图像的对应点和深度都赋-1
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
-
-        //初始化本帧的地图点-给null
-        mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
-        //初始化outlier，给false
-        mvbOutlier = vector<bool>(N,false);
-
+        ///Added modes--------------------
+        ///init ORB attributions
+        mvORBAttributions.resize(N);
+        for(int i=0; i<N; i++){
+            mvORBAttributions[i]->keyPt = &mvKeysUn[i];
+            mvORBAttributions[i]->orbID = i;
+        }
+        ///read image segmentation
+        readSegmentsInfo(mSegmentsInfo, SegFileAddress);
+        vector<cv::Mat*> segmentImages(mSegmentsInfo.size());
+        cout<<"segmentImage number "<<segmentImages.size()<<endl;
+        readSegmentImages(segmentImages, SegFileAddress);
+        ///Read LiDAR construct LiDAR member
+        processLiDARPts(LiDARRaw);
+        ProjectLiDARtoCamtoImage_KITTI(imGray.cols,imGray.rows);
+        ///Pair LiDAR and Segments
+        groupLiDARandSegment(segmentImages);
+        planeFitEachSegment();
+        cout<<"mvPlanes num "<<mvPlanes.size()<<endl;
+        ORBdetphFromPlane(mvPlanes, mSegmentsInfo, segmentImages);
+        ORBdetphFromSegments(mvLiDARPoints, mSegmentsInfo, segmentImages, imGray);
+        //ComputeStereoFromFusion(mvORBAttributions);
+        //MarkStereoFromFusion(mvORBAttributions);
+        ///---------------------------
+        ComputeStereoFromRGBD(imDepth);
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+        mvbOutlier = vector<bool>(N, false);
         // This is done only for the first Frame (or after a change in the calibration)
-        //标志位，只在第一帧或者相机标定参数变化后执行
-        if(mbInitialComputations)
-        {
-            //计算去畸变图像的边界
+        if (mbInitialComputations) {
             ComputeImageBounds(imGray);
-
-            //一个图像像素相当于多少个图像网格列（grid cols）/ (col length)
-            mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
-            //一个图像像素相当于多少个图像网格行（grid rows）/ (row height)
-            mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
-
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
-            invfx = 1.0f/fx;
-            invfy = 1.0f/fy;
-
-            mbInitialComputations=false;
+            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
+            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
+            fx = K.at<float>(0, 0);
+            fy = K.at<float>(1, 1);
+            cx = K.at<float>(0, 2);
+            cy = K.at<float>(1, 2);
+            invfx = 1.0f / fx;
+            invfy = 1.0f / fy;
+            mbInitialComputations = false;
         }
-
-        //计算baseline，单目用不到其实
-        mb = mbf/fx;
-
-        //把特征点分配到网格中，默认64/48
+        mb = mbf / fx;
         AssignFeaturesToGrid();
-
-        ///added module
-        //Project LiDAR point to Cam coordination
-        ProjectLiDARtoCam();
-        ProjectLiDARtoImg(mK, imGray.cols, imGray.rows);
     }
 
-    void Frame::ProjectLiDARtoImg(cv::Mat mK, int cols, int rows) {
-        cv::Mat P_rect_00 = cv::Mat::zeros(cv::Size(4, 3), CV_64F);
-        P_rect_00.at<double>(0, 0) = (double) mK.at<float>(0, 0);
-        P_rect_00.at<double>(0, 2) = (double) mK.at<float>(0, 2);
-        P_rect_00.at<double>(1, 1) = (double) mK.at<float>(1, 1);
-        P_rect_00.at<double>(1, 2) = (double) mK.at<float>(1, 2);
-        P_rect_00.at<double>(2, 2) = 1;
-        cv::Mat R_rect_00 = cv::Mat::eye(cv::Size(4, 4), CV_64F);
-        int ptNum = mLaserPt_cam.size();
-        cv::Mat X(4, 1, CV_64F);//3D LiDAR point
-        cv::Mat Y(3, 1, CV_64F);//2D LiDAR projection
-        int counter = 0;
-        for (int pi = 0; pi < ptNum; pi++) {
-            cv::Point pt;
-            X.at<double>(0, 0) = mLaserPt_cam[pi].pt3d.x;
-            X.at<double>(1, 0) = mLaserPt_cam[pi].pt3d.y;
-            X.at<double>(2, 0) = mLaserPt_cam[pi].pt3d.z;
-            X.at<double>(3, 0) = 1;
-            Y = P_rect_00 * R_rect_00 * X;
-            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-            if (pt.x < 0 || pt.x >= cols || pt.y < 0 || pt.y >= rows) {
-                mLaserPt_cam[pi].index2d = -1;
-                continue;
-            }
-            mLaserPt_cam[pi].pt2d = pt;
-            mLaserPt_cam[pi].index2d = counter;
-            counter++;
+    void Frame::readSegmentImages(vector<cv::Mat *> &segmentImages, const string &imgFileAddress) {
+        int num = mSegmentsInfo.size();
+        string imgName;
+        for (int i = 1; i < num + 1; i++) {
+            if (i < 10)
+                imgName = imgFileAddress.substr(0, imgFileAddress.length() - 4) + "-0" + to_string(i) + ".png";
+            else
+                imgName = imgFileAddress.substr(0, imgFileAddress.length() - 4) + "-" + to_string(i) + ".png";
+            cv::Mat *image = new cv::Mat(cv::imread(imgName, cv::IMREAD_UNCHANGED));
+            segmentImages[i - 1] = image;
         }
-        cout << "Lidar points " << mLaserPt_cam.size() <<", "<< counter<<" in image frame " <<endl;
     }
-    /**
-     * Project LiDAR point from LiDAR coordination to Cam coordination
-     */
-    void Frame::ProjectLiDARtoCam()
-    {
-        int lsrPtNum = mLaserPoints.size();
-        if(lsrPtNum>0)
-        {
-            cv::Mat P_lidar(4, 1, CV_64F);//3D LiDAR point
-            cv::Mat P_cam(4, 1, CV_64F);//3D LiDAR point under Cam coordination
-            int counter = 0;
-            for(int li=0; li<lsrPtNum;li++)
-            {
-                //Velodyne Vertical FOV 26.9 mounted on 1.73. At 6 meter distance can only detect 1.44+1.73 height
-                double maxX=25.0, maxY = 6.0, minZ = -1.8;
-                if (mLaserPoints[li][0] > maxX || mLaserPoints[li][0] < 0.0
-                    || mLaserPoints[li][1] > maxY || mLaserPoints[li][1] < -maxY
-                    || mLaserPoints[li][2] < minZ
-                    || mLaserPoints[li][3] > -minZ)
-                {
-                    continue;
-                }
-                P_lidar.at<double>(0, 0) = mLaserPoints[li][0];
-                P_lidar.at<double>(1, 0) = mLaserPoints[li][1];
-                P_lidar.at<double>(2, 0) = mLaserPoints[li][2];
-                P_lidar.at<double>(3, 0) = 1;
-                P_cam = mTcamlid * P_lidar;
-                vector<double> thisP;
-                thisP.push_back(P_cam.at<double>(0, 0));
-                thisP.push_back(P_cam.at<double>(1, 0));
-                thisP.push_back(P_cam.at<double>(2, 0));
-                thisP.push_back(mLaserPoints[li][3]);
-                cv::Point3d newP;
-                newP.x = P_cam.at<double>(0, 0);
-                newP.y = P_cam.at<double>(1, 0);
-                newP.z = P_cam.at<double>(2, 0);
-                PtLsr newPtLsr;
-                newPtLsr.pt3d = newP;
-                newPtLsr.index3d =counter;
-                counter++;
-                mLaserPt_cam.push_back(newPtLsr);
-            }
-        }
-        //cout<<"frame "<<mnId<<" mLaserPt_cam "<<mLaserPt_cam.size()<<endl;
-    }
+    ///-------------------------------
 
 /**
  * @brief 单目帧构造函数
@@ -1019,5 +1031,431 @@ namespace ORB_SLAM2
         else
             return cv::Mat();
     }
+
+    void Frame::readSegmentsInfo(vector<SegmentInfo*> &segmentsInfoIn, const string &TXTFileAddress) {
+        ifstream infile(TXTFileAddress);
+        if (!infile.is_open()) {
+            std::cerr << "Error: Unable to open segment info file " << TXTFileAddress << std::endl;
+            return;
+        }
+        std::string line;
+        while (std::getline(infile, line)) {
+            int id, category_id;
+            bool isThing;
+            double area;
+            std::stringstream ss(line);
+            std::string isthing_str;
+            string str1,str2,str3,str4,str5,str6,str7;
+            ss>>str1>>id>>str2>>str3>>isthing_str>>str5>>category_id>>str6>>str7>>area;
+            if (isthing_str == "True,")
+                isThing = true;
+            else
+                isThing = false;
+            auto *newseg = new SegmentInfo(id, isThing, category_id, area);
+            segmentsInfoIn.push_back(newseg);
+        }
+        infile.close();
+    }
+
+    //from LiDAR raw data to lidar struct types.
+    void Frame::processLiDARPts(const vector<vector<float>> & lidarRaw) {
+        mvLiDARPoints.resize(lidarRaw.size());
+        for (int i = 0; i < lidarRaw.size(); i++) {
+            mLiDARPoint *newLidarpt = new mLiDARPoint(lidarRaw[i], i);
+            mvLiDARPoints[i] = newLidarpt;
+        }
+    }
+
+    void Frame::ProjectLiDARtoCamtoImage_KITTI(int cols, int rows) {
+        for(int i=0;i<mvLiDARPoints.size();i++){
+            //to camera
+            cv::Mat P_lidar(4, 1, CV_32F);//3D LiDAR point
+            cv::Mat P_cam(4, 1, CV_32F);//3D LiDAR point under Cam coordination
+            P_lidar.at<float>(0, 0) = mvLiDARPoints[i]->p3DonLiDAR.x;
+            P_lidar.at<float>(1, 0) = mvLiDARPoints[i]->p3DonLiDAR.y;
+            P_lidar.at<float>(2, 0) = mvLiDARPoints[i]->p3DonLiDAR.z;
+            P_lidar.at<float>(3, 0) = 1;
+//            cout<<" mTcamlid "<<endl<<mTcamlid<<endl;
+//            cout<<mTcamlid.type()<<endl;
+//            cout<<" P_lidar "<<endl<<P_lidar<<endl;
+//            cout<<P_lidar.type()<<endl;
+//            cout<<"P_cam type "<<P_cam.type()<<endl;
+            P_cam = mTcamlid * P_lidar;
+            mvLiDARPoints[i]->p3DonCam.x = P_cam.at<float>(0, 0);
+            mvLiDARPoints[i]->p3DonCam.y = P_cam.at<float>(1, 0);
+            mvLiDARPoints[i]->p3DonCam.z = P_cam.at<float>(2, 0);
+            mvLiDARPoints[i]->p3DonCam.intensity = mvLiDARPoints[i]->p3DonLiDAR.intensity;
+            //to image
+            cv::Mat P_rect_00 = cv::Mat::zeros(3, 4, CV_32F);
+            P_rect_00.at<float>(0, 0) = mK.at<float>(0, 0);
+            P_rect_00.at<float>(0, 2) = mK.at<float>(0, 2);
+            P_rect_00.at<float>(1, 1) = mK.at<float>(1, 1);
+            P_rect_00.at<float>(1, 2) = mK.at<float>(1, 2);
+            P_rect_00.at<float>(2, 2) = 1;
+            cv::Mat P_img(3, 1, CV_32F);//3D LiDAR point under Cam coordination
+//            cout<<"P_rect_00"<<endl<<P_rect_00<<endl;
+//            cout<<"P_cam "<<endl<<P_cam<<endl;
+            P_img = P_rect_00 * P_cam;
+            cv::Point2d pt;
+            pt.x = P_img.at<float>(0, 0) / P_img.at<float>(2, 0);
+            pt.y = P_img.at<float>(1, 0) / P_img.at<float>(2, 0);
+            if (pt.x > 0 && pt.x < cols && pt.y > 0 && pt.y < rows) {
+                //cout<<X.at<double>(0, 0)<<" "<<X.at<double>(1, 0)<<" "<<X.at<double>(2, 0)<<" -> "<<pt.x<<" "<<pt.y<<endl;
+                mvLiDARPoints[i]->pt2D = cv::Point2d(pt.x, pt.y);
+            }
+        }
+    }
+
+    void Frame::groupLiDARandSegment(vector<cv::Mat*> segmentImages){
+        for(auto *point : mvLiDARPoints){
+            for(int i=0;i<mSegmentsInfo.size();i++){
+                if (pointInSegmentMask(point->pt2D, segmentImages[i])) {
+                    // Associate the LiDAR point with the corresponding segment
+                    mSegmentsInfo[i]->associatedPoints.push_back(point);
+                    point->segmentInfo = mSegmentsInfo[i];
+                    break; // Break the loop since the point has been associated with a segment
+                }
+            }
+        }
+    }
+
+    bool Frame::pointInSegmentMask(const cv::Point2d& point, const cv::Mat* segmentMask) {
+        // Check if the point coordinates are within the bounds of the segment mask
+        if (point.x < 0 || point.x >= segmentMask->cols || point.y < 0 || point.y >= segmentMask->rows) {
+            return false; // Point is outside the mask bounds
+        }
+        //    imshow("segmentMask", segmentMask);
+        //    cv::circle(segmentMask, cv::Point(500,300), 5, cv::Scalar(255, 0, 0), -1);
+        //    cv::waitKey(0);
+        // Retrieve the pixel value at the point coordinates in the segment mask
+        uchar pixelValue = segmentMask->at<uchar>(cv::Point(static_cast<int>(point.x), static_cast<int>(point.y)));
+        if (pixelValue > 0)
+            return true;
+        else
+            return false;
+    }
+
+    void Frame::planeFitEachSegment(){
+        for(int i=0;i<mSegmentsInfo.size();i++){
+            if(mSegmentsInfo[i]->category_id !=9 && !mSegmentsInfo[i]->associatedPoints.empty()){
+                PlaneFitting(mSegmentsInfo[i]->associatedPoints, mSegmentsInfo[i]->id, mSegmentsInfo[i]->category_id, mvPlanes);
+            }
+        }
+    }
+
+    void Frame::PlaneFitting(vector<mLiDARPoint *> &mLiDARs, int segmentID, int segmentCategory, vector<mPlane *> mPlanes) {
+        ///Step 1 store all inputs into a container
+        pcl::PointCloud<pcl::PointXYZ>::Ptr allPoints(new pcl::PointCloud<pcl::PointXYZ>);
+        allPoints->resize(mLiDARs.size());
+        int lidarCounter = 0;
+        for(const auto &lidarPt:mLiDARs){
+            allPoints->points[lidarCounter].x = lidarPt->p3DonCam.x;
+            allPoints->points[lidarCounter].y = lidarPt->p3DonCam.y;
+            allPoints->points[lidarCounter].z = lidarPt->p3DonCam.z;
+            lidarCounter++;
+        }
+        allPoints->resize(lidarCounter);
+        allPoints->height=1,allPoints->width=lidarCounter;
+        ///Step 2 downsampling
+        ///Step 3 Region Growing
+        ///calc norms
+        pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+        normal_estimator.setSearchMethod(tree);
+        normal_estimator.setInputCloud(allPoints);
+        normal_estimator.setKSearch(50);
+        normal_estimator.compute(*normals);
+        ///calc region growing
+        pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+        reg.setMinClusterSize(200);
+        reg.setMaxClusterSize(50000);
+        reg.setSearchMethod(tree);
+        reg.setNumberOfNeighbours(50);
+        reg.setInputCloud(allPoints);
+        reg.setInputNormals(normals);
+        reg.setSmoothnessThreshold(10.0/180.0*M_PI);
+        reg.setCurvatureThreshold(10.0);
+        vector<pcl::PointIndices> clusters;
+        reg.extract(clusters);
+        ///Step 4 RANSAC for each cluster
+        vector<map<int,int>> local2GlobalIndexMaps;
+        vector<vector<int>> globalIndexofEachCluster;
+        for(auto &cls:clusters){
+            vector<int> globalIndiceofThisCluster;
+            map<int,int> localGlobalThisCluster;
+            pcl::PointCloud<pcl::PointXYZ>::Ptr thisCloud(new pcl::PointCloud<pcl::PointXYZ>);
+            thisCloud->points.resize(cls.indices.size());
+            thisCloud->width=thisCloud->points.size(),thisCloud->height=1;
+            for(size_t j=0; j < cls.indices.size();j++){
+                int globalIndex = cls.indices[j];
+                thisCloud->points[j] = allPoints->points[globalIndex];
+                localGlobalThisCluster.insert(make_pair(j,globalIndex));
+            }
+            mPlane * foundPlane = new mPlane();
+            pcl::PointIndices inlierIDX;
+            int inPlaneNum = RANSACPlane(thisCloud, foundPlane, inlierIDX);
+            if(inPlaneNum>0){
+                int planeID = mPlanes.size();
+                foundPlane->PlaneID = planeID;
+                if(segmentCategory==0){//in road case, don't care about the outlier, all is inliner
+                    for(int i=0;i<localGlobalThisCluster.size();i++){
+                        globalIndiceofThisCluster.push_back(localGlobalThisCluster[i]);
+                        foundPlane->lidarIndexofSegment.push_back(localGlobalThisCluster[i]);
+                        foundPlane->segmentCategory = segmentCategory;
+                        foundPlane->segmentID = segmentID;
+                    }
+                }else{
+                    for (int indiceI: inlierIDX.indices) {
+                        int globalIndex = localGlobalThisCluster[indiceI];
+                        globalIndiceofThisCluster.push_back(globalIndex);
+                        foundPlane->lidarIndexofSegment.push_back(globalIndex);
+                        foundPlane->segmentCategory = segmentCategory;
+                        foundPlane->segmentID = segmentID;
+                    }
+                }
+            }
+            globalIndexofEachCluster.push_back(globalIndiceofThisCluster);
+            mPlanes.push_back(foundPlane);
+        }
+    }
+
+    //AX+BY+CZ+D=0;
+    int Frame::RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, mPlane *foundPlane,
+                           pcl::PointIndices &inliersOutput) {
+        //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = inputCloud.makeShared();
+        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        //create the segmentation objects
+        pcl::SACSegmentation<pcl::PointXYZ> seg;
+        //Optional
+        seg.setOptimizeCoefficients(true);
+        //Mandatory
+        seg.setMethodType(pcl::SACMODEL_PLANE);
+        seg.setModelType(pcl::SAC_RANSAC);
+        seg.setMaxIterations(1000);
+        seg.setDistanceThreshold(0.1); //kitti 0.2
+
+        seg.setInputCloud(cloud);
+        seg.segment(*inliers, *coefficients);
+        if (inliers->indices.size() == 0)
+            return 0;
+        inliersOutput = *inliers;
+        foundPlane->A = coefficients->values[0];
+        foundPlane->B = coefficients->values[1];
+        foundPlane->C = coefficients->values[2];
+        foundPlane->D = coefficients->values[3];
+        for (int i = 0; i < inliers->indices.size(); i++) {
+            double x = cloud->points[inliers->indices[i]].x;
+            double y = cloud->points[inliers->indices[i]].y;
+            double z = cloud->points[inliers->indices[i]].z;
+            //foundPlane.points3D.push_back(cv::Point3d(x,y,z));
+            //cout<<"inliner push back "<<x<<" "<<y<<" "<<z<<endl;
+        }
+        return inliers->indices.size();
+    }
+
+    void Frame::ORBdetphFromPlane(vector<mPlane*> allPlane, vector<SegmentInfo *> allSegInfos,
+                                  vector<cv::Mat *> allSegImgs){
+        for(int i=0;i<mvORBAttributions.size();i++){
+            if(mvORBAttributions[i]->depthSource>0)
+                continue;
+            ///step 1 connect with nearest LiDAR plane
+            int minPlaneIndex = -1; float minPlaneDis = 10000;
+            float minLiDARZ0 = -1, minLiDARZ1 = -1, minLiDARZ2 = -1;
+            for(int pi=0;pi<allPlane.size();pi++){
+                if(allPlane[pi]->segmentCategory==0)//skip vegetarian
+                    continue;
+                int minIndex0 = -1, minIndex1 = -1, minIndex2 = -1;
+                float minDist0 = 10000, minDist1 = 10000, minDist2 = 10000;
+                int segIndex = allPlane[pi]->segmentID-1;
+                for(int li=0;li<allPlane[pi]->lidarIndexofSegment.size();li++){
+                    int liDARIndex = allPlane[pi]->lidarIndexofSegment[li];
+                    float tempDis = cv::norm(cv::Point2d(mvORBAttributions[i]->keyPt->pt) - allSegInfos[segIndex]->associatedPoints[liDARIndex]->pt2D);
+                    if (tempDis < minDist0) {
+                        minDist2 = minDist1, minIndex2 = minIndex1;
+                        minDist1 = minDist0, minIndex1 = minIndex0;
+                        minDist0 = tempDis, minIndex0 = liDARIndex;
+                    } else if (tempDis < minDist1 && tempDis >= minDist0) {
+                        minDist2 = minDist1, minIndex2 = minIndex1;
+                        minDist1 = tempDis, minIndex1 = liDARIndex;
+                    } else if (tempDis < minDist2 && tempDis >= minDist1) {
+                        minDist2 = tempDis, minIndex2 = liDARIndex;
+                    }
+                }
+                if(minDist0 < minPlaneDis){
+                    minPlaneDis = minDist0, minPlaneIndex = pi;
+                    minLiDARZ0 = allSegInfos[segIndex]->associatedPoints[minIndex0]->p3DonCam.z,
+                    minLiDARZ1 = allSegInfos[segIndex]->associatedPoints[minIndex1]->p3DonCam.z,
+                    minLiDARZ2 = allSegInfos[segIndex]->associatedPoints[minIndex2]->p3DonCam.z;
+                }
+            }
+            ///step 2 Get depth from plane
+            if (minPlaneDis < 5) {
+                //Because the segment comes from ML and pcl, no need more activities for foreground and bakcground
+                ///Step 2.1 calc Z
+                float A = allPlane[minPlaneIndex]->A, B = allPlane[minPlaneIndex]->B, C = allPlane[minPlaneIndex]->C, D = allPlane[minPlaneIndex]->D;
+                double u = mvORBAttributions[i]->keyPt->pt.x, v = mvORBAttributions[i]->keyPt->pt.y;
+                double Z = -D / (A * (u - cx) / fx + B * (v - cy) / fy + C); //from Ax+By+Cz + D =0;
+                ///Step 2.2 determine if this Depth is good
+                bool goodFlag = true;
+                if ((Z - minLiDARZ0) > 3 || (Z - minLiDARZ1) > 3 || (Z - minLiDARZ2) > 3)
+                    goodFlag = false;
+                if (Z > 30)
+                    goodFlag = false;
+                if (goodFlag) {
+                    mvORBAttributions[i]->PlaneID = minPlaneIndex;
+                    mvORBAttributions[i]->depthSource = 1;
+                    mvORBAttributions[i]->depth = Z;
+                    //cout<<"ORB "<<allmORBs[i]->orbID<<" "<<allmORBs[i]->keyPt.pt.x<<" "<<allmORBs[i]->keyPt.pt.y<<" "<<allmORBs[i]->depth<<" source Plane "<<allmORBs[i]->PlaneID<<endl;
+                } else {
+                    mvORBAttributions[i]->depth = -1;
+                }
+            }
+        }
+    }
+
+    void Frame::ORBdetphFromSegments(vector<mLiDARPoint*> allLiDARs, vector<SegmentInfo *> allSegInfos, vector<cv::Mat *> allSegImgs, cv::Mat debugImageIn){
+        cv::Mat debugImage_gary = debugImageIn.clone();
+        cv::Mat debugImage;
+        cv::cvtColor(debugImage_gary,debugImage,cv::COLOR_GRAY2BGR);
+        for (int i = 0; i < mvORBAttributions.size(); i++) {
+            if (mvORBAttributions[i]->depthSource > 0)
+                continue;
+            ///Step 1 select the LiDAR point in nearby round patch
+            cv::Rect roi(mvORBAttributions[i]->keyPt->pt.x - 10, mvORBAttributions[i]->keyPt->pt.y - 10, 20, 20);
+            // Initialize containers for nearby LiDAR points
+            std::vector<mLiDARPoint *> fourCornerPoints(4, nullptr);
+            float minDisLeftUp = 10000, minDisLeftDown = 10000, minDisRightUp = 10000, minDisRightDown = 10000;
+            for (int liDARindex = 0; liDARindex < allLiDARs.size(); liDARindex++) {
+                if(roi.contains(allLiDARs[liDARindex]->pt2D)){
+                    float dis = cv::norm(cv::Point2d(mvORBAttributions[i]->keyPt->pt) - allLiDARs[liDARindex]->pt2D);
+                    if (allLiDARs[liDARindex]->pt2D.x < mvORBAttributions[i]->keyPt->pt.x && allLiDARs[liDARindex]->pt2D.y < mvORBAttributions[i]->keyPt->pt.y) {
+                        if (dis < minDisLeftUp) {
+                            minDisLeftUp = dis;
+                            fourCornerPoints[0] = allLiDARs[liDARindex];
+                        }
+                    } else if (allLiDARs[liDARindex]->pt2D.x > mvORBAttributions[i]->keyPt->pt.x && allLiDARs[liDARindex]->pt2D.y < mvORBAttributions[i]->keyPt->pt.y) {
+                        if (dis < minDisRightUp) {
+                            minDisRightUp = dis;
+                            fourCornerPoints[1] = allLiDARs[liDARindex];
+                        }
+                    }else if(allLiDARs[liDARindex]->pt2D.x < mvORBAttributions[i]->keyPt->pt.x && allLiDARs[liDARindex]->pt2D.y > mvORBAttributions[i]->keyPt->pt.y){
+                        if(dis<minDisLeftDown){
+                            minDisLeftDown = dis;
+                            fourCornerPoints[2] = allLiDARs[liDARindex];
+                        }
+                    }else if(allLiDARs[liDARindex]->pt2D.x > mvORBAttributions[i]->keyPt->pt.x && allLiDARs[liDARindex]->pt2D.y > mvORBAttributions[i]->keyPt->pt.y){
+                        if(dis<minDisRightDown){
+                            minDisRightDown = dis;
+                            fourCornerPoints[3] = allLiDARs[liDARindex];
+                        }
+                    }
+                }
+            }
+            bool sameSeg = true;
+
+            for(int cornerIndex = 1;cornerIndex<fourCornerPoints.size();cornerIndex++){
+                if(fourCornerPoints[cornerIndex] == nullptr || fourCornerPoints[cornerIndex-1] == nullptr) {
+                    sameSeg = false;
+                    break;
+                }
+                if(fourCornerPoints[cornerIndex]->segmentInfo != fourCornerPoints[cornerIndex-1]->segmentInfo){
+                    sameSeg = false;
+                    break;
+                }
+                if(fourCornerPoints[cornerIndex]->segmentInfo!=NULL&&fourCornerPoints[cornerIndex]->segmentInfo->category_id==8){
+                    sameSeg = false;
+                    break;
+                }
+                //TODO add segment catogory to orbpoints
+                //if(fourCornerPoints[cornerIndex]->segmentInfo!=NULL && fourCornerPoints[cornerIndex]->segmentInfo->category_id != allmORBs[i]->segmentInfo->cagetgory_id)
+            }
+            if (sameSeg) {
+                interpolateDepth(mvORBAttributions[i], fourCornerPoints);
+            }
+        }
+    }
+
+    void Frame::interpolateDepth(mORBAttribution *mORBPt, const std::vector<mLiDARPoint *> &fourCornerPoints) {
+        if (mORBPt->depthSource > 0 || fourCornerPoints.size() != 4)
+            return;
+
+        cv::Point2d orbKeypt = mORBPt->keyPt->pt;
+        cv::Point2d P1 = fourCornerPoints[0]->pt2D;
+        cv::Point2d P2 = fourCornerPoints[1]->pt2D;
+        cv::Point2d P3 = fourCornerPoints[2]->pt2D;
+        cv::Point2d P4 = fourCornerPoints[3]->pt2D;
+        float Z1 = fourCornerPoints[0]->p3DonCam.z, Z2 = fourCornerPoints[1]->p3DonCam.z, Z3 = fourCornerPoints[2]->p3DonCam.z, Z4 = fourCornerPoints[3]->p3DonCam.z;
+        //X-axis
+        cv::Point2d P12 = (P2.x - orbKeypt.x) / (P2.x - P1.x) * P1 + (orbKeypt.x - P1.x) / (P2.x - P1.x) * P2;
+        float Z12 = (P2.x - orbKeypt.x) / (P2.x - P1.x) * Z1 + (orbKeypt.x - P1.x) / (P2.x - P1.x) * Z2;
+        cv::Point2d P34 = (P4.x - orbKeypt.x) / (P4.x - P3.x) * P3 + (orbKeypt.x - P3.x) / (P4.x - P3.x) * P4;
+        float Z34 = (P4.x - orbKeypt.x) / (P4.x - P3.x) * Z3 + (orbKeypt.x - P3.x) / (P4.x - P3.x) * Z4;
+        //Y-axis
+        cv::Point2d P1234 = (P34.y - orbKeypt.y) / (P34.y - P12.y) * P12 + (orbKeypt.y - P12.y) / (P34.y - P12.y) * P34;
+        float Z1234 = (P34.y - orbKeypt.y) / (P34.y - P12.y) * Z12 + (orbKeypt.y - P12.y) / (P34.y - P12.y) * Z34;
+
+        bool goodDepth = true;
+        if(Z1234>30)
+            goodDepth = false;
+        if((Z1234 - Z1) > 3 || (Z1234 - Z2) > 3 || (Z1234 - Z3) > 3 || (Z1234 - Z4) > 3)
+            goodDepth = false;
+        if(goodDepth){
+            mORBPt->depthSource = 3;
+            mORBPt->depth = Z1234;
+        }
+    }
+
+    /*
+    * retrive stereo infor from Fusioned depth.
+    * note I set mbf back to 0.
+    */
+    void Frame::ComputeStereoFromFusion(const vector<mORBAttribution *> ORBAttributions) {
+        //cout<<"ComputeStereoFromFusion"<<endl;
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
+
+        for (int i = 0; i < N; i++) {
+            const cv::KeyPoint &kp = mvKeys[i];
+            const cv::KeyPoint &kpU = mvKeysUn[i];
+
+            const float &v = kp.pt.y;
+            const float &u = kp.pt.x;
+
+            //const float d = imDepth.at<float>(v,u);
+            if (ORBAttributions[i]->depthSource > -1) {
+                const float d = ORBAttributions[i]->depth;
+                if (d > 0) {
+                    mvDepth[i] = d;
+                    mbf = 0;
+                    mvuRight[i] = kpU.pt.x - mbf / d;
+                }
+            }
+        }
+    }
+    //If a orb point has depth from Fusion, mark it, but not change mvDepth mbf and mvuRight
+    //Okay this function if useless
+    void Frame::MarkStereoFromFusion(const vector<mORBAttribution *> ORBAttributions) {
+        //cout<<"ComputeStereoFromFusion"<<endl;
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
+        for (int i = 0; i < N; i++) {
+            const cv::KeyPoint &kp = mvKeys[i];
+            const cv::KeyPoint &kpU = mvKeysUn[i];
+            const float &v = kp.pt.y;
+            const float &u = kp.pt.x;
+            //const float d = imDepth.at<float>(v,u);
+            if (ORBAttributions[i]->depthSource > -1) {
+                const float d = ORBAttributions[i]->depth;
+                if (d > 0) {
+                    mvDepth[i] = d;
+                    mbf = 0;
+                    mvuRight[i] = kpU.pt.x - mbf / d;
+                }
+            }
+        }
+    }
+
 
 } //namespace ORB_SLAM
