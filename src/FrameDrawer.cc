@@ -107,6 +107,8 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                     // This is a match to a MapPoint in the map
                     float R = 0, G = 0, B = 0;
                     if (vbMap[i]) {
+                        if(mvORBattributions[i]->depthSource==-1)
+                            continue;
                         if (mvORBattributions[i]->depthSource == 1) //yellow
                             R = 255, G = 255, B = 0;
                         if (mvORBattributions[i]->depthSource == 2) //light blue

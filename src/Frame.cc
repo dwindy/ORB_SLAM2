@@ -216,7 +216,17 @@ namespace ORB_SLAM2
         ///---------------------------
 
         //特征点匹配，计算深度放进mvDpeth
-        ComputeStereoMatches();
+        //ComputeStereoMatches();
+        ComputeStereoMatches(mvORBAttributions);
+
+        ///Test code
+        for(int i=0;i<mvDepth.size();i++){
+            if(mvDepth[i]>-1 && mvORBAttributions[i]->depthSource==-1){
+                cout<<" i "<<i<<" depth "<<mvDepth[i]<<" mvuRight "<<mvuRight[i]<<" depthsour "<<mvORBAttributions[i]->depthSource<<endl;
+            }
+        }
+        ///Test code
+        ///---------------
 
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         mvbOutlier = vector<bool>(N, false);
@@ -1436,7 +1446,7 @@ namespace ORB_SLAM2
         }
     }
 
-    //Compute rest Stereo
+    //Compute rest depth by Stereo
     void Frame::ComputeStereoMatches(vector<mORBAttribution*> &ORBAttributions) {
         //Dont need this. another compute stereo function has done this
 //        mvuRight = vector<float>(N, -1.0f);
@@ -1581,7 +1591,6 @@ namespace ORB_SLAM2
                 if (disparity >= minD && disparity < maxD) {
                     ///Added module
                     if (mvORBAttributions[iL]->depthSource == -1) {
-
                         if (disparity <= 0) {
                             disparity = 0.01;
                             bestuR = uL - 0.01;

@@ -545,52 +545,13 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
                     mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
                     //Velocity = Tcl = Tcw * Twl
                     mVelocity = mCurrentFrame.mTcw * LastTwc;
-                    //cout << mCurrentFrame.mnId << " velocity " << mCurrentFrame.mTcw << endl;
-                    ///save keypoints
-                    fstream writer;
-                    string fileName = "data//keypoint//" + std::to_string(mCurrentFrame.mnId) + ".txt";
-                    writer.open(fileName, std::ios::out);
-                    for (int ki = 0; ki < mCurrentFrame.mvpMapPoints.size(); ki++) {
-                        if (mCurrentFrame.mvpMapPoints[ki]) {
-                            writer << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(0, 0) << " "
-                                   << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(1, 0) << " "
-                                   << mCurrentFrame.mvpMapPoints[ki]->GetWorldPos().at<float>(2, 0) << " "
-                                   << mCurrentFrame.mvpMapPoints[ki]->mnId << endl;
-                        }
-                    }
-                    writer.close();
-                    ///save velocity
-//                fstream writer;
-//                string fileName = "data//velocity//" + std::to_string(mCurrentFrame.mnId) + ".txt";
-//                cout << "file name " << fileName << endl;
-//                writer.open(fileName, std::ios::out);
-//                writer << mVelocity.at<float>(0, 0) << " " << mVelocity.at<float>(0, 1) << " "
-//                       << mVelocity.at<float>(0, 2) << " " << mVelocity.at<float>(0, 3) << endl;
-//                writer << mVelocity.at<float>(1, 0) << " " << mVelocity.at<float>(1, 1) << " "
-//                       << mVelocity.at<float>(1, 2) << " " << mVelocity.at<float>(1, 3) << endl;
-//                writer << mVelocity.at<float>(2, 0) << " " << mVelocity.at<float>(2, 1) << " "
-//                       << mVelocity.at<float>(2, 2) << " " << mVelocity.at<float>(2, 3) << endl;
-//                writer << mVelocity.at<float>(3, 0) << " " << mVelocity.at<float>(3, 1) << " "
-//                       << mVelocity.at<float>(3, 2) << " " << mVelocity.at<float>(3, 3) << endl;
-//                writer.close();
-//                ///added module
-//                ///undis LiDAR point with motion from vision
-//                UndisLiDAR();
-//                ///extract plane segement
-//                RegionGrowing(mCurrentFrame,true);
-////                //todo --- lidar VO
-////                ///project plane
-//                ProjectPlanetoImage();
-////                ///update plane infor
-//                mpFrameDrawer->UpdateLiDAR(this);
-////                //todo associate the ORB feature with LiDAR points
                 } else
                     //否则速度为空
                     mVelocity = cv::Mat();
                 //更新显示的位姿
                 mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
-                //*Step 6 清楚观测不到的地图点
+                //*Step 6 清除观测不到的地图点
                 // Clean VO matches
                 for (int i = 0; i < mCurrentFrame.N; i++) {
                     MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
@@ -616,7 +577,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
                     CreateNewKeyFrame();
 
                 //*Step 9 删除在BA中为outlier的点
-                // We allow points with high innovation (considererd outliers by the Huber Function)
+                // We allow points with high innovation (considered outliers by the Huber Function)
                 // pass to the new keyframe, so that bundle adjustment will finally decide
                 // if they are outliers or not. We don't want next frame to estimate its position
                 // with those points so we discard them in the frame.
@@ -625,6 +586,16 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
                         mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
                 }
             }
+
+            ///Test code
+            for(int i=0;i<mCurrentFrame.mvDepth.size();i++){
+                if(mCurrentFrame.mvDepth[i]>-1 && mCurrentFrame.mvORBAttributions[i]->depthSource==-1){
+                    cout<<" i "<<i<<" depth "<<mCurrentFrame.mvDepth[i]<<" mvuRight "<<mCurrentFrame.mvuRight[i]<<" depthsour "<<mCurrentFrame.mvORBAttributions[i]->depthSource<<endl;
+                }
+            }
+            int puase = 0;
+            ///Test code
+            ///---------------
 
             ///added Need to check if safe or not
             //*Step 4 更新显示线城的信息 比如图像 特征点 地图点
@@ -1409,12 +1380,14 @@ void Tracking::CreateNewKeyFrame()
         // If there are less than 100 close points we create the 100 closest.
         vector<pair<float,int> > vDepthIdx;
         vDepthIdx.reserve(mCurrentFrame.N);
-        for(int i=0; i<mCurrentFrame.N; i++)
-        {
+        for (int i = 0; i < mCurrentFrame.N; i++) {
+            ///Added
+            if (mCurrentFrame.mvORBAttributions[i]->depthSource == -1)
+                continue;
+            ///-----
             float z = mCurrentFrame.mvDepth[i];
-            if(z>0)
-            {
-                vDepthIdx.push_back(make_pair(z,i));
+            if (z > 0) {
+                vDepthIdx.push_back(make_pair(z, i));
             }
         }
 
