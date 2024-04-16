@@ -78,7 +78,7 @@ namespace ORB_SLAM2
         ///Added
         cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp,
                               const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
-        cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp,
+        cv::Mat GrabImageStereoLiDARSegmentation(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp,
                                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
         ///-----------------------
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
@@ -208,7 +208,7 @@ namespace ORB_SLAM2
         float mbf;
 
         ///added module
-        //LiDAR to Camera Transform
+        //LiDAR to Camera Transform. defined in Tracking.h
         cv::Mat mTcamlid;
         ///---------------------
 

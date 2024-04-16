@@ -150,7 +150,8 @@ namespace ORB_SLAM2
     Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor *extractorLeft,
                  ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
                  ///Added----------
-                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress)
+                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress,
+                 const cv::Mat &mTcamlidInput)
                  ///---------------
             : mpORBvocabulary(voc), mpORBextractorLeft(extractorLeft), mpORBextractorRight(extractorRight),
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
@@ -182,6 +183,9 @@ namespace ORB_SLAM2
         UndistortKeyPoints();
 
         ///Added modes--------------------
+        mTcamlid = cv::Mat::eye(4,4,CV_64F);
+        mTcamlidInput.copyTo(mTcamlid);
+        mTcamlid.convertTo(mTcamlid, CV_32F);
         ///init ORB attributions
         mvORBAttributions.resize(N, nullptr); // Resize and initialize with nullptr
         for (int i = 0; i < N; ++i) {
@@ -196,16 +200,18 @@ namespace ORB_SLAM2
         vector<cv::Mat*> segmentImages(mSegmentsInfo.size());
         cout<<"segmentImage number "<<segmentImages.size()<<endl;
         readSegmentImages(segmentImages, SegFileAddress);
+
         ///Read LiDAR construct LiDAR member
         processLiDARPts(LiDARRaw);
         ProjectLiDARtoCamtoImage_KITTI(imLeft.cols,imLeft.rows);
+
         ///Pair LiDAR and Segments
         groupLiDARandSegment(segmentImages);
         planeFitEachSegment();
         cout<<"mvPlanes num "<<mvPlanes.size()<<endl;
         ORBdetphFromPlane(mvPlanes, mSegmentsInfo, segmentImages);
         ORBdetphFromSegments(mvLiDARPoints, mSegmentsInfo, segmentImages, imLeft);
-        //ComputeStereoFromFusion(mvORBAttributions);
+        ComputeStereoFromFusion(mvORBAttributions);
         //MarkStereoFromFusion(mvORBAttributions);
         ///---------------------------
 
@@ -296,77 +302,78 @@ namespace ORB_SLAM2
     }
 
     //TODO check if the added vector<*> member has been initialized
-    ///Added
+    ///Added --- for rgbd
     //add lidar, image segmentation
-    Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
-                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
-                 const float &bf, const float &thDepth,
-                 ///Added
-                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress)
-                 ///------
-            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
-              mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //单目没有右相机
-              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
-        // Frame ID
-        mnId = nNextId++;
-        // Scale Level Info
-        mnScaleLevels = mpORBextractorLeft->GetLevels();
-        mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
-        mfLogScaleFactor = log(mfScaleFactor);
-        mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
-        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
-        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
-        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
-        // ORB extraction
-        ExtractORB(0, imGray);
-        N = mvKeys.size();
-        if (mvKeys.empty())
-            return;
-        UndistortKeyPoints();
-
-        ///Added modes--------------------
-        ///init ORB attributions
-        mvORBAttributions.resize(N);
-        for(int i=0; i<N; i++){
-            mvORBAttributions[i]->keyPt = &mvKeysUn[i];
-            mvORBAttributions[i]->orbID = i;
-        }
-        ///read image segmentation
-        readSegmentsInfo(mSegmentsInfo, SegFileAddress);
-        vector<cv::Mat*> segmentImages(mSegmentsInfo.size());
-        cout<<"segmentImage number "<<segmentImages.size()<<endl;
-        readSegmentImages(segmentImages, SegFileAddress);
-        ///Read LiDAR construct LiDAR member
-        processLiDARPts(LiDARRaw);
-        ProjectLiDARtoCamtoImage_KITTI(imGray.cols,imGray.rows);
-        ///Pair LiDAR and Segments
-        groupLiDARandSegment(segmentImages);
-        planeFitEachSegment();
-        cout<<"mvPlanes num "<<mvPlanes.size()<<endl;
-        ORBdetphFromPlane(mvPlanes, mSegmentsInfo, segmentImages);
-        ORBdetphFromSegments(mvLiDARPoints, mSegmentsInfo, segmentImages, imGray);
-        //ComputeStereoFromFusion(mvORBAttributions);
-        //MarkStereoFromFusion(mvORBAttributions);
-        ///---------------------------
-        ComputeStereoFromRGBD(imDepth);
-        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
-        mvbOutlier = vector<bool>(N, false);
-        // This is done only for the first Frame (or after a change in the calibration)
-        if (mbInitialComputations) {
-            ComputeImageBounds(imGray);
-            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
-            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
-            fx = K.at<float>(0, 0);
-            fy = K.at<float>(1, 1);
-            cx = K.at<float>(0, 2);
-            cy = K.at<float>(1, 2);
-            invfx = 1.0f / fx;
-            invfy = 1.0f / fy;
-            mbInitialComputations = false;
-        }
-        mb = mbf / fx;
-        AssignFeaturesToGrid();
-    }
+//    Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
+//                 ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
+//                 const float &bf, const float &thDepth,
+//                 ///Added
+//                 const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress,
+//                 const cv::Mat &TCamLid)
+//                 ///------
+//            : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
+//              mpORBextractorRight(static_cast<ORBextractor *>(NULL)), //单目没有右相机
+//              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
+//        // Frame ID
+//        mnId = nNextId++;
+//        // Scale Level Info
+//        mnScaleLevels = mpORBextractorLeft->GetLevels();
+//        mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+//        mfLogScaleFactor = log(mfScaleFactor);
+//        mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+//        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+//        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+//        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+//        // ORB extraction
+//        ExtractORB(0, imGray);
+//        N = mvKeys.size();
+//        if (mvKeys.empty())
+//            return;
+//        UndistortKeyPoints();
+//
+//        ///Added modes--------------------
+//        ///init ORB attributions
+//        mvORBAttributions.resize(N);
+//        for(int i=0; i<N; i++){
+//            mvORBAttributions[i]->keyPt = &mvKeysUn[i];
+//            mvORBAttributions[i]->orbID = i;
+//        }
+//        ///read image segmentation
+//        readSegmentsInfo(mSegmentsInfo, SegFileAddress);
+//        vector<cv::Mat*> segmentImages(mSegmentsInfo.size());
+//        cout<<"segmentImage number "<<segmentImages.size()<<endl;
+//        readSegmentImages(segmentImages, SegFileAddress);
+//        ///Read LiDAR construct LiDAR member
+//        processLiDARPts(LiDARRaw);
+//        ProjectLiDARtoCamtoImage_KITTI(imGray.cols,imGray.rows);
+//        ///Pair LiDAR and Segments
+//        groupLiDARandSegment(segmentImages);
+//        planeFitEachSegment();
+//        cout<<"mvPlanes num "<<mvPlanes.size()<<endl;
+//        ORBdetphFromPlane(mvPlanes, mSegmentsInfo, segmentImages);
+//        ORBdetphFromSegments(mvLiDARPoints, mSegmentsInfo, segmentImages, imGray);
+//        //ComputeStereoFromFusion(mvORBAttributions);
+//        //MarkStereoFromFusion(mvORBAttributions);
+//        ///---------------------------
+//        ComputeStereoFromRGBD(imDepth);
+//        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+//        mvbOutlier = vector<bool>(N, false);
+//        // This is done only for the first Frame (or after a change in the calibration)
+//        if (mbInitialComputations) {
+//            ComputeImageBounds(imGray);
+//            mfGridElementWidthInv = static_cast<float>(FRAME_GRID_COLS) / static_cast<float>(mnMaxX - mnMinX);
+//            mfGridElementHeightInv = static_cast<float>(FRAME_GRID_ROWS) / static_cast<float>(mnMaxY - mnMinY);
+//            fx = K.at<float>(0, 0);
+//            fy = K.at<float>(1, 1);
+//            cx = K.at<float>(0, 2);
+//            cy = K.at<float>(1, 2);
+//            invfx = 1.0f / fx;
+//            invfy = 1.0f / fy;
+//            mbInitialComputations = false;
+//        }
+//        mb = mbf / fx;
+//        AssignFeaturesToGrid();
+//    }
 
     void Frame::readSegmentImages(vector<cv::Mat *> &segmentImages, const string &imgFileAddress) {
         int num = mSegmentsInfo.size();
@@ -763,8 +770,7 @@ namespace ORB_SLAM2
         }
     }
 
-    void Frame::ComputeStereoMatches()
-    {
+    void Frame::ComputeStereoMatches() {
         /*
         1.行特征点统计，统计right上每一行上的特征点集，便于行/极线搜索。
         2.粗匹配，在left第i行的orb特征点pi,在right第i行上搜索对应qi。
@@ -776,37 +782,36 @@ namespace ORB_SLAM2
         */
 
         //右图特征点的索引和depth
-        mvuRight = vector<float>(N,-1.0f);
-        mvDepth = vector<float>(N,-1.0f);
+        mvuRight = vector<float>(N, -1.0f);
+        mvDepth = vector<float>(N, -1.0f);
 
         //orb相似度阈值
-        const int thOrbDist = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
+        const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
         //第0层金字塔的rows
         const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
 
         //Assign keypoints to row table
         //二维vector存储每一行特征点的列坐标？小六这里写错了吧？似乎只是把特征点索引iR塞进row table
-        vector<vector<size_t> > vRowIndices(nRows,vector<size_t>());
+        vector<vector<size_t> > vRowIndices(nRows, vector<size_t>());
 
-        for(int i=0; i<nRows; i++)
+        for (int i = 0; i < nRows; i++)
             vRowIndices[i].reserve(200);
 
         const int Nr = mvKeysRight.size();
 
         //Step 1. 行特征点统计，因为有金字塔，一个特征点可能存在于多行
-        for(int iR=0; iR<Nr; iR++)
-        {
+        for (int iR = 0; iR < Nr; iR++) {
             //取出特征点row行值
             const cv::KeyPoint &kp = mvKeysRight[iR];
             const float &kpY = kp.pt.y;
             //加上一个r浮动值-跟尺度相关
-            const float r = 2.0f*mvScaleFactors[mvKeysRight[iR].octave];
-            const int maxr = ceil(kpY+r);
-            const int minr = floor(kpY-r);
+            const float r = 2.0f * mvScaleFactors[mvKeysRight[iR].octave];
+            const int maxr = ceil(kpY + r);
+            const int minr = floor(kpY - r);
 
             //似乎只是把特征点索引iR塞进row table
-            for(int yi=minr;yi<=maxr;yi++)
+            for (int yi = minr; yi <= maxr; yi++)
                 vRowIndices[yi].push_back(iR);
         }
 
@@ -819,15 +824,14 @@ namespace ORB_SLAM2
         //minD = baseline * focal / maxZ
         const float minZ = mb;
         const float minD = 0;
-        const float maxD = mbf/minZ;
+        const float maxD = mbf / minZ;
 
         // For each left keypoint search a match in the right image
         //精匹配用来保存相似度和索引
         vector<pair<int, int> > vDistIdx;
         vDistIdx.reserve(N);
 
-        for(int iL=0; iL<N; iL++)
-        {
+        for (int iL = 0; iL < N; iL++) {
             const cv::KeyPoint &kpL = mvKeys[iL];
             const int &levelL = kpL.octave;
             const float &vL = kpL.pt.y;
@@ -836,14 +840,14 @@ namespace ORB_SLAM2
             //NOTICE,the row table contains index of right feature
             const vector<size_t> &vCandidates = vRowIndices[vL];
 
-            if(vCandidates.empty())
+            if (vCandidates.empty())
                 continue;
 
             //极线搜索的范围U range, x range, col range
-            const float minU = uL-maxD;
-            const float maxU = uL-minD;
+            const float minU = uL - maxD;
+            const float maxU = uL - minD;
 
-            if(maxU<0)
+            if (maxU < 0)
                 continue;
 
             //初始化orb descriptor distance and INDEX
@@ -853,24 +857,21 @@ namespace ORB_SLAM2
             const cv::Mat &dL = mDescriptors.row(iL);
 
             // Compare descriptor to right keypoints
-            for(size_t iC=0; iC<vCandidates.size(); iC++)
-            {
+            for (size_t iC = 0; iC < vCandidates.size(); iC++) {
                 const size_t iR = vCandidates[iC];
                 const cv::KeyPoint &kpR = mvKeysRight[iR];
 
                 //只在金字塔相邻层找
-                if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
+                if (kpR.octave < levelL - 1 || kpR.octave > levelL + 1)
                     continue;
 
                 const float &uR = kpR.pt.x;
                 //只在极线的一定范围内
-                if(uR>=minU && uR<=maxU)
-                {
+                if (uR >= minU && uR <= maxU) {
                     const cv::Mat &dR = mDescriptorsRight.row(iR);
-                    const int dist = ORBmatcher::DescriptorDistance(dL,dR);
+                    const int dist = ORBmatcher::DescriptorDistance(dL, dR);
 
-                    if(dist<bestDist)
-                    {
+                    if (dist < bestDist) {
                         bestDist = dist;
                         bestIdxR = iR;
                     }
@@ -879,23 +880,24 @@ namespace ORB_SLAM2
 
             //Step 3. 精确匹配
             // Subpixel match by correlation
-            if(bestDist<thOrbDist)
-            {
+            if (bestDist < thOrbDist) {
                 // coordinates in image pyramid at keypoint scale
                 const float uR0 = mvKeysRight[bestIdxR].pt.x;
                 const float scaleFactor = mvInvScaleFactors[kpL.octave];
-                const float scaleduL = round(kpL.pt.x*scaleFactor);
-                const float scaledvL = round(kpL.pt.y*scaleFactor);
-                const float scaleduR0 = round(uR0*scaleFactor);
+                const float scaleduL = round(kpL.pt.x * scaleFactor);
+                const float scaledvL = round(kpL.pt.y * scaleFactor);
+                const float scaleduR0 = round(uR0 * scaleFactor);
 
                 // sliding window search
                 //window width
                 const int w = 5;
                 //提取左图特征点[scaleduL,scaledvL]为中心半径w范围的图像块patch
-                cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduL-w,scaleduL+w+1);
-                IL.convertTo(IL,CV_32F);
+                cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL - w,
+                                                                                     scaledvL + w + 1).colRange(
+                        scaleduL - w, scaleduL + w + 1);
+                IL.convertTo(IL, CV_32F);
                 //亮度值归一化
-                IL = IL - IL.at<float>(w,w) *cv::Mat::ones(IL.rows,IL.cols,CV_32F);
+                IL = IL - IL.at<float>(w, w) * cv::Mat::ones(IL.rows, IL.cols, CV_32F);
 
                 int bestDist = INT_MAX;
                 //滑动的索引量range(-L,L)
@@ -903,115 +905,108 @@ namespace ORB_SLAM2
                 //滑动大小 slide size
                 const int L = 5;
                 vector<float> vDists;
-                vDists.resize(2*L+1);
+                vDists.resize(2 * L + 1);
 
                 //计算滑动窗口的滑动范围的边界，因为是块匹配，需要算上图像块的尺寸
                 //列方向起点 iniu = r0 + 最大窗口滑动范围 - 图像块尺寸
                 //列方向终点 endu = r0 + 最大窗口滑动范围 + 图像块尺寸 + 1
                 //似乎L=5 W=5只管了右边是否越界
-                const float iniu = scaleduR0+L-w;
-                const float endu = scaleduR0+L+w+1;
-                if(iniu<0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
+                const float iniu = scaleduR0 + L - w;
+                const float endu = scaleduR0 + L + w + 1;
+                if (iniu < 0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
                     continue;
 
-                for(int incR=-L; incR<=+L; incR++)
-                {
+                for (int incR = -L; incR <= +L; incR++) {
                     /* 举个栗子，左边特征点P_l(12,13)，上面取得IL块为（7:18,8:19）。
                     右边特征点为P_r(12,14)，取第一个块为(7:18, 4:15)，最后一个块为(7:18,14:25)。就是以14为中心，x坐标从4到25滑动。
                     */
-                    cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
-                    IR.convertTo(IR,CV_32F);
-                    IR = IR - IR.at<float>(w,w) *cv::Mat::ones(IR.rows,IR.cols,CV_32F);
+                    cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL - w,
+                                                                                          scaledvL + w + 1).colRange(
+                            scaleduR0 + incR - w, scaleduR0 + incR + w + 1);
+                    IR.convertTo(IR, CV_32F);
+                    IR = IR - IR.at<float>(w, w) * cv::Mat::ones(IR.rows, IR.cols, CV_32F);
 
                     //sad 计算
-                    float dist = cv::norm(IL,IR,cv::NORM_L1);
-                    if(dist<bestDist)
-                    {
-                        bestDist =  dist;
+                    float dist = cv::norm(IL, IR, cv::NORM_L1);
+                    if (dist < bestDist) {
+                        bestDist = dist;
                         bestincR = incR;
                     }
                     //存入相似度
-                    vDists[L+incR] = dist;
+                    vDists[L + incR] = dist;
                 }
 
                 //?这个越界判断的目的是
-                if(bestincR==-L || bestincR==L)
+                if (bestincR == -L || bestincR == L)
                     continue;
 
                 //Step 4 亚像素插值
                 //直接套了opencv sgbm插值公式
                 //disparity d_* = d - ( (d+ - d-) / 2*(d+ + d- - 2*d) )
                 // Sub-pixel match (Parabola fitting)
-                const float dist1 = vDists[L+bestincR-1];
-                const float dist2 = vDists[L+bestincR];
-                const float dist3 = vDists[L+bestincR+1];
+                const float dist1 = vDists[L + bestincR - 1];
+                const float dist2 = vDists[L + bestincR];
+                const float dist3 = vDists[L + bestincR + 1];
 
-                const float deltaR = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
+                const float deltaR = (dist1 - dist3) / (2.0f * (dist1 + dist3 - 2.0f * dist2));
 
                 //修正量应该在[-1,1]之间
-                if(deltaR<-1 || deltaR>1)
+                if (deltaR < -1 || deltaR > 1)
                     continue;
 
                 //修正量加入到scaleduR0中
                 // Re-scaled coordinate
-                float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
+                float bestuR = mvScaleFactors[kpL.octave] * ((float) scaleduR0 + (float) bestincR + deltaR);
 
-                float disparity = (uL-bestuR);
+                float disparity = (uL - bestuR);
 
                 //保存深度和视察（不保存匹配结果？）
-                if(disparity>=minD && disparity<maxD)
-                {
-                    if(disparity<=0)
-                    {
-                        disparity=0.01;
-                        bestuR = uL-0.01;
+                if (disparity >= minD && disparity < maxD) {
+                    if (disparity <= 0) {
+                        disparity = 0.01;
+                        bestuR = uL - 0.01;
                     }
-                    mvDepth[iL]=mbf/disparity;
+                    mvDepth[iL] = mbf / disparity;
                     mvuRight[iL] = bestuR;
-                    vDistIdx.push_back(pair<int,int>(bestDist,iL));
+                    vDistIdx.push_back(pair<int, int>(bestDist, iL));
                 }
             }
         }
 
         //Step 6. 去除outlier
         //判断条件 norm_sad > 1.5 * 1.4 * median
-        sort(vDistIdx.begin(),vDistIdx.end());
-        const float median = vDistIdx[vDistIdx.size()/2].first;
-        const float thDist = 1.5f*1.4f*median;
+        sort(vDistIdx.begin(), vDistIdx.end());
+        const float median = vDistIdx[vDistIdx.size() / 2].first;
+        const float thDist = 1.5f * 1.4f * median;
 
         //sort了，第一个<thDist则都小于treshold
-        for(int i=vDistIdx.size()-1;i>=0;i--)
-        {
-            if(vDistIdx[i].first<thDist)
+        for (int i = vDistIdx.size() - 1; i >= 0; i--) {
+            if (vDistIdx[i].first < thDist)
                 break;
-            else
-            {
-                mvuRight[vDistIdx[i].second]=-1;
-                mvDepth[vDistIdx[i].second]=-1;
+            else {
+                mvuRight[vDistIdx[i].second] = -1;
+                mvDepth[vDistIdx[i].second] = -1;
             }
         }
     }
 
 
-    void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
-    {
-        mvuRight = vector<float>(N,-1);
-        mvDepth = vector<float>(N,-1);
+    void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth) {
+        mvuRight = vector<float>(N, -1);
+        mvDepth = vector<float>(N, -1);
 
-        for(int i=0; i<N; i++)
-        {
+        for (int i = 0; i < N; i++) {
             const cv::KeyPoint &kp = mvKeys[i];
             const cv::KeyPoint &kpU = mvKeysUn[i];
 
             const float &v = kp.pt.y;
             const float &u = kp.pt.x;
 
-            const float d = imDepth.at<float>(v,u);
+            const float d = imDepth.at<float>(v, u);
 
-            if(d>0)
-            {
+            if (d > 0) {
                 mvDepth[i] = d;
-                mvuRight[i] = kpU.pt.x-mbf/d;
+                mvuRight[i] = kpU.pt.x - mbf / d;
             }
         }
     }
@@ -1143,7 +1138,7 @@ namespace ORB_SLAM2
         }
     }
 
-    void Frame::PlaneFitting(vector<mLiDARPoint *> &mLiDARs, int segmentID, int segmentCategory, vector<mPlane *> mPlanes) {
+    void Frame::PlaneFitting(vector<mLiDARPoint *> &mLiDARs, int segmentID, int segmentCategory, vector<mPlane*> &mPlanes) {
         ///Step 1 store all inputs into a container
         pcl::PointCloud<pcl::PointXYZ>::Ptr allPoints(new pcl::PointCloud<pcl::PointXYZ>);
         allPoints->resize(mLiDARs.size());
@@ -1319,16 +1314,22 @@ namespace ORB_SLAM2
         cv::Mat debugImage_gary = debugImageIn.clone();
         cv::Mat debugImage;
         cv::cvtColor(debugImage_gary,debugImage,cv::COLOR_GRAY2BGR);
+        float minX,minY,maxX,maxY;
         for (int i = 0; i < mvORBAttributions.size(); i++) {
             if (mvORBAttributions[i]->depthSource > 0)
                 continue;
             ///Step 1 select the LiDAR point in nearby round patch
-            cv::Rect roi(mvORBAttributions[i]->keyPt->pt.x - 10, mvORBAttributions[i]->keyPt->pt.y - 10, 20, 20);
+            //cv::Rect roi(mvORBAttributions[i]->keyPt->pt.x - 10, mvORBAttributions[i]->keyPt->pt.y - 10, 20, 20);
+            minX = mvORBAttributions[i]->keyPt->pt.x - 10, minY = mvORBAttributions[i]->keyPt->pt.y - 10;
+            maxX = mvORBAttributions[i]->keyPt->pt.x + 10, maxY = mvORBAttributions[i]->keyPt->pt.y + 10;
+
             // Initialize containers for nearby LiDAR points
             std::vector<mLiDARPoint *> fourCornerPoints(4, nullptr);
             float minDisLeftUp = 10000, minDisLeftDown = 10000, minDisRightUp = 10000, minDisRightDown = 10000;
             for (int liDARindex = 0; liDARindex < allLiDARs.size(); liDARindex++) {
-                if(roi.contains(allLiDARs[liDARindex]->pt2D)){
+                //if(roi.contains(allLiDARs[liDARindex]->pt2D)){
+                if (allLiDARs[liDARindex]->pt2D.x < maxX && allLiDARs[liDARindex]->pt2D.x > minX
+                    && allLiDARs[liDARindex]->pt2D.y < maxY && allLiDARs[liDARindex]->pt2D.y > minY) {
                     float dis = cv::norm(cv::Point2d(mvORBAttributions[i]->keyPt->pt) - allLiDARs[liDARindex]->pt2D);
                     if (allLiDARs[liDARindex]->pt2D.x < mvORBAttributions[i]->keyPt->pt.x && allLiDARs[liDARindex]->pt2D.y < mvORBAttributions[i]->keyPt->pt.y) {
                         if (dis < minDisLeftUp) {
@@ -1428,12 +1429,192 @@ namespace ORB_SLAM2
                 const float d = ORBAttributions[i]->depth;
                 if (d > 0) {
                     mvDepth[i] = d;
-                    mbf = 0;
+                    //mbf = 0;
                     mvuRight[i] = kpU.pt.x - mbf / d;
                 }
             }
         }
     }
+
+    //Compute rest Stereo
+    void Frame::ComputeStereoMatches(vector<mORBAttribution*> &ORBAttributions) {
+        //Dont need this. another compute stereo function has done this
+//        mvuRight = vector<float>(N, -1.0f);
+//        mvDepth = vector<float>(N, -1.0f);
+
+        const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
+
+        const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
+        //Assign keypoints to row table
+        vector<vector<size_t> > vRowIndices(nRows, vector<size_t>());
+
+        for (int i = 0; i < nRows; i++)
+            vRowIndices[i].reserve(200);
+
+        //travel each right feature
+        const int Nr = mvKeysRight.size();
+        for (int iR = 0; iR < Nr; iR++) {
+            const cv::KeyPoint &kp = mvKeysRight[iR];
+            const float &kpY = kp.pt.y;
+            const float r = 2.0f * mvScaleFactors[mvKeysRight[iR].octave];
+            const int maxr = ceil(kpY + r);
+            const int minr = floor(kpY - r);
+            //push this right feature to potential corresponding row
+            for (int yi = minr; yi <= maxr; yi++)
+                vRowIndices[yi].push_back(iR);
+        }
+
+        // Set limits for search
+        //const float minZ = mb;
+        const float minZ = 0.53715;
+        const float minD = 0;
+        //const float maxD = mbf / minZ;
+        const float maxD = 0.53715 * 707.0912 / minZ;
+
+
+
+        // For each left keypoint search a match in the right image
+        vector<pair<int, int> > vDistIdx;
+        vDistIdx.reserve(N);
+
+        for (int iL = 0; iL < N; iL++) {
+            const cv::KeyPoint &kpL = mvKeys[iL];
+            const int &levelL = kpL.octave;
+            const float &vL = kpL.pt.y;
+            const float &uL = kpL.pt.x;
+
+            const vector<size_t> &vCandidates = vRowIndices[vL];
+
+            if (vCandidates.empty())
+                continue;
+
+            const float minU = uL - maxD;
+            const float maxU = uL - minD;
+
+            if (maxU < 0)
+                continue;
+
+            int bestDist = ORBmatcher::TH_HIGH;
+            size_t bestIdxR = 0;
+
+            const cv::Mat &dL = mDescriptors.row(iL);
+
+            // Compare descriptor to right keypoints
+            for (size_t iC = 0; iC < vCandidates.size(); iC++) {
+                const size_t iR = vCandidates[iC];
+                const cv::KeyPoint &kpR = mvKeysRight[iR];
+
+                if (kpR.octave < levelL - 1 || kpR.octave > levelL + 1)
+                    continue;
+
+                const float &uR = kpR.pt.x;
+
+                if (uR >= minU && uR <= maxU) {
+                    const cv::Mat &dR = mDescriptorsRight.row(iR);
+                    const int dist = ORBmatcher::DescriptorDistance(dL, dR);
+
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestIdxR = iR;
+                    }
+                }
+            }
+
+            // Subpixel match by correlation
+            if (bestDist < thOrbDist) {
+                // coordinates in image pyramid at keypoint scale
+                const float uR0 = mvKeysRight[bestIdxR].pt.x;
+                const float scaleFactor = mvInvScaleFactors[kpL.octave];
+                const float scaleduL = round(kpL.pt.x * scaleFactor);
+                const float scaledvL = round(kpL.pt.y * scaleFactor);
+                const float scaleduR0 = round(uR0 * scaleFactor);
+
+                // sliding window search
+                const int w = 5;
+                cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL - w,
+                                                                                     scaledvL + w + 1).colRange(
+                        scaleduL - w, scaleduL + w + 1);
+
+                int bestDist = INT_MAX;
+                int bestincR = 0;
+                const int L = 5;
+                vector<float> vDists;
+                vDists.resize(2 * L + 1);
+
+                const float iniu = scaleduR0 + L - w;
+                const float endu = scaleduR0 + L + w + 1;
+                if (iniu < 0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
+                    continue;
+
+                for (int incR = -L; incR <= +L; incR++) {
+                    cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL - w,
+                                                                                          scaledvL + w + 1).colRange(
+                            scaleduR0 + incR - w, scaleduR0 + incR + w + 1);
+
+                    float dist = cv::norm(IL, IR, cv::NORM_L1);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestincR = incR;
+                    }
+
+                    vDists[L + incR] = dist;
+                }
+
+                if (bestincR == -L || bestincR == L)
+                    continue;
+
+                // Sub-pixel match (Parabola fitting)
+                const float dist1 = vDists[L + bestincR - 1];
+                const float dist2 = vDists[L + bestincR];
+                const float dist3 = vDists[L + bestincR + 1];
+
+                const float deltaR = (dist1 - dist3) / (2.0f * (dist1 + dist3 - 2.0f * dist2));
+
+                if (deltaR < -1 || deltaR > 1)
+                    continue;
+
+                // Re-scaled coordinate
+                float bestuR = mvScaleFactors[kpL.octave] * ((float) scaleduR0 + (float) bestincR + deltaR);
+
+                float disparity = (uL - bestuR);
+
+                if (disparity >= minD && disparity < maxD) {
+                    ///Added module
+                    if (mvORBAttributions[iL]->depthSource == -1) {
+
+                        if (disparity <= 0) {
+                            disparity = 0.01;
+                            bestuR = uL - 0.01;
+                        }
+                        mvDepth[iL] = mbf / disparity;
+                        mvuRight[iL] = bestuR;
+                        vDistIdx.push_back(pair<int, int>(bestDist, iL));
+
+                        ///added mode mark the ORBattribution
+                        //cout << "keypt " << iL << " depthSource " << mvORBAttributions[iL]->depthSource << endl;
+                        mvORBAttributions[iL]->depthSource = 4;
+                    }
+                }
+            }
+        }
+
+        sort(vDistIdx.begin(), vDistIdx.end());
+        const float median = vDistIdx[vDistIdx.size() / 2].first;
+        const float thDist = 1.5f * 1.4f * median;
+
+        for (int i = vDistIdx.size() - 1; i >= 0; i--) {
+            if (vDistIdx[i].first < thDist)
+                break;
+            else {
+                ///added
+                if(mvORBAttributions[i]->depthSource == 4){
+                    mvuRight[vDistIdx[i].second] = -1;
+                    mvDepth[vDistIdx[i].second] = -1;
+                }
+            }
+        }
+    }
+
     //If a orb point has depth from Fusion, mark it, but not change mvDepth mbf and mvuRight
     //Okay this function if useless
     void Frame::MarkStereoFromFusion(const vector<mORBAttribution *> ORBAttributions) {

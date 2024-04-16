@@ -52,6 +52,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Stereo" << endl;
     else if(mSensor==RGBD)
         cout << "RGB-D" << endl;
+    else if(mSensor==Stereo_LiDAR_Seg)
+        cout << "Stereo LiDAR Segmentation Mode" << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -170,10 +172,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
 
     ///Added module---------------------------------------------
-    cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp,
-                                const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName) {
-        if (mSensor != STEREO) {
-            cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO." << endl;
+    cv::Mat System::TrackStereoLiDARSeg(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp,
+                                        const vector<vector<float>>& liDARData, const string &ImageFileNAme,
+                                        const string &SegInfoFileName) {
+        if (mSensor != Stereo_LiDAR_Seg) {
+            cerr << "ERROR: you called TrackStereoLiDARSeg but input sensor was not set to Stereo_LiDAR_Seg." << endl;
             exit(-1);
         }
 
@@ -209,8 +212,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
         //cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft, imRight, timestamp);
         ///Added-----------------
-        cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft, imRight, timestamp,
-                                               LiDARRaw, ImageFileNAme, SegInfoFileName);
+        cv::Mat Tcw = mpTracker->GrabImageStereoLiDARSegmentation(imLeft, imRight, timestamp,
+                                                                  liDARData, ImageFileNAme, SegInfoFileName);
         ///--------------
         unique_lock<mutex> lock2(mMutexState);
         mTrackingState = mpTracker->mState;
@@ -218,6 +221,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
         return Tcw;
     }
+
     ///-----------------------------
     cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp) {
         if (mSensor != RGBD) {

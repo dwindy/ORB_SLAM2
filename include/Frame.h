@@ -75,20 +75,24 @@ namespace ORB_SLAM2
               ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf,
               const float &thDepth);// Constructor for stereo cameras.
 
+        ///Added module
         Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor *extractorLeft,
               ORBextractor *extractorRight, ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
-              const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress);
+              const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegFileAddress,
+              const cv::Mat &mTcamlid);
+        ///-------------------------
 
         // Constructor for RGB-D cameras.
         Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
               ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
 
-        ///Added
-        Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
-              ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
-              const float &bf, //baseline * f
-              const float &thDepth,//区分远近点的深度阈值
-              const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
+//        ///Added --- for RGBD
+//        Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
+//              ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef,
+//              const float &bf, //baseline * f
+//              const float &thDepth,//区分远近点的深度阈值
+//              const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName,
+//              const cv::Mat &TCamLid);
 
         void readSegmentsInfo(vector<SegmentInfo*> &segmentsInfoIn, const string &TXTFileAddress);
         void readSegmentImages(vector<cv::Mat *> &segmentImages, const string &imgFileAddress);
@@ -97,14 +101,15 @@ namespace ORB_SLAM2
         void groupLiDARandSegment(vector<cv::Mat*> segmentImages);
         bool pointInSegmentMask(const cv::Point2d& point, const cv::Mat* segmentMask);
         void planeFitEachSegment();
-        void PlaneFitting(vector<mLiDARPoint *> &mLiDARs, int segmentID, int segmentCategory, vector<mPlane *> mPlanes);
+        void PlaneFitting(vector<mLiDARPoint *> &mLiDARs, int segmentID, int segmentCategory, vector<mPlane*> &mPlanes);
         int RANSACPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, mPlane *foundPlane,
                                pcl::PointIndices &inliersOutput);
         void ORBdetphFromPlane(vector<mPlane*> allPlane, vector<SegmentInfo *> allSegInfos, vector<cv::Mat *> allSegImgs);
         void ORBdetphFromSegments(vector<mLiDARPoint*> allLiDARs, vector<SegmentInfo *> allSegInfos, vector<cv::Mat *> allSegImgs, cv::Mat debugImageIn);
         void interpolateDepth(mORBAttribution *mORBPt, const std::vector<mLiDARPoint *> &fourCornerPoints);
-        void ComputeStereoFromFusion(const vector<mORBAttribution *> ORBAttributions);
+        void ComputeStereoFromFusion(vector<mORBAttribution *> ORBAttributions);
         void MarkStereoFromFusion(const vector<mORBAttribution *> ORBAttributions);
+        void ComputeStereoMatches(vector<mORBAttribution*> &ORBAttributions);
         ///---------------------------------------------------
 
         // Constructor for Monocular cameras.

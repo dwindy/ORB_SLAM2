@@ -33,13 +33,13 @@ using namespace std;
 
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
                 vector<string> &vstrImageRight, vector<double> &vTimestamps);
-///Added Modes
-void LoadLaserScans(const string strPathToLiDARScans, vector<string> &vstrLiDARFilenames, const vector<string> &vstrImageFilenames);
 
-void LoadSegmentInfo(const string strPathToSegmentInfo, vector<string> &vstrSegmentInfoFilenames, const vector<string> &vstrImageFilenames);
+void LoadLaserscans(const string strPathToSequence, vector<string> &vstrLiDARFilenames, const vector<string> &vstrImageFilenames);
 
-void LoadLaserScans_KITTI(const string strPathToLiDARScans, vector<vector<float>> &datas);
-///------------------
+void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames, const vector<string> &vstrImageFilenames);
+
+void loadKITTI(const string fileAddress, vector<vector<float>> &datas);
+
 int main(int argc, char **argv)
 {
     if(argc != 4)
@@ -54,19 +54,19 @@ int main(int argc, char **argv)
     vector<double> vTimestamps;
     LoadImages(string(argv[3]), vstrImageLeft, vstrImageRight, vTimestamps);
 
+    const int nImages = vstrImageLeft.size();
+
     ///Added
     // Retrieve paths to lidars
     vector<string> vstrLiDARFilenames;
-    LoadLaserScans(string(argv[3]), vstrLiDARFilenames, vstrImageLeft);
+    LoadLaserscans(string(argv[3]), vstrLiDARFilenames, vstrImageLeft);
     // Retrieve paths to segment info
     vector<string> vstrSegFilenames;
     LoadSegmentInfo(string(argv[3]), vstrSegFilenames, vstrImageLeft);
-    ///-----------------
-
-    const int nImages = vstrImageLeft.size();
+    ///----------------------------------
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::Stereo_LiDAR_Seg,true);
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;
@@ -74,11 +74,7 @@ int main(int argc, char **argv)
 
     cout << endl << "-------" << endl;
     cout << "Start processing sequence ..." << endl;
-    cout << "Images in the sequence: " << nImages << endl << endl;
-    ///added
-    cout << "LiDAR in the sequence: " << vstrLiDARFilenames.size() << endl << endl;
-    cout << "Image Seg infor files: " << vstrSegFilenames.size() << endl << endl;
-    ///----------------
+    cout << "Images in the sequence: " << nImages << endl << endl;   
 
     // Main loop
     cv::Mat imLeft, imRight;
@@ -96,21 +92,21 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        ///Added
-        // Load LiDAR
-        //Read lidar from bin
-        vector<vector<float>> liDARdata(1000000, vector<float>(4));//resize in the function
-        LoadLaserScans_KITTI(vstrLiDARFilenames[ni],liDARdata);
-        ///-----------------
-
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #else
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #endif
 
+        ///Added
+        //Read lidar from bin
+        vector<vector<float>> liDARdata(1000000, vector<float>(4));//resize in the function
+        loadKITTI(vstrLiDARFilenames[ni],liDARdata);
+        ///----------------------------------
+
         // Pass the images to the SLAM system
-        SLAM.TrackStereo(imLeft,imRight,tframe);
+        //SLAM.TrackStereo(imLeft,imRight,tframe);
+        SLAM.TrackStereoLiDARSeg(imLeft, imRight, tframe, liDARdata, vstrImageLeft[ni], vstrSegFilenames[ni]);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -154,14 +150,17 @@ int main(int argc, char **argv)
 }
 
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
-                vector<string> &vstrImageRight, vector<double> &vTimestamps) {
+                vector<string> &vstrImageRight, vector<double> &vTimestamps)
+{
     ifstream fTimes;
     string strPathTimeFile = strPathToSequence + "/times.txt";
     fTimes.open(strPathTimeFile.c_str());
-    while (!fTimes.eof()) {
+    while(!fTimes.eof())
+    {
         string s;
-        getline(fTimes, s);
-        if (!s.empty()) {
+        getline(fTimes,s);
+        if(!s.empty())
+        {
             stringstream ss;
             ss << s;
             double t;
@@ -177,7 +176,8 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
     vstrImageLeft.resize(nTimes);
     vstrImageRight.resize(nTimes);
 
-    for (int i = 0; i < nTimes; i++) {
+    for(int i=0; i<nTimes; i++)
+    {
         stringstream ss;
         ss << setfill('0') << setw(6) << i;
         vstrImageLeft[i] = strPrefixLeft + ss.str() + ".png";
@@ -185,10 +185,8 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
     }
 }
 
-///Added modules----------------
 //get lidar file names from image names
-void LoadLaserScans(const string strPathToSequence, vector<string> &vstrLiDARFilenames,
-                    const vector<string> &vstrImageFilenames) {
+void LoadLaserscans(const string strPathToSequence, vector<string> &vstrLiDARFilenames, const vector<string> &vstrImageFilenames){
     string strPrefixLeft = strPathToSequence + "/velodyne/";
     const int frameNum = vstrImageFilenames.size();
     vstrLiDARFilenames.resize(frameNum);
@@ -199,10 +197,22 @@ void LoadLaserScans(const string strPathToSequence, vector<string> &vstrLiDARFil
     }
 }
 
-void LoadLaserScans_KITTI(const string strPathToLiDARScans, vector<vector<float>> &datas) {
-    fstream reader(strPathToLiDARScans, ios::in);
+//get segment info file names from image names
+void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames, const vector<string> &vstrImageFilenames){
+    string strPrefixLeft = strPathToSequence + "/segements/";
+    const int frameNum = vstrImageFilenames.size();
+    vstrSegmentInfoFilenames.resize(frameNum);
+    for (int i = 0; i < frameNum; i++) {
+        stringstream ss;
+        ss << setfill('0') << setw(6) << i;
+        vstrSegmentInfoFilenames[i] = strPrefixLeft + ss.str() + ".txt";
+    }
+}
+
+void loadKITTI(string fileAddress, vector<vector<float>> &datas) {
+    fstream reader(fileAddress, ios::in);
     if (!reader.good())
-        std::cerr << "Error: Unable to open file " << strPathToLiDARScans << std::endl;
+        std::cerr << "Error: Unable to open file " << fileAddress << std::endl;
     int i = 0;
     float x, y, z, intensity;
     while (!reader.eof()) {
@@ -218,18 +228,3 @@ void LoadLaserScans_KITTI(const string strPathToLiDARScans, vector<vector<float>
     reader.close();
     datas.resize(i);
 }
-
-//get segment info file names from image names
-void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames,
-                     const vector<string> &vstrImageFilenames) {
-    string strPrefixLeft = strPathToSequence + "/segements/";
-    const int frameNum = vstrImageFilenames.size();
-    vstrSegmentInfoFilenames.resize(frameNum);
-    for (int i = 0; i < frameNum; i++) {
-        stringstream ss;
-        ss << setfill('0') << setw(6) << i;
-        vstrSegmentInfoFilenames[i] = strPrefixLeft + ss.str() + ".txt";
-    }
-}
-
-///-----------------------------

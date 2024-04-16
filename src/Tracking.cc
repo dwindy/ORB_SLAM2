@@ -116,7 +116,10 @@ Tracking::Tracking(System *pSys, //系统实例?
     Tcl.at<double>(0,3) = fSettings["Tcl.1"];
     Tcl.at<double>(1,3) = fSettings["Tcl.2"];
     Tcl.at<double>(2,3) = fSettings["Tcl.3"];
+    cout<<"Tcl"<<endl<<Tcl<<endl;
+    mTcamlid = cv::Mat::eye(4,4,CV_64F);
     Tcl.copyTo(mTcamlid);
+    cout<<"Tcl"<<endl<<Tcl<<endl;
     ///-----------------------------------------------
 
     // Max/Min Frames to insert keyframes and to check relocalisation
@@ -159,7 +162,9 @@ Tracking::Tracking(System *pSys, //系统实例?
     //tracking过程使用的是left实例作为特征提取器
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
-    if(sensor==System::STEREO)
+    //if(sensor==System::STEREO)
+    ///Added
+    if(sensor==System::Stereo_LiDAR_Seg || sensor==System::STEREO)
         mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     //monocular初始化过程中使用这个实例作为特征提取器，注意两倍特征数
@@ -173,7 +178,8 @@ Tracking::Tracking(System *pSys, //系统实例?
     cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
     cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
 
-    if(sensor==System::STEREO || sensor==System::RGBD)
+    ///Added Module
+    if(sensor==System::STEREO || sensor==System::RGBD ||sensor==System::Stereo_LiDAR_Seg)
     {
         //判断一个3D点远近的阈值，mdf * 35 /fx 实际就是基线长度的xx倍
         mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
@@ -238,7 +244,7 @@ void Tracking::SetViewer(Viewer *pViewer)
     }
 
     ///Added Modules
-    cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp,
+    cv::Mat Tracking::GrabImageStereoLiDARSegmentation(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp,
                                       const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName) {
         mImGray = imRectLeft;
         cv::Mat imGrayRight = imRectRight;
@@ -266,7 +272,7 @@ void Tracking::SetViewer(Viewer *pViewer)
 
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth,
-                              LiDARRaw, ImageFileNAme, SegInfoFileName);
+                              LiDARRaw, ImageFileNAme, SegInfoFileName,mTcamlid);
 
         Track();
 
@@ -321,10 +327,10 @@ void Tracking::SetViewer(Viewer *pViewer)
         if ((fabs(mDepthMapFactor - 1.0f) > 1e-5) || imDepth.type() != CV_32F)
             imDepth.convertTo(imDepth, CV_32F, mDepthMapFactor);
 
-        //mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
+        mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
         ///Added
-        mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
-                              mThDepth, LiDARRaw, ImageFileNAme, SegInfoFileName);
+//        mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
+//                              mThDepth, LiDARRaw, ImageFileNAme, SegInfoFileName);
         ///---------------------------------------
 
         Track();
@@ -380,7 +386,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
         //* Step 1 初始化
         if (mState == NOT_INITIALIZED) {
-            if (mSensor == System::STEREO || mSensor == System::RGBD)
+            if (mSensor == System::STEREO || mSensor == System::RGBD || mSensor == System::Stereo_LiDAR_Seg)
                 StereoInitialization();
             else
                 MonocularInitialization();
@@ -1149,7 +1155,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Project points seen in previous frame
     int th;
-    if(mSensor!=System::STEREO)
+    if(mSensor!=System::STEREO ||mSensor!=System::Stereo_LiDAR_Seg)
         th=15;
     else
         th=7;
@@ -1246,7 +1252,7 @@ bool Tracking::TrackLocalMap()
                     mnMatchesInliers++;
             }
             //? 是outlier并且是双目，就删除这个点
-            else if(mSensor==System::STEREO)
+            else if(mSensor==System::STEREO || mSensor==System::Stereo_LiDAR_Seg)
                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
 
         }

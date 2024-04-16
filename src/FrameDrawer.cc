@@ -92,22 +92,37 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                     pt2.y = vCurrentKeys[i].pt.y + r;
 
                     // This is a match to a MapPoint in the map
+//                    if (vbMap[i]) {
+//                        cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0));
+//                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
+//                        mnTracked++;
+//                    } else // This is match to a "visual odometry" MapPoint created in the last frame
+//                    {
+//                        cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 0));
+//                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 0), -1);
+//                        mnTrackedVO++;
+//                    }
+
+                    ///added module
+                    // This is a match to a MapPoint in the map
+                    float R = 0, G = 0, B = 0;
                     if (vbMap[i]) {
-                        cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0));
-                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
+                        if (mvORBattributions[i]->depthSource == 1) //yellow
+                            R = 255, G = 255, B = 0;
+                        if (mvORBattributions[i]->depthSource == 2) //light blue
+                            R = 0, G = 255, B = 255;
+                        if (mvORBattributions[i]->depthSource == 3) //purple
+                            R = 255, G = 0, B = 255;
+                        if (mvORBattributions[i]->depthSource == 4) //stereo
+                            R = 255, G = 0, B = 0;
+                        cv::rectangle(im, pt1, pt2, cv::Scalar(B,G,R));
+                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(B,G,R), -1);
                         mnTracked++;
                     } else // This is match to a "visual odometry" MapPoint created in the last frame
                     {
                         cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 0));
                         cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 0), -1);
                         mnTrackedVO++;
-                    }
-                    ///added module
-                    if(mvORBattributions[i]->depthSource>-1){
-                        if (mvORBattributions[i]->depthSource == 1)
-                            cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 0), -1);
-                        else if (mvORBattributions[i]->depthSource == 3)
-                            cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
                     }
                     ///--------------------
                 }

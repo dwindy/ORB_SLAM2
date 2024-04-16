@@ -55,7 +55,8 @@ namespace ORB_SLAM2
         enum eSensor{
             MONOCULAR=0,
             STEREO=1,
-            RGBD=2
+            RGBD=2,
+            Stereo_LiDAR_Seg
         };
 
     public:
@@ -79,7 +80,7 @@ namespace ORB_SLAM2
         ///Added
         cv::Mat TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp,
                                  const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
-        cv::Mat TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp,
+        cv::Mat TrackStereoLiDARSeg(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp,
                             const vector<vector<float>> &LiDARRaw, const string &ImageFileNAme, const string &SegInfoFileName);
 
         ///----------
