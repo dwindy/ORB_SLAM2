@@ -201,6 +201,9 @@ namespace ORB_SLAM2
         cout<<"segmentImage number "<<segmentImages.size()<<endl;
         readSegmentImages(segmentImages, SegFileAddress);
 
+        ///Pair ORB and segments
+        alignORBSegments(segmentImages);
+
         ///Read LiDAR construct LiDAR member
         processLiDARPts(LiDARRaw);
         ProjectLiDARtoCamtoImage_KITTI(imLeft.cols,imLeft.rows);
@@ -1123,6 +1126,19 @@ namespace ORB_SLAM2
             }
         }
     }
+
+    void Frame::alignORBSegments(vector<cv::Mat*> segmentImages){
+        for(int oi = 0; oi<mvORBAttributions.size();oi++){
+            for(int i=0;i<mSegmentsInfo.size();i++){
+                if(pointInSegmentMask(mvORBAttributions[oi]->keyPt->pt,segmentImages[i])){
+                    mvORBAttributions[oi]->segmentIndex = i;
+                    mSegmentsInfo[i]->associatedORBs.push_back(oi);
+                }
+            }
+        }
+    }
+
+
 
     bool Frame::pointInSegmentMask(const cv::Point2d& point, const cv::Mat* segmentMask) {
         // Check if the point coordinates are within the bounds of the segment mask

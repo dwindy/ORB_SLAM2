@@ -99,6 +99,7 @@ namespace ORB_SLAM2
         void processLiDARPts(const vector<vector<float>> &);
         void ProjectLiDARtoCamtoImage_KITTI(int cols, int rows);
         void groupLiDARandSegment(vector<cv::Mat*> segmentImages);
+        void alignORBSegments(vector<cv::Mat*> segmentImages);
         bool pointInSegmentMask(const cv::Point2d& point, const cv::Mat* segmentMask);
         void planeFitEachSegment();
         void PlaneFitting(vector<mLiDARPoint *> &mLiDARs, int segmentID, int segmentCategory, vector<mPlane*> &mPlanes);
@@ -285,6 +286,7 @@ namespace ORB_SLAM2
         int depthSource;//1 for plane 2 for line 3 for point/patch
         float depth;
         int PlaneID;
+        int segmentIndex;
         //PtLsr * LiDARPt;
         mORBAttribution() : orbID(-1), depthSource(-1), depth(-1), PlaneID(-1), keyPt{nullptr}{};
     };
@@ -346,6 +348,7 @@ namespace ORB_SLAM2
         int category_id;
         double area;
         std::vector<mLiDARPoint*> associatedPoints;
+        std::vector<int> associatedORBs;
         SegmentInfo(int id, bool isThing, int category_id, double area):
                 id(id), isThing(isThing), category_id(category_id), area(area){}
     };

@@ -116,7 +116,8 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                         if (mvORBattributions[i]->depthSource == 3) //purple
                             R = 255, G = 0, B = 255;
                         if (mvORBattributions[i]->depthSource == 4) //stereo
-                            R = 255, G = 0, B = 0;
+                            continue;
+                            //R = 255, G = 0, B = 0;
                         cv::rectangle(im, pt1, pt2, cv::Scalar(B,G,R));
                         cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(B,G,R), -1);
                         mnTracked++;
