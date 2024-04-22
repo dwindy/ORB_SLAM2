@@ -222,6 +222,18 @@ namespace ORB_SLAM2
         //ComputeStereoMatches();
         ComputeStereoMatches(mvORBAttributions);
 
+        /// Deallocate memory for each cv::Mat object
+        for (size_t i = 0; i < segmentImages.size(); ++i) {
+            delete segmentImages[i];
+        }
+        /// Clear the vector
+        segmentImages.clear();
+        for (int i=0;i<mvLiDARPoints.size();i++){
+            delete mvLiDARPoints[i];
+        }
+        mvLiDARPoints.clear();
+        ///-------------------------------------------------
+
         ///Test code
         for(int i=0;i<mvDepth.size();i++){
             if(mvDepth[i]>-1 && mvORBAttributions[i]->depthSource==-1){
@@ -1177,7 +1189,15 @@ namespace ORB_SLAM2
         }
         allPoints->resize(lidarCounter);
         allPoints->height=1,allPoints->width=lidarCounter;
-        ///Step 2 downsampling
+        ///Step 2 downsampling --- not working
+//        //NOTE lose the index after down-sample
+//        pcl::PointCloud<pcl::PointXYZ>::Ptr downSampledPts(new pcl::PointCloud<pcl::PointXYZ>);
+//        pcl::VoxelGrid<pcl::PointXYZ> source;
+//        source.setInputCloud(allPoints);
+//        //KITTI x forward, y left, z up; Camera ref x->right, y->down, z->front
+//        source.setLeafSize(0.05f, 0.05f, 0.05f);
+//        source.filter(*downSampledPts);
+//        //cout << " downsample points " << downSampledPts->points.size();
         ///Step 3 Region Growing
         ///calc norms
         pcl::search::Search<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
@@ -1185,6 +1205,7 @@ namespace ORB_SLAM2
         pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
         normal_estimator.setSearchMethod(tree);
         normal_estimator.setInputCloud(allPoints);
+        //normal_estimator.setInputCloud(downSampledPts);
         normal_estimator.setKSearch(50);
         normal_estimator.compute(*normals);
         ///calc region growing
@@ -1194,6 +1215,7 @@ namespace ORB_SLAM2
         reg.setSearchMethod(tree);
         reg.setNumberOfNeighbours(50);
         reg.setInputCloud(allPoints);
+        //reg.setInputCloud(downSampledPts);
         reg.setInputNormals(normals);
         reg.setSmoothnessThreshold(10.0/180.0*M_PI);
         reg.setCurvatureThreshold(10.0);
@@ -1211,6 +1233,7 @@ namespace ORB_SLAM2
             for(size_t j=0; j < cls.indices.size();j++){
                 int globalIndex = cls.indices[j];
                 thisCloud->points[j] = allPoints->points[globalIndex];
+                //thisCloud->points[j] = downSampledPts->points[globalIndex];
                 localGlobalThisCluster.insert(make_pair(j,globalIndex));
             }
             mPlane * foundPlane = new mPlane();
@@ -1239,6 +1262,8 @@ namespace ORB_SLAM2
             globalIndexofEachCluster.push_back(globalIndiceofThisCluster);
             mPlanes.push_back(foundPlane);
         }
+//        tree.reset();
+//        normals.reset();
     }
 
     //AX+BY+CZ+D=0;
