@@ -26,12 +26,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d9688e28-8423-406e-b888-76af525cee58" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/CameraTrajectory.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/CameraTrajectory.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/semanticSLAM.ods" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/results/semanticSLAM.ods" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo_zoe" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/CMakeConfigureLog.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/CMakeConfigureLog.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-Debug-log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-Debug-log.txt" afterDir="false" />
@@ -128,7 +128,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="rgbd_tum_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_sitting_static $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_sitting_static/associate.txt" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="rgbd_tum_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="rgbd_tum_yolo">
+    <configuration name="rgbd_tum_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt Ulster.yaml ../../../DATASET/Ulster/2024/2024-04-23-09-41-10/ ../../../DATASET/Ulster/2024/2024-04-23-09-41-10/associations-forward.txt" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="rgbd_tum_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="rgbd_tum_yolo">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -401,6 +401,11 @@
       <workItem from="1712717140211" duration="467000" />
       <workItem from="1712717723363" duration="61000" />
       <workItem from="1712717844963" duration="130000" />
+      <workItem from="1713831811674" duration="2978000" />
+      <workItem from="1713885955063" duration="3488000" />
+      <workItem from="1713980307564" duration="2000" />
+      <workItem from="1714564825697" duration="638000" />
+      <workItem from="1714748931594" duration="6000" />
     </task>
     <servers />
   </component>
@@ -430,6 +435,11 @@
           <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
           <line>844</line>
           <option name="timeStamp" value="33" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo_zoe.cc</url>
+          <line>118</line>
+          <option name="timeStamp" value="34" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
