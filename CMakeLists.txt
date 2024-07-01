@@ -105,13 +105,17 @@ target_link_libraries(rgbd_tum ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 
-add_executable(stereo_kitti
-Examples/Stereo/stereo_kitti.cc)
-target_link_libraries(stereo_kitti ${PROJECT_NAME})
+#add_executable(stereo_kitti
+#Examples/Stereo/stereo_kitti.cc)
+#target_link_libraries(stereo_kitti ${PROJECT_NAME})
 
 #add_executable(fusion_stereo_kitti
 #        Examples/Stereo/fusion_stereo_kitti.cc)
 #target_link_libraries(fusion_stereo_kitti ${PROJECT_NAME})
+
+add_executable(stereo_hilti
+        Examples/Stereo/stereo_hilti.cpp)
+target_link_libraries(stereo_hilti ${PROJECT_NAME})
 
 add_executable(fusion_stereo_lidar_seg_kitti
         Examples/Stereo/stereo_fusion_lidar_seg.cc)
@@ -122,7 +126,12 @@ target_link_libraries(fusion_stereo_lidar_seg_kitti ${PROJECT_NAME})
 #target_link_libraries(stereo_euroc ${PROJECT_NAME})
 #
 #
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
+
+add_executable(mono_hilti_fusion_lidar_seg
+        Examples/Monocular/mono_hilti_fusion_lidar_seg.cc)
+target_link_libraries(mono_hilti_fusion_lidar_seg ${PROJECT_NAME})
+
 #
 #add_executable(mono_tum
 #Examples/Monocular/mono_tum.cc)

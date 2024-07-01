@@ -246,7 +246,6 @@ namespace ORB_SLAM2
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         mvbOutlier = vector<bool>(N, false);
 
-
         // This is done only for the first Frame (or after a change in the calibration)
         if (mbInitialComputations) {
             ComputeImageBounds(imLeft);
@@ -1516,11 +1515,18 @@ namespace ORB_SLAM2
         }
 
         // Set limits for search
-        //const float minZ = mb;
-        const float minZ = 0.53715;
+        //KITTI-------
+        const float minZ = mb;
+        //const float minZ = 0.53715;
         const float minD = 0;
         //const float maxD = mbf / minZ;
-        const float maxD = 0.53715 * 707.0912 / minZ;
+        const float maxD = 0.53715 * 718.856 / minZ; //????
+        //HILTI-------
+//        //const float minZ = mb;
+//        const float minZ = 0.5;
+//        const float minD = 0;
+//        //const float maxD = mbf / minZ;
+//        const float maxD = mbf / minZ;
 
 
 

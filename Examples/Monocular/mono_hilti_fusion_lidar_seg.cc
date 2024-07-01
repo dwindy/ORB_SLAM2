@@ -1,3 +1,6 @@
+//
+// Created by xin on 29/05/24.
+//
 /**
 * This file is part of ORB-SLAM2.
 *
@@ -31,14 +34,20 @@
 
 using namespace std;
 
-void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
+void LoadImages_HILTI(const string &strPathToSequence, vector<string> &vstrImageLeft,
                 vector<string> &vstrImageRight, vector<double> &vTimestamps);
 
-void LoadLaserscans(const string strPathToSequence, vector<string> &vstrLiDARFilenames, const vector<string> &vstrImageFilenames);
+void LoadLaserscans_HILTI(const string strPathToSequence, vector<string> &vstrLiDARFilenames, const vector<long> &vstrLiDARTimes);
 
-void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames, const vector<string> &vstrImageFilenames);
+void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames, const vector<long> &vstrCamTimes);
 
 void loadKITTI(const string fileAddress, vector<vector<float>> &datas);
+
+void loadPCDHILTI2023(string fileAddress, vector<vector<float>> &datas);
+
+void LoadTimes(string stdTimeFrame, vector<long> &vCamTimestamps, vector<long> &vLiDTimestamps);
+
+void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<long> &vTimestamps, int camIndex);
 
 int main(int argc, char **argv)
 {
@@ -48,21 +57,31 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // Retrieve paths to images
+    //Retrieve timeframes of Cam and LiDAR
+    vector<long> vCamTimestamps;
+    vector<long> vLiDTimestamps;
+    LoadTimes(string(argv[3]), vCamTimestamps, vLiDTimestamps);
+
+//    vector<string> vstrImageLeft;
+//    vector<string> vstrImageRight;
+//    vector<double> vTimestamps;
+//    LoadImages_HILTI(string(argv[3]), vstrImageLeft, vstrImageRight, vTimestamps);
+    // Retrieve paths to images and lidars
     vector<string> vstrImageLeft;
+    LoadImages(string(argv[3]),vstrImageLeft, vCamTimestamps,0);
+    // Retrieve paths to images and lidars
     vector<string> vstrImageRight;
-    vector<double> vTimestamps;
-    LoadImages(string(argv[3]), vstrImageLeft, vstrImageRight, vTimestamps);
+    LoadImages(string(argv[3]),vstrImageRight, vCamTimestamps,1);
 
     const int nImages = vstrImageLeft.size();
 
     ///Added
     // Retrieve paths to lidars
     vector<string> vstrLiDARFilenames;
-    LoadLaserscans(string(argv[3]), vstrLiDARFilenames, vstrImageLeft);
+    LoadLaserscans_HILTI(string(argv[3]), vstrLiDARFilenames, vLiDTimestamps);
     // Retrieve paths to segment info
     vector<string> vstrSegFilenames;
-    LoadSegmentInfo(string(argv[3]), vstrSegFilenames, vstrImageLeft);
+    LoadSegmentInfo(string(argv[3]), vstrSegFilenames, vCamTimestamps);
     ///----------------------------------
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
@@ -74,7 +93,7 @@ int main(int argc, char **argv)
 
     cout << endl << "-------" << endl;
     cout << "Start processing sequence ..." << endl;
-    cout << "Images in the sequence: " << nImages << endl << endl;   
+    cout << "Images in the sequence: " << nImages << endl << endl;
 
     // Main loop
     cv::Mat imLeft, imRight;
@@ -83,7 +102,7 @@ int main(int argc, char **argv)
         // Read left and right images from file
         imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_UNCHANGED);
         imRight = cv::imread(vstrImageRight[ni],CV_LOAD_IMAGE_UNCHANGED);
-        double tframe = vTimestamps[ni];
+        double tframe = vCamTimestamps[ni];
 
         if(imLeft.empty())
         {
@@ -101,7 +120,8 @@ int main(int argc, char **argv)
         ///Added
         //Read lidar from bin
         vector<vector<float>> liDARdata(1000000, vector<float>(4));//resize in the function
-        loadKITTI(vstrLiDARFilenames[ni],liDARdata);
+        //loadKITTI(vstrLiDARFilenames[ni],liDARdata);
+        loadPCDHILTI2023(vstrLiDARFilenames[ni], liDARdata);
         ///----------------------------------
 
         // Pass the images to the SLAM system
@@ -121,9 +141,9 @@ int main(int argc, char **argv)
         // Wait to load the next frame
         double T=0;
         if(ni<nImages-1)
-            T = vTimestamps[ni+1]-tframe;
+            T = (vCamTimestamps[ni+1]-tframe)/10000000000.0;
         else if(ni>0)
-            T = tframe-vTimestamps[ni-1];
+            T = (tframe-vCamTimestamps[ni-1])/10000000000.0;
 
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
@@ -149,15 +169,18 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
-                vector<string> &vstrImageRight, vector<double> &vTimestamps) {
+void LoadImages_HILTI(const string &strPathToSequence, vector<string> &vstrImageLeft,
+                vector<string> &vstrImageRight, vector<double> &vTimestamps)
+{
     ifstream fTimes;
-    string strPathTimeFile = strPathToSequence + "/times.txt";
+    string strPathTimeFile = strPathToSequence + "/synchronized_timestamps.txt";
     fTimes.open(strPathTimeFile.c_str());
-    while (!fTimes.eof()) {
+    while(!fTimes.eof())
+    {
         string s;
-        getline(fTimes, s);
-        if (!s.empty()) {
+        getline(fTimes,s);
+        if(!s.empty())
+        {
             stringstream ss;
             ss << s;
             double t;
@@ -173,7 +196,8 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
     vstrImageLeft.resize(nTimes);
     vstrImageRight.resize(nTimes);
 
-    for (int i = 0; i < nTimes; i++) {
+    for(int i=0; i<nTimes; i++)
+    {
         stringstream ss;
         ss << setfill('0') << setw(6) << i;
         vstrImageLeft[i] = strPrefixLeft + ss.str() + ".png";
@@ -182,26 +206,24 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
 }
 
 //get lidar file names from image names
-void LoadLaserscans(const string strPathToSequence, vector<string> &vstrLiDARFilenames, const vector<string> &vstrImageFilenames){
-    string strPrefixLeft = strPathToSequence + "/velodyne/";
-    const int frameNum = vstrImageFilenames.size();
+void LoadLaserscans_HILTI(const string strPathToSequence, vector<string> &vstrLiDARFilenames,
+                          const vector<long> &vstrLiDARTimes) {
+    string strPrefix = strPathToSequence + "/velodyne/points";
+    const int frameNum = vstrLiDARTimes.size();
     vstrLiDARFilenames.resize(frameNum);
     for (int i = 0; i < frameNum; i++) {
-        stringstream ss;
-        ss << setfill('0') << setw(6) << i;
-        vstrLiDARFilenames[i] = strPrefixLeft + ss.str() + ".bin";
+        vstrLiDARFilenames[i] = strPrefix + to_string(vstrLiDARTimes[i]) + ".pcd";
     }
 }
 
 //get segment info file names from image names
-void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames, const vector<string> &vstrImageFilenames){
-    string strPrefixLeft = strPathToSequence + "/segements/";
-    const int frameNum = vstrImageFilenames.size();
+void LoadSegmentInfo(const string strPathToSequence, vector<string> &vstrSegmentInfoFilenames,
+                     const vector<long> &vstrCamTimes){
+    string strPrefixLeft = strPathToSequence + "/cam0/segements/";
+    const int frameNum = vstrCamTimes.size();
     vstrSegmentInfoFilenames.resize(frameNum);
     for (int i = 0; i < frameNum; i++) {
-        stringstream ss;
-        ss << setfill('0') << setw(6) << i;
-        vstrSegmentInfoFilenames[i] = strPrefixLeft + ss.str() + ".txt";
+        vstrSegmentInfoFilenames[i] = strPrefixLeft + to_string(vstrCamTimes[i]) + ".txt";
     }
 }
 
@@ -223,4 +245,65 @@ void loadKITTI(string fileAddress, vector<vector<float>> &datas) {
     }
     reader.close();
     datas.resize(i);
+}
+
+void loadPCDHILTI2023(string fileAddress, vector<vector<float>> &datas) {
+    fstream reader(fileAddress, ios::in);
+    string readedLine;
+    int linecounter = 0;
+    int pointCounter = 0;
+    while (getline(reader, readedLine)) {
+        //cout << "get a line "<<readedLine << endl;
+        linecounter++;
+        if (linecounter > 11) {
+            istringstream iss(readedLine);
+            double x, y, z, intensity, timestamp;
+            double ring; //beware of the loss of precission if change back to int
+            //hilti2022 iss >> x >> y >> z >> intensity >> timestamp>>ring;
+            //hilti2023  iss >> x >> y >> z >> intensity >> ring >> timestamp;
+            iss >> x >> y >> z >> intensity >> ring >> timestamp;
+            if (!(x == 0 && y == 0 && z == 0)) {
+                vector<float> thisPoint = {float(x), float(y), float(z), float(intensity), float(ring), float(timestamp)};
+                datas[pointCounter] = thisPoint;
+                pointCounter++;
+            }
+        }
+    }
+    datas.resize(pointCounter);
+    //cout<<"load "<<pointCounter<<" points from pcd "<<endl;
+    reader.close();
+}
+
+void LoadTimes(string strPathToSequence, vector<long> &vCamTimestamps, vector<long> &vLiDTimestamps) {
+    string strPathTimeFile = strPathToSequence + "/synchronized_timestamps.txt";
+    ifstream reader(strPathTimeFile, ios::in);
+    string aLine;
+    if (reader.is_open()) {
+        while (getline(reader, aLine)) {
+            istringstream iss(aLine);
+            long cam0Time, cam1Time, liDTime;
+            double timeDiff0, timeDiff1, timeDiff2;
+            if (iss >> cam0Time >>cam1Time >> liDTime >> timeDiff0 >> timeDiff1 >> timeDiff2) {
+                vCamTimestamps.push_back(cam0Time);
+                vLiDTimestamps.push_back(liDTime);
+            }
+        }
+    } else {
+        std::printf("time frame read error !!! \n");
+        cout<<strPathTimeFile<<endl;
+    }
+}
+
+void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<long> &vTimestamps, int camIndex) {
+    //string strPrefixLeft = strPathToSequence + "/data/";
+    string strPrefixLeft;
+    if(camIndex==0)
+        strPrefixLeft = strPathToSequence + "/cam0/data_undis/";
+    if(camIndex==1)
+        strPrefixLeft = strPathToSequence + "/cam1/data_undis/";
+    const int nTimes = vTimestamps.size();
+    vstrImageFilenames.resize(nTimes);
+    for (int i = 0; i < nTimes; i++) {
+        vstrImageFilenames[i] = strPrefixLeft + to_string(vTimestamps[i]) + ".png";
+    }
 }
