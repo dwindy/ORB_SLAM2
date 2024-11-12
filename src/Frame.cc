@@ -233,6 +233,8 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         //step 1 get all class labels
         ifstream reader;
         reader.open(classAddress, ios::in);
+        if(!reader)
+            cout<<"cannot open "<<classAddress<<endl;
         int label;
         while (reader >> label){
             mvClusterLabels.push_back(label);

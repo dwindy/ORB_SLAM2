@@ -111,7 +111,7 @@ public:
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
 
-    ///ads on
+    ///adds on
     cv::Point2f project2image(cv::Mat P3DC);
     cv::Point2f getCentroid(const cv::Mat &mask);
     std::vector<cv::Mat> allMasks;//label masks from yolo
@@ -166,6 +166,8 @@ public:
     std::vector<bool> mvKeysDynamic;//both reprojt & opticalflow flag set true
     std::vector<float> mvRePjtMeanofClusters;//Reproject error mean of each cluster, same size of masks
     std::vector<float> mvRePjtVarianceofClusters;//Reproject error variance of each cluster, same size of masks
+    std::vector<float> mvOptflwVarianceofClusters;//Opticalflow error variance of each cluster, same size of masks
+    std::vector<float> mvOptflwMeanofClusters;
     cv::Mat frameImGray;
     std::vector<cv::Point2f> mvOpFlwKyPt;
     std::vector<int> mvOpFlowKyClusters;

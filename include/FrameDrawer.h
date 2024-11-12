@@ -60,6 +60,10 @@ protected:
     vector<int> mvKeysLabels;
     vector<bool> mvKeysSoft;
     vector<bool> mvKeysDynamics;
+    vector<float> mvKeyRjtVars;
+    vector<float> mvKeyOptVars;
+    vector<cv::Point2f> mvCentersOfMasks;
+    vector<bool> mvObjDynamics;
     ///--------------------------------
     vector<bool> mvbMap, mvbVO;
     bool mbOnlyTracking;

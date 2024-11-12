@@ -346,6 +346,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     }
 
     ///Addes on
+    //returns the center point of a mask
     cv::Point2f getCentroid(const cv::Mat &mask) {
         cv::Moments moments = cv::moments(mask, true);
         cv::Point2f centroid(moments.m10 / moments.m00, moments.m01 / moments.m00);
@@ -718,6 +719,9 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             //mean error vector
             cv::Point2f meanVector(0, 0), varianceVector(0, 0);
             cv::Point2f meanPoint(0, 0);
+            //in case not matching
+            if(pointOfClusters_cur[i].size()==0)
+                continue;
             pointMean(pointOfClusters_cur[i], meanPoint);
             vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
             vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
@@ -725,6 +729,10 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
             curF.mvClusterOpFlowVariance[i]=varianceVector;
+            float variance = 0;
+            variance = sqrt(varianceVector.x*varianceVector.x+varianceVector.y*varianceVector.y);
+            if(std::isnan(varianceVector.x)||std::isnan(varianceVector.y))
+                int pause = 1;
         }
     }
 
@@ -773,6 +781,9 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             //mean error vector
             cv::Point2f meanVector(0, 0), varianceVector(0, 0);
             cv::Point2f meanPoint(0, 0);
+            //in case not matching
+            if(pointOfClusters_cur[i].size()==0)
+                continue;
             pointMean(pointOfClusters_cur[i], meanPoint);
             vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
             vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
@@ -780,6 +791,10 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
             curF.mvClusterOpFlowVariance[i]=varianceVector;
+            float variance = 0;
+            variance = sqrt(varianceVector.x*varianceVector.x+varianceVector.y*varianceVector.y);
+            if(std::isnan(varianceVector.x)||std::isnan(varianceVector.y))
+                int pause = 1;
         }
     }
 
@@ -1132,17 +1147,20 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         for (int i = 0; i < clusterDynamicFlags.size(); i++) {
             float varianceVector = sqrt(curF.mvClusterOpFlowVariance[i].x * curF.mvClusterOpFlowVariance[i].x +
                                         curF.mvClusterOpFlowVariance[i].y + curF.mvClusterOpFlowVariance[i].y);
-            //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) { //TUM and most Bonn
-            if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
+            curF.mvOptflwVarianceofClusters.push_back(varianceVector);
+//            if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) { //TUM and most Bonn
+            //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
             //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
-            //    if (varianceVector > 1.0 ) {
             //if(curF.mvClusterLabels[i]==0){
             //if(curF.mvRePjtVarianceofClusters[i] > 5.0){
-            //if(varianceVector > 1.0){
+            if(varianceVector > 1.0){
                 clusterDynamicFlags[i] = true;
                 curF.mvClusterDynamic[i] = true;
             }
+            if(! (curF.mvOptflwVarianceofClusters[i]>=0 && curF.mvRePjtVarianceofClusters[i]>=0))
+                int pause = 1;
         }
+        //cout<<curF.mnId<<"curF.mvOptflwVarianceofClusters "<<curF.mvOptflwVarianceofClusters.size()<<" curF.mvRePjtVarianceofClusters "<<curF.mvRePjtVarianceofClusters.size()<<endl;
         //apply to each keypoint
         for (int i = 0; i < curF.mvKeysClusters.size(); i++) {
             int clusterIndex = curF.mvKeysClusters[i];

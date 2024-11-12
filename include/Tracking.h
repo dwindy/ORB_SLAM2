@@ -42,6 +42,7 @@
 
 ///adds on-----for kalman filter-----
 #include "KalmanFilter.h"
+#include <cmath>
 
 namespace ORB_SLAM2 {
     class Viewer;

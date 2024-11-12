@@ -138,6 +138,15 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         colorCharts.push_back({72.0 / 255, 61.0 / 255, 219.0 / 255});   // Dark Slate Blue (for label 30)
         colorCharts.push_back({0.0 / 255, 139.0 / 255, 139.0 / 255});   // Dark Cyan (for label 33)
         colorCharts.push_back({255.0 / 255, 160.0 / 255, 122.0 / 255});  // Light Salmon (for label 69)
+        colorCharts.push_back({255.0 / 255, 105.0 / 255, 180.0 / 255});  // Hot Pink added 76 - 6th Nov 2024
+        colorCharts.push_back({144.0 / 255, 238.0 / 255, 144.0 / 255});  // Light Green added 44
+        colorCharts.push_back({255.0 / 255, 140.0 / 255, 0.0 / 255});  // Dark Orange added 43
+        colorCharts.push_back({70.0 / 255, 130.0 / 255, 180.0 / 255});  // Steel Blue 47
+        colorCharts.push_back({255.0 / 255, 99.0 / 255, 71.0 / 255});  // Tomato 2
+        colorCharts.push_back({46.0 / 255, 139.0 / 255, 87.0 / 255});  // Sea Green 49
+
+
+
         //store label to color map
         vector<vector<int>> mPofColorPoints;
         vector<int> mPofNormalPoints;
@@ -150,6 +159,8 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(-1, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(0, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(1, label2colorMap.size()));
+        //if color change alot in future diagram for semanticSLAM paper. comment this No2 --- 7 Nov
+        label2colorMap.insert(pair<int, int>(2, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(3, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(4, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(6, label2colorMap.size()));
@@ -170,7 +181,11 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(36, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(39, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(41, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(43, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(44, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(45, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(47, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(49, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(56, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(57, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(58, label2colorMap.size()));
@@ -189,6 +204,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(73, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(74, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(75, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(76, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(77, label2colorMap.size()));
         for (int i = 0; i < vpMPs.size(); i++) {
             int label = vpMPs[i]->label;
