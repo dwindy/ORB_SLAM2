@@ -180,7 +180,7 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
  */
 void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folder) {
     for (int i = 0; i < vstrImageFilenames.size(); i++) {
-        //string header = vstrImageFilenames[i].substr(3, 20); //Ulster dataset
+        //string header = vstrImageFilenames[i].substr(3, 20); //Ulster dataset lab4
         //string header = vstrImageFilenames[i].substr(3, 17); //BONN dataset
         string header = vstrImageFilenames[i].substr(3, 18); //TUM dataset
         string classFileName = folder + "/mask" + header + "_class.txt";
