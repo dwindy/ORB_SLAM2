@@ -1148,12 +1148,12 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             float varianceVector = sqrt(curF.mvClusterOpFlowVariance[i].x * curF.mvClusterOpFlowVariance[i].x +
                                         curF.mvClusterOpFlowVariance[i].y + curF.mvClusterOpFlowVariance[i].y);
             curF.mvOptflwVarianceofClusters.push_back(varianceVector);
-//            if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) { //TUM and most Bonn
+            if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0) { //TUM and most Bonn
             //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
             //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
             //if(curF.mvClusterLabels[i]==0){
             //if(curF.mvRePjtVarianceofClusters[i] > 5.0){
-            if(varianceVector > 1.0){
+            // if(varianceVector > 1.0){
                 clusterDynamicFlags[i] = true;
                 curF.mvClusterDynamic[i] = true;
             }
