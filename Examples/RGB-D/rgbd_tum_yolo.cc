@@ -34,12 +34,12 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
 
 ///adds on
-void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folderaddress);
+void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folderaddress, const string &dataset);
 
 int main(int argc, char **argv) {
-    if (argc != 5) {
-        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association"
-             << endl;
+    if (argc != 6) {
+        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name" << endl;
+        cerr << "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM" << endl;
         return 1;
     }
 
@@ -63,7 +63,8 @@ int main(int argc, char **argv) {
     ///adds on
     vector<string> vstrClassFilenames;
     vstrClassFilenames.resize(nImages);
-    LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]));
+    string dataset = string(argv[5]); // New: dataset name
+    LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1], argv[2], ORB_SLAM2::System::RGBD, true);
@@ -178,13 +179,27 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
  * @param vstrImageFilenames
  * @param vstrMaskFilenames
  */
-void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folder) {
+void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folder, const string &dataset) {
     for (int i = 0; i < vstrImageFilenames.size(); i++) {
-        //string header = vstrImageFilenames[i].substr(3, 20); //Ulster dataset lab4
-        //string header = vstrImageFilenames[i].substr(3, 17); //BONN dataset
-        string header = vstrImageFilenames[i].substr(3, 18); //TUM dataset
+        // //string header = vstrImageFilenames[i].substr(3, 20); //Ulster dataset lab4
+        // //string header = vstrImageFilenames[i].substr(3, 17); //BONN dataset
+        // string header = vstrImageFilenames[i].substr(3, 18); //TUM dataset
+        // string classFileName = folder + "/mask" + header + "_class.txt";
+        // //cout<<maskFileName<<endl;
+        // vstrClassFilenames[i] = classFileName;
+        string header;
+        if (dataset == "Ulster")
+            header = vstrImageFilenames[i].substr(3, 20);
+        else if (dataset == "BONN")
+            header = vstrImageFilenames[i].substr(3, 17);
+        else if (dataset == "TUM")
+            header = vstrImageFilenames[i].substr(3, 18);
+        else {
+            cerr << "Unknown dataset: " << dataset << ". Supported: TUM, BONN, Ulster" << endl;
+            exit(1);
+        }
+
         string classFileName = folder + "/mask" + header + "_class.txt";
-        //cout<<maskFileName<<endl;
         vstrClassFilenames[i] = classFileName;
     }
 }
