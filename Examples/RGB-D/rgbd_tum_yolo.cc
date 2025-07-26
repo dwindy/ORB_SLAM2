@@ -37,9 +37,11 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
 void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folderaddress, const string &dataset);
 
 int main(int argc, char **argv) {
-    if (argc != 6) {
-        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name" << endl;
-        cerr << "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM" << endl;
+    if (argc != 7) {
+        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name metric_type" << endl;
+        cerr << "metric_type: variance | euclidean" << endl;
+        cerr << "dataset_type: Bonn | TUM | Ulster" << endl;
+        cerr << "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM Variance" << endl;
         return 1;
     }
 
@@ -60,14 +62,30 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    ///adds on
+    ///adds on----------------------------------------
+    ///object mask classes
     vector<string> vstrClassFilenames;
     vstrClassFilenames.resize(nImages);
-    string dataset = string(argv[5]); // New: dataset name
+    /// dataset name
+    string dataset = string(argv[5]);
+    if (dataset != "Bonn" && dataset != "TUM" && dataset != "Ulster") {
+        cerr << "Invalid metric type: " << dataset << ". Use 'Bonn', 'Ulster' or 'TUM'." << endl;
+        return 1;
+    }
+    /// metric method
     LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
+    string metric_type = string(argv[6]);
+    if (metric_type != "variance" && metric_type != "euclidean") {
+        cerr << "Invalid metric type: " << metric_type << ". Use 'variance' or 'euclidean'." << endl;
+        return 1;
+    }
+    ///----------------------------------------------
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1], argv[2], ORB_SLAM2::System::RGBD, true);
+
+    ///set metric
+    SLAM.SetMetricType(metric_type);
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;

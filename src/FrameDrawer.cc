@@ -43,6 +43,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
         vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
         int state; // Tracking state
         ///Added Module
+        int frameID;
         vector<bool> vbKeysSoft;
         vector<int> viKeysLabels;
         vector<bool> vbKeysDynamic;
@@ -76,6 +77,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                 vfKeysOptVar = mvKeyOptVars;
                 vpCentreMasks = mvCentersOfMasks;
                 vbObjDynamic = mvObjDynamics;
+                frameID = mFrameID;
                 ///--------------------------
             } else if (mState == Tracking::LOST) {
                 vCurrentKeys = mvCurrentKeys;
@@ -111,16 +113,16 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                     // This is a match to a MapPoint in the map
                     if (vbMap[i]) {
                         ///Added Modules
-//                        if (vbKeysDynamic[i]) { //if soft point, draw red
-//                            cv::rectangle(im, pt1, pt2, cv::Scalar(0, 0, 255));
-//                            cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
-//                            mnTracked++;
-//                        } else {//-----
-//                            //normal case
-//                            cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0));
-//                            cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
-//                            mnTracked++;
-//                        }
+                         if (vbKeysDynamic[i]) { //if soft point, draw red
+                        cv::rectangle(im, pt1, pt2, cv::Scalar(0, 0, 255));
+                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
+                        mnTracked++;
+                        } else {//-----
+                            //normal case
+                            cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0));
+                            cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
+                            mnTracked++;
+                        }
                     } else // This is match to a "visual odometry" MapPoint created in the last frame
                     {
                         cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 0));
@@ -129,15 +131,17 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                     }
                 }
             }
-            ///Added Module
+            ///Added Module ///todo add empty opt or rjt check
             //draw variance of each label
+            //cout<<"frameID: "<<frameID<<" vfKeysOptVar size "<<vfKeysOptVar.size()<<" vfKeysRjtVar size "<<vfKeysRjtVar.size()<<endl;
             for (int i = 0; i < vpCentreMasks.size(); i++) {
+
                 if (vbObjDynamic[i]) {
-                    cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(51, 255, 255), 1, vfKeysOptVar[i] * 4, 2);//yellow
-                    cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(255, 0, 255), 1, vfKeysRjtVar[i] *4, 2);//purple
+                   cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(51, 255, 255), 1, vfKeysOptVar[i] * 4, 2);//yellow
+                   cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(255, 0, 255), 1, vfKeysRjtVar[i] *4, 2);//purple
                 } else {
-                    cv::circle(im, vpCentreMasks[i], vfKeysOptVar[i] * 4, cv::Scalar(51, 255, 255), 2);//yellow
-                    cv::circle(im, vpCentreMasks[i], vfKeysRjtVar[i] * 4, cv::Scalar(255, 0, 255), 2);//purple
+                   cv::circle(im, vpCentreMasks[i], vfKeysOptVar[i] * 4, cv::Scalar(51, 255, 255), 2);//yellow
+                   cv::circle(im, vpCentreMasks[i], vfKeysRjtVar[i] * 4, cv::Scalar(255, 0, 255), 2);//purple
                 }
             }
         }
@@ -200,6 +204,7 @@ void FrameDrawer::Update(Tracking *pTracker)
     mvKeyOptVars = pTracker->mCurrentFrame.mvOptflwVarianceofClusters;
     mvCentersOfMasks = pTracker->mCurrentFrame.maskCentres;
     mvObjDynamics = pTracker->mCurrentFrame.mvClusterDynamic;
+    mFrameID = pTracker->mCurrentFrame.mnId;
     ///------------------------------------------
     N = mvCurrentKeys.size();
     mvbVO = vector<bool>(N,false);

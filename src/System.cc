@@ -620,4 +620,9 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
     return mTrackedKeyPointsUn;
 }
 
+void System::SetMetricType(std::string inputMetricType)
+{
+    mMetricType = inputMetricType;
+}
+
 } //namespace ORB_SLAM

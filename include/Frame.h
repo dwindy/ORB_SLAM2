@@ -163,16 +163,21 @@ public:
     std::vector<int> mvKeysLabels;//label of this keypoint. same label didn't mean same cluster
     std::vector<bool> mvKeysSoft;
     std::vector<float> mvKeysDyncmicNumeric;//todo
-    std::vector<bool> mvKeysDynamic;//both reprojt & opticalflow flag set true
+    std::vector<bool> mvKeysDynamic;//if both reprojection & optical flow flag set true
     std::vector<float> mvRePjtMeanofClusters;//Reproject error mean of each cluster, same size of masks
     std::vector<float> mvRePjtVarianceofClusters;//Reproject error variance of each cluster, same size of masks
+    std::vector<std::vector<float>> mvRePjtErrorsOfClusters;//Reproject errors of each pair of feature, of each cluster, same size of masks
+
+    std::vector<float> mvOptflwMeanofClusters;//Opticalflow mean error of each cluster, same size of masks
     std::vector<float> mvOptflwVarianceofClusters;//Opticalflow error variance of each cluster, same size of masks
-    std::vector<float> mvOptflwMeanofClusters;
+    std::vector<cv::Point2f> mvClusterOpFlowVariance;//vairnce vector (variance in x,y) of each cluster. need to sqrt(x^2+y^2) before use
+    std::vector<std::vector<float>> mvOptflwErrorsOfClusters;//error length of each flow pair of each cluster
+
     cv::Mat frameImGray;
     std::vector<cv::Point2f> mvOpFlwKyPt;
     std::vector<int> mvOpFlowKyClusters;
     std::vector<int> mvOpFlowKyLabels;
-    std::vector<cv::Point2f> mvClusterOpFlowVariance;
+
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.

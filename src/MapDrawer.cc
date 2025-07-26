@@ -142,8 +142,10 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         colorCharts.push_back({144.0 / 255, 238.0 / 255, 144.0 / 255});  // Light Green added 44
         colorCharts.push_back({255.0 / 255, 140.0 / 255, 0.0 / 255});  // Dark Orange added 43
         colorCharts.push_back({70.0 / 255, 130.0 / 255, 180.0 / 255});  // Steel Blue 47
-        colorCharts.push_back({255.0 / 255, 99.0 / 255, 71.0 / 255});  // Tomato 2
-        colorCharts.push_back({46.0 / 255, 139.0 / 255, 87.0 / 255});  // Sea Green 49
+        colorCharts.push_back({255.0 / 255, 99.0 / 255, 71.0 / 255}); // Tomato 2
+        colorCharts.push_back({46.0 / 255, 139.0 / 255, 87.0 / 255}); // Sea Green 49
+        colorCharts.push_back({0.0 / 255, 255.0 / 255, 0.0 / 255}); // Bright Aqua (new for label 15)
+        colorCharts.push_back({200.0 / 255, 0.0 / 255, 255.0 / 255}); // Vivid Magenta (new for label 79)
 
 
 
@@ -168,6 +170,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(7, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(13, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(14, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(15, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(16, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(24, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(25, label2colorMap.size()));
@@ -206,6 +209,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
         label2colorMap.insert(pair<int, int>(75, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(76, label2colorMap.size()));
         label2colorMap.insert(pair<int, int>(77, label2colorMap.size()));
+        label2colorMap.insert(pair<int, int>(79, label2colorMap.size()));
         for (int i = 0; i < vpMPs.size(); i++) {
             int label = vpMPs[i]->label;
             auto iter = label2colorMap.find(label);

@@ -64,6 +64,7 @@ protected:
     vector<float> mvKeyOptVars;
     vector<cv::Point2f> mvCentersOfMasks;
     vector<bool> mvObjDynamics;
+    int mFrameID;
     ///--------------------------------
     vector<bool> mvbMap, mvbVO;
     bool mbOnlyTracking;
