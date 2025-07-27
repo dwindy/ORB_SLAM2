@@ -168,7 +168,7 @@ public:
     std::vector<float> mvRePjtVarianceofClusters;//Reproject error variance of each cluster, same size of masks
     std::vector<std::vector<float>> mvRePjtErrorsOfClusters;//Reproject errors of each pair of feature, of each cluster, same size of masks
 
-    std::vector<float> mvOptflwMeanofClusters;//Opticalflow mean error of each cluster, same size of masks
+    std::vector<cv::Point2f> mvOptflwMeanofClusters;//Opticalflow mean error of each cluster, same size of masks
     std::vector<float> mvOptflwVarianceofClusters;//Opticalflow error variance of each cluster, same size of masks
     std::vector<cv::Point2f> mvClusterOpFlowVariance;//vairnce vector (variance in x,y) of each cluster. need to sqrt(x^2+y^2) before use
     std::vector<std::vector<float>> mvOptflwErrorsOfClusters;//error length of each flow pair of each cluster

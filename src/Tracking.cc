@@ -774,7 +774,8 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             pointMean(pointOfClusters_cur[i], meanPoint);
             vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
             vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
-            clusterMeans.push_back(meanVector);
+            curF.mvOptflwMeanofClusters.push_back(meanVector);
+            //clusterMeans.push_back(meanVector);
             clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
 
@@ -870,7 +871,8 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             pointMean(pointOfClusters_cur[i], meanPoint);
             vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
             vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
-            clusterMeans.push_back(meanVector);
+            curF.mvOptflwMeanofClusters.push_back(meanVector);
+            //clusterMeans.push_back(meanVector);
             clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
             curF.mvClusterOpFlowVariance[i] = varianceVector;
@@ -957,11 +959,11 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
      * check the distance for each pair of keypoint and mappoing
      * calc mean error, variance of each cluster
      */
-    void Tracking::CheckReprojectDynamic(Frame &F) {
-
-    F.mvRePjtMeanofClusters.clear();
-    F.mvRePjtVarianceofClusters.clear();
-    F.mvRePjtErrorsOfClusters.clear();
+    void Tracking::CheckReprojectDynamic(Frame& F)
+    {
+        F.mvRePjtMeanofClusters.clear();
+        F.mvRePjtVarianceofClusters.clear();
+        F.mvRePjtErrorsOfClusters.clear();
 
         ///Step 1. Store data : labels of each cluster, keypoint index in each mask, mappoint in each masks
         int keyNumCur = F.mvKeysUn.size();
@@ -1024,7 +1026,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 //        cv:imshow("test", imgClone);
 //        cv::waitKey(0);
 
-    F.mvRePjtErrorsOfClusters = errorOfClusters;
+        F.mvRePjtErrorsOfClusters = errorOfClusters;
 
         ///Step 3. Calc the coefficient variance for each cluster
         vector<float> CVofEachCluster;
@@ -1100,7 +1102,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             //        //normalize the optical flow variance
             //        vector<cv::Point2f> normlaizedOptFlwVar;
             //        normalizeVector(curF.mvClusterOpFlowVariance, normlaizedOptFlwVar);
-            //todo, normalized is not used yet
+            //todo, normalized error is not used yet
             vector<bool> clusterDynamicFlags(curF.mvClusterLabels.size(), false);
             for (int i = 0; i < clusterDynamicFlags.size(); i++)
             {
@@ -1145,9 +1147,53 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                 }
             }
         }
-        else if (mpSystem->mMetricType == "euclid")
+        else if (mpSystem->mMetricType == "euclidean")
         {
+            vector<bool> clusterDynamicFlags(curF.mvClusterLabels.size(), false);
 
+            // 打开文件，以追加模式，每次写一行
+            std::ofstream fout("OpticalFlowErrorLog.txt", std::ios::app);
+            if (!fout.is_open()) {
+                std::cerr << "Cannot open OpticalFlowErrorLog.txt" << std::endl;
+            }
+
+            // 每帧开始写一行: FrameId:
+            fout << curF.mnId << " ";
+            for (int i = 0; i < clusterDynamicFlags.size(); i++)
+            {
+                // 输出 label 和对应误差，用冒号分隔，用逗号隔开不同cluster
+                fout << curF.mvClusterLabels[i] << ":" << curF.mvRePjtMeanofClusters[i];
+                // cout << curF.mvClusterLabels[i]<< " : " << curF.mvRePjtMeanofClusters[i]<<" ";
+                if (i != clusterDynamicFlags.size() - 1)
+                    fout << ","; // cluster之间加逗号
+                else
+                    fout << std::endl; // 每帧结束换行
+
+                //if (curF.mvRePjtMeanofClusters[i] > 7.04)//based on walking halfsphere error report
+                float distance = sqrt(
+                    curF.mvOptflwMeanofClusters[i].x * curF.mvOptflwMeanofClusters[i].x
+                    + curF.mvOptflwMeanofClusters[i].y * curF.mvOptflwMeanofClusters[i].y);
+                //if (distance > 7.192087)//based on walking halfsphere error report
+                if (distance > 7.192087 && curF.mvRePjtMeanofClusters[i] > 7.04)
+                {
+                    clusterDynamicFlags[i] = true;
+                    curF.mvClusterDynamic[i] = true;
+                }
+                if (!(curF.mvOptflwVarianceofClusters[i] >= 0 && curF.mvRePjtVarianceofClusters[i] >= 0))
+                    int pause = 1;
+            }
+            // cout << endl;
+            fout.close();
+            //cout<<curF.mnId<<"curF.mvOptflwVarianceofClusters "<<curF.mvOptflwVarianceofClusters.size()<<" curF.mvRePjtVarianceofClusters "<<curF.mvRePjtVarianceofClusters.size()<<endl;
+            //apply to each keypoint
+            for (int i = 0; i < curF.mvKeysClusters.size(); i++)
+            {
+                int clusterIndex = curF.mvKeysClusters[i];
+                if (clusterIndex > -1 && clusterDynamicFlags[clusterIndex])
+                {
+                    curF.mvKeysDynamic[i] = true;
+                }
+            }
         }
     }
 
