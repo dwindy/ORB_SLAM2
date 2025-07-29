@@ -121,6 +121,196 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     AssignFeaturesToGrid();
 }
 
+    ///added module
+    Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,  const string classAddress)
+        :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+         mpReferenceKF(static_cast<KeyFrame*>(NULL))
+{
+    // Frame ID
+    mnId=nNextId++;
+
+    // Scale Level Info
+    mnScaleLevels = mpORBextractorLeft->GetLevels();
+    mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+    mfLogScaleFactor = log(mfScaleFactor);
+    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+    mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+
+    // ORB extraction
+    thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
+    thread threadRight(&Frame::ExtractORB,this,1,imRight);
+    threadLeft.join();
+    threadRight.join();
+
+    N = mvKeys.size();
+
+    if(mvKeys.empty())
+        return;
+
+    UndistortKeyPoints();
+
+    ///Added module -----------------------------------------------------------------------------------------------------
+    /* coco labels used on yolo7
+    * # class names
+0-9 [ 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+10-19 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+20-29 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+30-39 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard' 'tennis racket', 'bottle',
+40-49 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+50-59 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+60-69 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+70-79 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush' ]
+*/
+
+    ///Adds on
+    //step 0 record file address for storing dynamics
+    int headlength = classAddress.length() - 9; //-9 removing "class.txt"
+    clusterDynamicName = classAddress.substr(0,headlength) + "dynamics.txt";
+    //step 1 get all class labels
+    ifstream reader;
+    reader.open(classAddress, ios::in);
+    if(!reader)
+        cout<<"cannot open "<<classAddress<<endl;
+    int label;
+    while (reader >> label){
+        mvClusterLabels.push_back(label);
+        mvClusterDynamic.push_back(false);
+    }
+    //step 2 read each mask image
+    //std::vector<cv::Mat> allMasks;
+    string maskImgAddress;
+    for (int i = 0; i < mvClusterLabels.size(); i++) {
+        maskImgAddress = classAddress.substr(0, classAddress.length() - 9) + "mask-" + to_string(i) + ".png";
+        cv::Mat mask = cv::imread(maskImgAddress, CV_LOAD_IMAGE_UNCHANGED);
+        allMasks.push_back(mask.clone());
+        cv::Point2f centroid = getCentroid(mask);
+        maskCentres.push_back(centroid);
+    }
+        //step 2.5 init the kalman filters
+        mvKalFilts = vector<KalmanFilter*>(allMasks.size(),nullptr);//init as same size as vector<cv::Mat> allMasks;
+        //step 3 init the attributions
+        mvKeysClusters = vector<int>(N, -1);
+        mvKeysLabels = vector<int>(N,-1);
+        mvKeysSoft = vector<bool>(N, false);
+        mvKeysDynamic = vector<bool>(N, false);
+        //define which objects should be removed
+        vector<int> softlabels{0, 7, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 39, 41, 56, 58, 62, 64, 66, 67, 73, 75, 77};
+        for (int i = 0; i < mvKeysUn.size(); i++) {
+            int x = int(mvKeysUn[i].pt.x), y = int(mvKeysUn[i].pt.y);
+            int x_min = x - 5, x_max = x + 5, y_min = y - 5, y_max = y + 5;
+            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
+                if (int(allMasks[j].at<uchar>(y, x)) > 0
+                    || int(allMasks[j].at<uchar>(y_min, x_min)) > 0 || int(allMasks[j].at<uchar>(y_min, x_max)) > 0
+                    || int(allMasks[j].at<uchar>(y_max, x_min)) > 0 || int(allMasks[j].at<uchar>(y_max, x_max)) > 0) {
+                    //store the cluster index and label for this key point.
+                    int ptLabel = mvClusterLabels[j];
+                    mvKeysClusters[i] = j;
+                    mvKeysLabels[i] = ptLabel;
+                    //check if this label belongs to softlabel
+                    if (count(softlabels.begin(), softlabels.end(), ptLabel))
+                        //Note Removing this point from system。
+                        //Note This is NOT a smart way, because both MvKeysUn and mDescriptors size will be dynamic!!!
+                        //mvKeysUn.erase(mvKeysUn.begin() + i);
+                        //mvKeys.erase(mvKeys.begin() + i);
+                        //deleteRow(mDescriptors, i, mDescriptors);
+                        //Mark with soft instead
+                        mvKeysSoft[i] = true;
+                }
+            }
+        }
+    //Step 4 init the mvClusterOpFlowVariance
+    for(int i=0;i<allMasks.size();i++)
+        mvClusterOpFlowVariance.push_back(cv::Point2f(0.0));
+
+    //Step 5 init the mvClusterOpFlowMean
+    //Step 4 allocation label/cluster for optical flow features
+    ///Step 1 calc optical Flow
+    //cal features for last frame
+    //        int opflowFeatureNum = 2000;
+    //        cv::goodFeaturesToTrack(frameImGray, mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
+    //allocate not here, in check optical flow dynamic check
+    //        mvOpFlowKyClusters = vector<int>(opflowFeatureNum, -1);
+    //        mvOpFlowKyLabels = vector<int>(opflowFeatureNum, -1);
+    //        for (int i = 0; i < mvOpFlwKyPt.size(); i++) {
+    //            int x = int(mvOpFlwKyPt[i].x), y = int(mvOpFlwKyPt[i].y);
+    //            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
+    //                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
+    //                    //store the cluster index and label for this key point.
+    //                    int ptLabel = mvClusterLabels[j];
+    //                    mvOpFlowKyClusters[i] = j;
+    //                    mvOpFlowKyLabels[i] = ptLabel;
+    //                }
+    //            }
+    //        }
+    //Note didn't need to update the size because didn't removing any points
+    //N = mvKeys.size();
+    ///-------------------------------------
+    //imshow check label allocation
+    //        cv::Mat testIMG = imGray.clone();
+    //        cv::cvtColor(testIMG,testIMG,CV_GRAY2RGB);
+    //
+    //        std::map<int,int> colorMap;//<label,color index>
+    //        colorMap.insert(std::pair<int,int>(-1, 0));
+    //        colorMap.insert(std::pair<int,int>(62, 1));
+    //        colorMap.insert(std::pair<int,int>(56, 2));
+    //        colorMap.insert(std::pair<int,int>(66, 3));
+    //        colorMap.insert(std::pair<int,int>(39, 4));
+    //        colorMap.insert(std::pair<int,int>(64, 5));
+    //        colorMap.insert(std::pair<int,int>(73, 6));
+    //        colorMap.insert(std::pair<int,int>(0, 7));
+    //        vector<vector<int>> colors;
+    //        colors.push_back(vector<int>{0,255,0});
+    //        colors.push_back(vector<int>{153,0,76});//wine red
+    //        colors.push_back(vector<int>{204,0,204});//purple
+    //        colors.push_back(vector<int>{102,0,204});//light blue purple
+    //        colors.push_back(vector<int>{0,0,255});//blue
+    //        colors.push_back(vector<int>{51,153,255});//light blue
+    //        colors.push_back(vector<int>{102,255,255});//cyan
+    //        colors.push_back(vector<int>{153,255,153});//light green
+    //        colors.push_back(vector<int>{255,255,0});//yellow
+    //        colors.push_back(vector<int>{255,128,0});//orange
+    //        for(int i=0;i<mvKeysUn.size();i++){
+    //            int label = mvKeysLabels[i];
+    //            int colorIndex = colorMap.at(label);
+    //            int R = colors[colorIndex][0],G = colors[colorIndex][1],B = colors[colorIndex][2];
+    //            cv::circle(testIMG,mvKeysUn[i].pt,3,cv::Scalar(R,G,B),-1);
+    //        }
+    //        imshow("test", testIMG);
+    //        cv::waitKey(0);
+    //----------------------------------------
+    ///------------------------------------------------------------------------------------------------------------------
+    ComputeStereoMatches();
+
+    mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+    mvbOutlier = vector<bool>(N,false);
+
+
+    // This is done only for the first Frame (or after a change in the calibration)
+    if(mbInitialComputations)
+    {
+        ComputeImageBounds(imLeft);
+
+        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/(mnMaxX-mnMinX);
+        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/(mnMaxY-mnMinY);
+
+        fx = K.at<float>(0,0);
+        fy = K.at<float>(1,1);
+        cx = K.at<float>(0,2);
+        cy = K.at<float>(1,2);
+        invfx = 1.0f/fx;
+        invfy = 1.0f/fy;
+
+        mbInitialComputations=false;
+    }
+
+    mb = mbf/fx;
+
+    AssignFeaturesToGrid();
+}
+
+
 Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
@@ -490,7 +680,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         }
         mvKeysLabels = vector<int>(N,-1);
         mvKeysSoft = vector<bool>(N,false);
-        //define which objects should be removed
+        //define which objects should be removed --- actually not used for determine dynamic just a soft label
         vector<int> softlabels{0, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 77, 73,67,66,64,62,58,56,41,39,7,75};
         for (int i = 0; i < mvKeysUn.size(); i++) {
             int x = mvKeysUn[i].pt.x;
