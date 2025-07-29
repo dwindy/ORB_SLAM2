@@ -30,18 +30,25 @@
 
 using namespace std;
 
-void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
-                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
+void LoadImages(const string& strAssociationFilename, vector<string>& vstrImageFilenamesRGB,
+                vector<string>& vstrImageFilenamesD, vector<double>& vTimestamps);
 
 ///adds on
-void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folderaddress, const string &dataset);
+void LoadClasses(vector<string> vstrImageFilenames, vector<string>& vstrClassFilenames, const string& folderaddress,
+                 const string& dataset);
 
-int main(int argc, char **argv) {
-    if (argc != 7) {
-        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name metric_type" << endl;
+int main(int argc, char** argv)
+{
+    if (argc != 7)
+    {
+        cerr << endl <<
+            "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name metric_type"
+            << endl;
         cerr << "metric_type: variance | euclidean" << endl;
         cerr << "dataset_type: Bonn | TUM | Ulster" << endl;
-        cerr << "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM Variance" << endl;
+        cerr <<
+            "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM Variance"
+            << endl;
         return 1;
     }
 
@@ -54,10 +61,13 @@ int main(int argc, char **argv) {
 
     // Check consistency in the number of images and depthmaps
     int nImages = vstrImageFilenamesRGB.size();
-    if (vstrImageFilenamesRGB.empty()) {
+    if (vstrImageFilenamesRGB.empty())
+    {
         cerr << endl << "No images found in provided path." << endl;
         return 1;
-    } else if (vstrImageFilenamesD.size() != vstrImageFilenamesRGB.size()) {
+    }
+    else if (vstrImageFilenamesD.size() != vstrImageFilenamesRGB.size())
+    {
         cerr << endl << "Different number of images for rgb and depth." << endl;
         return 1;
     }
@@ -68,14 +78,16 @@ int main(int argc, char **argv) {
     vstrClassFilenames.resize(nImages);
     /// dataset name
     string dataset = string(argv[5]);
-    if (dataset != "Bonn" && dataset != "TUM" && dataset != "Ulster") {
+    if (dataset != "Bonn" && dataset != "TUM" && dataset != "Ulster")
+    {
         cerr << "Invalid metric type: " << dataset << ". Use 'Bonn', 'Ulster' or 'TUM'." << endl;
         return 1;
     }
     /// metric method
     LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
     string metric_type = string(argv[6]);
-    if (metric_type != "variance" && metric_type != "euclidean") {
+    if (metric_type != "variance" && metric_type != "euclidean")
+    {
         cerr << "Invalid metric type: " << metric_type << ". Use 'variance' or 'euclidean'." << endl;
         return 1;
     }
@@ -98,15 +110,17 @@ int main(int argc, char **argv) {
     int framecounter = 0;
     // Main loop
     cv::Mat imRGB, imD;
-    for (int ni = 0; ni < nImages; ni++) {
+    for (int ni = 0; ni < nImages; ni++)
+    {
         // Read image and depthmap from file
         imRGB = cv::imread(string(argv[3]) + "/" + vstrImageFilenamesRGB[ni], CV_LOAD_IMAGE_UNCHANGED);
         imD = cv::imread(string(argv[3]) + "/" + vstrImageFilenamesD[ni], CV_LOAD_IMAGE_UNCHANGED);
         double tframe = vTimestamps[ni];
 
-        if (imRGB.empty()) {
+        if (imRGB.empty())
+        {
             cerr << endl << "Failed to load image at: "
-                 << string(argv[3]) << "/" << vstrImageFilenamesRGB[ni] << endl;
+                << string(argv[3]) << "/" << vstrImageFilenamesRGB[ni] << endl;
             return 1;
         }
 
@@ -126,7 +140,7 @@ int main(int argc, char **argv) {
         std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
 #endif
 
-        double ttrack = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+        double ttrack = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
 
         vTimesTrack[ni] = ttrack;
 
@@ -141,10 +155,10 @@ int main(int argc, char **argv) {
             usleep((T - ttrack) * 1e6);
 
         framecounter++;
-//        cout << "framecounter " << framecounter << endl;
-//        if (framecounter == 5) {
-//            int pause = 0;
-//        }
+        //        cout << "framecounter " << framecounter << endl;
+        //        if (framecounter == 5) {
+        //            int pause = 0;
+        //        }
     }
 
     // Stop all threads
@@ -153,7 +167,8 @@ int main(int argc, char **argv) {
     // Tracking time statistics
     sort(vTimesTrack.begin(), vTimesTrack.end());
     float totaltime = 0;
-    for (int ni = 0; ni < nImages; ni++) {
+    for (int ni = 0; ni < nImages; ni++)
+    {
         totaltime += vTimesTrack[ni];
     }
     cout << "-------" << endl << endl;
@@ -169,14 +184,17 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
-                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps) {
+void LoadImages(const string& strAssociationFilename, vector<string>& vstrImageFilenamesRGB,
+                vector<string>& vstrImageFilenamesD, vector<double>& vTimestamps)
+{
     ifstream fAssociation;
     fAssociation.open(strAssociationFilename.c_str());
-    while (!fAssociation.eof()) {
+    while (!fAssociation.eof())
+    {
         string s;
         getline(fAssociation, s);
-        if (!s.empty()) {
+        if (!s.empty())
+        {
             stringstream ss;
             ss << s;
             double t;
@@ -197,8 +215,11 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
  * @param vstrImageFilenames
  * @param vstrMaskFilenames
  */
-void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFilenames, const string &folder, const string &dataset) {
-    for (int i = 0; i < vstrImageFilenames.size(); i++) {
+void LoadClasses(vector<string> vstrImageFilenames, vector<string>& vstrClassFilenames, const string& folder,
+                 const string& dataset)
+{
+    for (int i = 0; i < vstrImageFilenames.size(); i++)
+    {
         // //string header = vstrImageFilenames[i].substr(3, 20); //Ulster dataset lab4
         // //string header = vstrImageFilenames[i].substr(3, 17); //BONN dataset
         // string header = vstrImageFilenames[i].substr(3, 18); //TUM dataset
@@ -212,7 +233,8 @@ void LoadClasses(vector<string> vstrImageFilenames, vector<string> &vstrClassFil
             header = vstrImageFilenames[i].substr(3, 17);
         else if (dataset == "TUM")
             header = vstrImageFilenames[i].substr(3, 18);
-        else {
+        else
+        {
             cerr << "Unknown dataset: " << dataset << ". Supported: TUM, BONN, Ulster" << endl;
             exit(1);
         }

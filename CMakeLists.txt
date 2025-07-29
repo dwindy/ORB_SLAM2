@@ -124,4 +124,7 @@ target_link_libraries(mono_tum ${PROJECT_NAME})
 #Adds on
 add_executable(mono_tum_yolo Examples/Monocular/mono_tum_yolo.cc)
 target_link_libraries(mono_tum_yolo ${PROJECT_NAME})
-
+#Adds on
+add_executable(stereo_kitti_yolo
+        Examples/Stereo/stereo_kitti_yolo.cc)
+target_link_libraries(stereo_kitti_yolo ${PROJECT_NAME})
