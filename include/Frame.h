@@ -62,7 +62,7 @@ public:
     // Constructor for RGB-D cameras.
     Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     //adds on
-    Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, const string classAddress);
+    Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, const string classAddress, const string objectType);
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
@@ -175,10 +175,13 @@ public:
     std::vector<cv::Point2f> mvClusterOpFlowVariance;//vairnce vector (variance in x,y) of each cluster. need to sqrt(x^2+y^2) before use
     std::vector<std::vector<float>> mvOptflwErrorsOfClusters;//error length of each flow pair of each cluster
 
+    ///for optical flow
     cv::Mat frameImGray;
     std::vector<cv::Point2f> mvOpFlwKyPt;
     std::vector<int> mvOpFlowKyClusters;
     std::vector<int> mvOpFlowKyLabels;
+
+    std::string objectMaskBoundType;
 
 
     // Corresponding stereo coordinate and depth for each keypoint.

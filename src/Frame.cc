@@ -121,11 +121,15 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-    ///added module
+    ///added module --- for stereo
     Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,  const string classAddress)
         :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
          mpReferenceKF(static_cast<KeyFrame*>(NULL))
 {
+    ///Added---------for optical flow calc-------------
+    frameImGray = imLeft;
+    ///--------------------------------
+
     // Frame ID
     mnId=nNextId++;
 
@@ -224,62 +228,6 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     for(int i=0;i<allMasks.size();i++)
         mvClusterOpFlowVariance.push_back(cv::Point2f(0.0));
 
-    //Step 5 init the mvClusterOpFlowMean
-    //Step 4 allocation label/cluster for optical flow features
-    ///Step 1 calc optical Flow
-    //cal features for last frame
-    //        int opflowFeatureNum = 2000;
-    //        cv::goodFeaturesToTrack(frameImGray, mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
-    //allocate not here, in check optical flow dynamic check
-    //        mvOpFlowKyClusters = vector<int>(opflowFeatureNum, -1);
-    //        mvOpFlowKyLabels = vector<int>(opflowFeatureNum, -1);
-    //        for (int i = 0; i < mvOpFlwKyPt.size(); i++) {
-    //            int x = int(mvOpFlwKyPt[i].x), y = int(mvOpFlwKyPt[i].y);
-    //            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
-    //                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
-    //                    //store the cluster index and label for this key point.
-    //                    int ptLabel = mvClusterLabels[j];
-    //                    mvOpFlowKyClusters[i] = j;
-    //                    mvOpFlowKyLabels[i] = ptLabel;
-    //                }
-    //            }
-    //        }
-    //Note didn't need to update the size because didn't removing any points
-    //N = mvKeys.size();
-    ///-------------------------------------
-    //imshow check label allocation
-    //        cv::Mat testIMG = imGray.clone();
-    //        cv::cvtColor(testIMG,testIMG,CV_GRAY2RGB);
-    //
-    //        std::map<int,int> colorMap;//<label,color index>
-    //        colorMap.insert(std::pair<int,int>(-1, 0));
-    //        colorMap.insert(std::pair<int,int>(62, 1));
-    //        colorMap.insert(std::pair<int,int>(56, 2));
-    //        colorMap.insert(std::pair<int,int>(66, 3));
-    //        colorMap.insert(std::pair<int,int>(39, 4));
-    //        colorMap.insert(std::pair<int,int>(64, 5));
-    //        colorMap.insert(std::pair<int,int>(73, 6));
-    //        colorMap.insert(std::pair<int,int>(0, 7));
-    //        vector<vector<int>> colors;
-    //        colors.push_back(vector<int>{0,255,0});
-    //        colors.push_back(vector<int>{153,0,76});//wine red
-    //        colors.push_back(vector<int>{204,0,204});//purple
-    //        colors.push_back(vector<int>{102,0,204});//light blue purple
-    //        colors.push_back(vector<int>{0,0,255});//blue
-    //        colors.push_back(vector<int>{51,153,255});//light blue
-    //        colors.push_back(vector<int>{102,255,255});//cyan
-    //        colors.push_back(vector<int>{153,255,153});//light green
-    //        colors.push_back(vector<int>{255,255,0});//yellow
-    //        colors.push_back(vector<int>{255,128,0});//orange
-    //        for(int i=0;i<mvKeysUn.size();i++){
-    //            int label = mvKeysLabels[i];
-    //            int colorIndex = colorMap.at(label);
-    //            int R = colors[colorIndex][0],G = colors[colorIndex][1],B = colors[colorIndex][2];
-    //            cv::circle(testIMG,mvKeysUn[i].pt,3,cv::Scalar(R,G,B),-1);
-    //        }
-    //        imshow("test", testIMG);
-    //        cv::waitKey(0);
-    //----------------------------------------
     ///------------------------------------------------------------------------------------------------------------------
     ComputeStereoMatches();
 
@@ -372,15 +320,16 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         return centroid;
     }
 
-///adds on --- rgbd with zeo depth and yolo class
+///adds on --- rgbd with yolo class / and zeo depth
     Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
                  ORBVocabulary *voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
-                 const string classAddress)
+                 const string classAddress,const string objectType)
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(NULL)),
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         ///Added
         frameImGray = imGray;
+        objectMaskBoundType = objectType;
 
         // Frame ID
         mnId = nNextId++;
@@ -418,28 +367,41 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         ///Adds on
         //step 0 record address for storing dynamics
         int headlength = classAddress.length() - 9; //-9 for TUM
-        clusterDynamicName = classAddress.substr(0,headlength) + "dynamics.txt";
+        clusterDynamicName = classAddress.substr(0, headlength) + "dynamics.txt";
         //cout<<"clusterDynamicName "<<clusterDynamicName<<endl;
-        //step 1 get all class labels
-        ifstream reader;
-        reader.open(classAddress, ios::in);
-        if(!reader)
-            cout<<"cannot open "<<classAddress<<endl;
-        int label;
-        while (reader >> label){
-            mvClusterLabels.push_back(label);
-            mvClusterDynamic.push_back(false);
+
+        if (objectMaskBoundType == "mask")
+        {
+            //step 1 get all class labels
+            ifstream reader;
+            reader.open(classAddress, ios::in);
+            if(!reader)
+                cout<<"cannot open "<<classAddress<<endl;
+            int label;
+            while (reader >> label){
+                mvClusterLabels.push_back(label);
+                mvClusterDynamic.push_back(false);
+            }
+            //step 2 read each mask image
+            //std::vector<cv::Mat> allMasks;
+            string maskImgAddress;
+            for (int i = 0; i < mvClusterLabels.size(); i++) {
+                maskImgAddress = classAddress.substr(0, classAddress.length() - 9) + "mask-" + to_string(i) + ".png";
+                cv::Mat mask = cv::imread(maskImgAddress, CV_LOAD_IMAGE_UNCHANGED);
+                allMasks.push_back(mask.clone());
+                cv::Point2f centroid = getCentroid(mask);
+                maskCentres.push_back(centroid);
+            }
         }
-        //step 2 read each mask image
-        //std::vector<cv::Mat> allMasks;
-        string maskImgAddress;
-        for (int i = 0; i < mvClusterLabels.size(); i++) {
-            maskImgAddress = classAddress.substr(0, classAddress.length() - 9) + "mask-" + to_string(i) + ".png";
-            cv::Mat mask = cv::imread(maskImgAddress, CV_LOAD_IMAGE_UNCHANGED);
-            allMasks.push_back(mask.clone());
-            cv::Point2f centroid = getCentroid(mask);
-            maskCentres.push_back(centroid);
+        else if (objectMaskBoundType == "boundbox")
+        {
+            //step 1 get all class labels
+            //step 2 get all bound box location
+            //todo changed mask image way to bound box image way, so rest code is the same!
         }
+
+
+
         //step 2.5 init the kalman filters
         mvKalFilts = vector<KalmanFilter*>(allMasks.size(),nullptr);//init as same size as vector<cv::Mat> allMasks;
         //step 3 init the attributions
@@ -475,63 +437,8 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         //Step 4 init the mvClusterOpFlowVariance
         for(int i=0;i<allMasks.size();i++)
             mvClusterOpFlowVariance.push_back(cv::Point2f(0.0));
+        ///---------------------------------------------------------------------------------------
 
-        //Step 5 init the mvClusterOpFlowMean
-        //Step 4 allocation label/cluster for optical flow features
-        ///Step 1 calc optical Flow
-        //cal features for last frame
-//        int opflowFeatureNum = 2000;
-//        cv::goodFeaturesToTrack(frameImGray, mvOpFlwKyPt, opflowFeatureNum, 0.01, 3.0);
-//allocate not here, in check optical flow dynamic check
-//        mvOpFlowKyClusters = vector<int>(opflowFeatureNum, -1);
-//        mvOpFlowKyLabels = vector<int>(opflowFeatureNum, -1);
-//        for (int i = 0; i < mvOpFlwKyPt.size(); i++) {
-//            int x = int(mvOpFlwKyPt[i].x), y = int(mvOpFlwKyPt[i].y);
-//            for (int j = 0; j < allMasks.size(); j++) {//if this pt belongs to any object
-//                if (int(allMasks[j].at<uchar>(y, x)) > 0) {
-//                    //store the cluster index and label for this key point.
-//                    int ptLabel = mvClusterLabels[j];
-//                    mvOpFlowKyClusters[i] = j;
-//                    mvOpFlowKyLabels[i] = ptLabel;
-//                }
-//            }
-//        }
-        //Note didn't need to update the size because didn't removing any points
-        //N = mvKeys.size();
-        ///-------------------------------------
-        //imshow check label allocation
-//        cv::Mat testIMG = imGray.clone();
-//        cv::cvtColor(testIMG,testIMG,CV_GRAY2RGB);
-//
-//        std::map<int,int> colorMap;//<label,color index>
-//        colorMap.insert(std::pair<int,int>(-1, 0));
-//        colorMap.insert(std::pair<int,int>(62, 1));
-//        colorMap.insert(std::pair<int,int>(56, 2));
-//        colorMap.insert(std::pair<int,int>(66, 3));
-//        colorMap.insert(std::pair<int,int>(39, 4));
-//        colorMap.insert(std::pair<int,int>(64, 5));
-//        colorMap.insert(std::pair<int,int>(73, 6));
-//        colorMap.insert(std::pair<int,int>(0, 7));
-//        vector<vector<int>> colors;
-//        colors.push_back(vector<int>{0,255,0});
-//        colors.push_back(vector<int>{153,0,76});//wine red
-//        colors.push_back(vector<int>{204,0,204});//purple
-//        colors.push_back(vector<int>{102,0,204});//light blue purple
-//        colors.push_back(vector<int>{0,0,255});//blue
-//        colors.push_back(vector<int>{51,153,255});//light blue
-//        colors.push_back(vector<int>{102,255,255});//cyan
-//        colors.push_back(vector<int>{153,255,153});//light green
-//        colors.push_back(vector<int>{255,255,0});//yellow
-//        colors.push_back(vector<int>{255,128,0});//orange
-//        for(int i=0;i<mvKeysUn.size();i++){
-//            int label = mvKeysLabels[i];
-//            int colorIndex = colorMap.at(label);
-//            int R = colors[colorIndex][0],G = colors[colorIndex][1],B = colors[colorIndex][2];
-//            cv::circle(testIMG,mvKeysUn[i].pt,3,cv::Scalar(R,G,B),-1);
-//        }
-//        imshow("test", testIMG);
-//        cv::waitKey(0);
-        //----------------------------------------
         ComputeStereoFromRGBD(imDepth);
 
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));

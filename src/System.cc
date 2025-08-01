@@ -263,7 +263,7 @@ namespace ORB_SLAM2
         //cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp);
 
         ///adds on
-        cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp, classAddress);
+        cv::Mat Tcw = mpTracker->GrabImageRGBD(im, depthmap, timestamp, classAddress, mObjectType);
 
         unique_lock<mutex> lock2(mMutexState);
         mTrackingState = mpTracker->mState;
@@ -708,5 +708,10 @@ namespace ORB_SLAM2
     void System::SetMetricType(std::string inputMetricType)
     {
         mMetricType = inputMetricType;
+    }
+
+    void System::SetObjectType(std::string objectType)
+    {
+        mObjectType = objectType;
     }
 } //namespace ORB_SLAM

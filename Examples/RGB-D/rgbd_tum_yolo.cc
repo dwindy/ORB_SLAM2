@@ -37,17 +37,22 @@ void LoadImages(const string& strAssociationFilename, vector<string>& vstrImageF
 void LoadClasses(vector<string> vstrImageFilenames, vector<string>& vstrClassFilenames, const string& folderaddress,
                  const string& dataset);
 
+///adds on
+void LoadLabels(vector<string> vstrImageFilenames, vector<string>& vstrLabelFilenames, const string& folderaddress,
+                 const string& dataset);
+
 int main(int argc, char** argv)
 {
-    if (argc != 7)
+    if (argc != 8)
     {
         cerr << endl <<
-            "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name metric_type"
+            "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association dataset_name metric_type mask/boundbox"
             << endl;
         cerr << "metric_type: variance | euclidean" << endl;
         cerr << "dataset_type: Bonn | TUM | Ulster" << endl;
+        cerr << "mask/boundbox: mask | boundbox" << endl;
         cerr <<
-            "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM Variance"
+            "Example: ./rgbd_tum ../Vocabulary/ORBvoc.txt ../Examples/RGB-D/TUM1.yaml ../rgbd_dataset_freiburg1_xyz ../associations.txt TUM Variance boundbox"
             << endl;
         return 1;
     }
@@ -73,31 +78,49 @@ int main(int argc, char** argv)
     }
 
     ///adds on----------------------------------------
-    ///object mask classes
-    vector<string> vstrClassFilenames;
-    vstrClassFilenames.resize(nImages);
-    /// dataset name
+    ///    /// dataset name
     string dataset = string(argv[5]);
     if (dataset != "Bonn" && dataset != "TUM" && dataset != "Ulster")
     {
         cerr << "Invalid metric type: " << dataset << ". Use 'Bonn', 'Ulster' or 'TUM'." << endl;
         return 1;
     }
+
+    ///object mask classes / boundbox txt
+    vector<string> vstrClassFilenames;
+    vstrClassFilenames.resize(nImages);
+    if (argv[7] == "mask")
+    {
+        LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
+    }
+    else if (argv[7] == "boundbox")
+    {
+        LoadLabels(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
+    }
+
     /// metric method
-    LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
     string metric_type = string(argv[6]);
+    string object_type = string(argv[8]);
     if (metric_type != "variance" && metric_type != "euclidean")
     {
         cerr << "Invalid metric type: " << metric_type << ". Use 'variance' or 'euclidean'." << endl;
         return 1;
     }
+    if (object_type != "mask" && object_type != "boundbox")
+    {
+        cerr << "Invalid metric type: " << object_type << ". Use 'mask' or 'boundbox'." << endl;
+        return 1;
+    }
+
     ///----------------------------------------------
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1], argv[2], ORB_SLAM2::System::RGBD, true);
 
-    ///set metric
+    ///set metric & mask type
     SLAM.SetMetricType(metric_type);
+    SLAM.SetMetricType(object_type);
+
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;
@@ -241,5 +264,33 @@ void LoadClasses(vector<string> vstrImageFilenames, vector<string>& vstrClassFil
 
         string classFileName = folder + "/mask" + header + "_class.txt";
         vstrClassFilenames[i] = classFileName;
+    }
+}
+
+/**
+ * generate class txt file names, giving image file names
+ * @param vstrImageFilenames
+ * @param vstrLabelFilenames
+ */
+void LoadLabels(vector<string> vstrImageFilenames, vector<string>& vstrLabelFilenames, const string& folder,
+                 const string& dataset)
+{
+    for (int i = 0; i < vstrImageFilenames.size(); i++)
+    {
+        string header;
+        if (dataset == "Ulster")
+            header = vstrImageFilenames[i].substr(3, 20);
+        else if (dataset == "BONN")
+            header = vstrImageFilenames[i].substr(3, 17);
+        else if (dataset == "TUM")
+            header = vstrImageFilenames[i].substr(3, 18);
+        else
+        {
+            cerr << "Unknown dataset: " << dataset << ". Supported: TUM, BONN, Ulster" << endl;
+            exit(1);
+        }
+
+        string classFileName = folder + "/detection/det_labels" + header  + ".txt";
+        vstrLabelFilenames[i] = classFileName;
     }
 }

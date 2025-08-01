@@ -90,14 +90,20 @@ target_link_libraries(rgbd_tum ${PROJECT_NAME})
 add_executable(rgbd_tum_yolo Examples/RGB-D/rgbd_tum_yolo.cc)
 target_link_libraries(rgbd_tum_yolo ${PROJECT_NAME})
 
-add_executable(rgbd_tum_yolo_zoe Examples/RGB-D/rgbd_tum_yolo_zoe.cc)
-target_link_libraries(rgbd_tum_yolo_zoe ${PROJECT_NAME})
+#add_executable(rgbd_tum_yolo_zoe Examples/RGB-D/rgbd_tum_yolo_zoe.cc)
+#target_link_libraries(rgbd_tum_yolo_zoe ${PROJECT_NAME})
 #
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 #
-#add_executable(stereo_kitti
-#        Examples/Stereo/stereo_kitti.cc)
-#target_link_libraries(stereo_kitti ${PROJECT_NAME})
+add_executable(stereo_kitti
+        Examples/Stereo/stereo_kitti.cc)
+target_link_libraries(stereo_kitti ${PROJECT_NAME})
+
+#Adds on
+add_executable(stereo_kitti_yolo
+        Examples/Stereo/stereo_kitti_yolo.cc)
+target_link_libraries(stereo_kitti_yolo ${PROJECT_NAME})
+
 #
 #add_executable(stereo_euroc
 #        Examples/Stereo/stereo_euroc.cc)
@@ -124,7 +130,3 @@ target_link_libraries(mono_tum ${PROJECT_NAME})
 #Adds on
 add_executable(mono_tum_yolo Examples/Monocular/mono_tum_yolo.cc)
 target_link_libraries(mono_tum_yolo ${PROJECT_NAME})
-#Adds on
-add_executable(stereo_kitti_yolo
-        Examples/Stereo/stereo_kitti_yolo.cc)
-target_link_libraries(stereo_kitti_yolo ${PROJECT_NAME})

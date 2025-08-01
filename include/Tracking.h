@@ -62,7 +62,7 @@ namespace ORB_SLAM2 {
         cv::Mat GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp, string classAddress);
         cv::Mat GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp);
         ///Adds on
-        cv::Mat GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp, const string classAddress);
+        cv::Mat GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp, const string classAddress, const string objectType);
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
 
         ///Adds on

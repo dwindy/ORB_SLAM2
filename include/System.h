@@ -64,8 +64,10 @@ public:
 
 public:
     ///added
-    std::string mMetricType;
+    std::string mMetricType;//variance or euclidean
     void SetMetricType(std::string inputMetricType);
+    std::string mObjectType;
+    void SetObjectType(std::string inputObjectType);
 
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
     System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);

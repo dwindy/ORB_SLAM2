@@ -113,7 +113,7 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
                     // This is a match to a MapPoint in the map
                     if (vbMap[i]) {
                         ///Added Modules
-                         if (vbKeysDynamic[i]) { //if soft point, draw red
+                         if (vbKeysDynamic[i]) { //if dynamic point, draw red
                         cv::rectangle(im, pt1, pt2, cv::Scalar(0, 0, 255));
                         cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
                         mnTracked++;
@@ -137,11 +137,11 @@ FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
             for (int i = 0; i < vpCentreMasks.size(); i++) {
 
                 if (vbObjDynamic[i]) {
-                   cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(51, 255, 255), 1, vfKeysOptVar[i] * 4, 2);//yellow
-                   cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(255, 0, 255), 1, vfKeysRjtVar[i] *4, 2);//purple
+                   cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(51, 255, 255), 1, vfKeysOptVar[i] , 2);//yellow
+                   cv::drawMarker(im, vpCentreMasks[i], cv::Scalar(255, 0, 255), 1, vfKeysRjtVar[i] , 2);//purple
                 } else {
-                   cv::circle(im, vpCentreMasks[i], vfKeysOptVar[i] * 4, cv::Scalar(51, 255, 255), 2);//yellow
-                   cv::circle(im, vpCentreMasks[i], vfKeysRjtVar[i] * 4, cv::Scalar(255, 0, 255), 2);//purple
+                   cv::circle(im, vpCentreMasks[i], vfKeysOptVar[i] , cv::Scalar(51, 255, 255), 2);//yellow
+                   cv::circle(im, vpCentreMasks[i], vfKeysRjtVar[i] , cv::Scalar(255, 0, 255), 2);//purple
                 }
             }
         }
