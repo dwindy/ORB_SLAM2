@@ -1035,6 +1035,37 @@ namespace ORB_SLAM2
             curF.mvOptflwVarianceofClusters[i] = variance;
             if (std::isnan(varianceVector.x) || std::isnan(varianceVector.y))
                 cout << "if(std::isnan(varianceVector.x)||std::isnan(varianceVector.y)) is TRUE!!!" << endl;
+
+
+            ///-----draw
+            // static int flowFrameCount = 0; // 静态变量，只在前20帧保存
+            //
+            // if (flowFrameCount < 20)
+            // {
+            //     cv::Mat vis;
+            //     if (!curF.frameImGray.empty())
+            //         cv::cvtColor(curF.frameImGray, vis, cv::COLOR_GRAY2BGR);
+            //     else
+            //         vis = cv::Mat(480,640,CV_8UC3, cv::Scalar(255,255,255));
+            //
+            //     for (size_t i = 0; i < matchedPt.size(); i++)
+            //     {
+            //         if (status[i])
+            //         {
+            //             cv::Point2f p0 = lastF.mvOpFlwKyPt[i];
+            //             cv::Point2f p1 = matchedPt[i];
+            //             cv::line(vis, p0, p1, cv::Scalar(0,255,255), 1);      // 黄线
+            //             cv::circle(vis, p1, 2, cv::Scalar(0,255,255), -1);    // 黄点
+            //         }
+            //     }
+            //
+            //     // 保存图像
+            //     std::string filename = "save_figs/opt_" + std::to_string(flowFrameCount) + ".png";
+            //     cv::imwrite(filename, vis);
+            //
+            //     flowFrameCount++;
+            // }
+
             int pause = 1;
         }
     }
@@ -1423,24 +1454,24 @@ namespace ORB_SLAM2
         {
             vector<bool> clusterDynamicFlags(curF.mvClusterLabels.size(), false);
 
-            // 打开文件，以追加模式，每次写一行
-            std::ofstream fout("OpticalFlowErrorLog.txt", std::ios::app);
-            if (!fout.is_open())
-            {
-                std::cerr << "Cannot open OpticalFlowErrorLog.txt" << std::endl;
-            }
+            /// 打开文件，以追加模式，每次写一行
+            // std::ofstream fout("OpticalFlowRropejctErrorLog.txt", std::ios::app);
+            // if (!fout.is_open())
+            // {
+            //     std::cerr << "Cannot open OpticalFlowErrorLog.txt" << std::endl;
+            // }
 
-            // 每帧开始写一行: FrameId:
-            fout << curF.mnId << " ";
+            // // 每帧开始写一行: FrameId:
+            // fout << curF.mnId << " ";
             for (int i = 0; i < clusterDynamicFlags.size(); i++)
             {
-                // 输出 label 和对应误差，用冒号分隔，用逗号隔开不同cluster
-                fout << curF.mvClusterLabels[i] << ":" << curF.mvRePjtMeanofClusters[i];
-                // cout << curF.mvClusterLabels[i]<< " : " << curF.mvRePjtMeanofClusters[i]<<" ";
-                if (i != clusterDynamicFlags.size() - 1)
-                    fout << ","; // cluster之间加逗号
-                else
-                    fout << std::endl; // 每帧结束换行
+                // // 输出 label 和对应误差，用冒号分隔，用逗号隔开不同cluster
+                // fout << curF.mvClusterLabels[i] << ":" << curF.mvRePjtMeanofClusters[i];
+                // // cout << curF.mvClusterLabels[i]<< " : " << curF.mvRePjtMeanofClusters[i]<<" ";
+                // if (i != clusterDynamicFlags.size() - 1)
+                //     fout << ","; // cluster之间加逗号
+                // else
+                //     fout << std::endl; // 每帧结束换行
 
                 //if (curF.mvRePjtMeanofClusters[i] > 7.04)//based on walking halfsphere error report
                 float distance = sqrt(
@@ -1455,8 +1486,8 @@ namespace ORB_SLAM2
                 if (!(curF.mvOptflwVarianceofClusters[i] >= 0 && curF.mvRePjtVarianceofClusters[i] >= 0))
                     int pause = 1;
             }
-            // cout << endl;
-            fout.close();
+            // // cout << endl;
+            // fout.close();
             //cout<<curF.mnId<<"curF.mvOptflwVarianceofClusters "<<curF.mvOptflwVarianceofClusters.size()<<" curF.mvRePjtVarianceofClusters "<<curF.mvRePjtVarianceofClusters.size()<<endl;
             //apply to each keypoint
             for (int i = 0; i < curF.mvKeysClusters.size(); i++)
@@ -1468,6 +1499,130 @@ namespace ORB_SLAM2
                 }
             }
         }
+
+        ///----------------------------
+        // // 转成彩色图
+        // // --- 可视化每个 cluster 的 ORB variance 向量 + mask ---
+        // // --- 准备基础底图（灰度转彩色） ---
+        // cv::Mat base;
+        // if (!curF.frameImGray.empty())
+        //     cv::cvtColor(curF.frameImGray, base, cv::COLOR_GRAY2BGR);
+        // else
+        //     base = cv::Mat(480, 640,CV_8UC3, cv::Scalar(255, 255, 255));
+        //
+        // // 定义颜色表和透明度
+        // std::vector<cv::Scalar> colorTable = {
+        //     cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0),
+        //     cv::Scalar(0, 255, 255), cv::Scalar(255, 0, 255), cv::Scalar(255, 255, 0),
+        //     cv::Scalar(128, 0, 255), cv::Scalar(255, 128, 0), cv::Scalar(0, 128, 255),
+        //     cv::Scalar(128, 255, 0)
+        // };
+        // double alpha = 0.3;
+        //
+        // // 把 mask 叠加到 base 上，生成两张相同的底图
+        // cv::Mat vis_orb = base.clone();
+        // cv::Mat vis_flow = base.clone();
+        // for (size_t i = 0; i < curF.allMasks.size(); i++)
+        // {
+        //     cv::Mat colorLayer(base.size(), base.type(), cv::Scalar(0, 0, 0));
+        //     cv::Scalar color = colorTable[i % colorTable.size()];
+        //     colorLayer.setTo(color, curF.allMasks[i]);
+        //     cv::addWeighted(colorLayer, alpha, vis_orb, 1.0, 0, vis_orb);
+        //     cv::addWeighted(colorLayer, alpha, vis_flow, 1.0, 0, vis_flow);
+        // }
+        //
+        // // --- 1. 绘制 ORB variance (绿色箭头) 到 vis_orb ---
+        // for (size_t i = 0; i < curF.mvClusterLabels.size(); i++)
+        // {
+        //     cv::Point2f center(0, 0);
+        //     int count = 0;
+        //     if (i < curF.allMasks.size() && !curF.allMasks[i].empty())
+        //     {
+        //         for (int r = 0; r < curF.allMasks[i].rows; r++)
+        //         {
+        //             const uchar* ptr = curF.allMasks[i].ptr<uchar>(r);
+        //             for (int c = 0; c < curF.allMasks[i].cols; c++)
+        //             {
+        //                 if (ptr[c] > 0)
+        //                 {
+        //                     center.x += c;
+        //                     center.y += r;
+        //                     count++;
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     if (count > 0)
+        //     {
+        //         center.x /= count;
+        //         center.y /= count;
+        //
+        //         cv::Point2f varVec = curF.mvClusterOpFlowVariance[i];
+        //         cv::Point2f endPoint = center + varVec * 5.0f;
+        //
+        //         cv::arrowedLine(vis_orb, center, endPoint, cv::Scalar(0, 255, 0), 2,
+        //                         cv::LINE_AA, 0, 0.2);
+        //     }
+        // }
+        //
+        // // --- 2. 绘制 Optical Flow variance (黄色箭头) 到 vis_flow ---
+        // for (size_t i = 0; i < curF.mvClusterLabels.size(); i++)
+        // {
+        //     cv::Point2f center(0, 0);
+        //     int count = 0;
+        //     if (i < curF.allMasks.size() && !curF.allMasks[i].empty())
+        //     {
+        //         for (int r = 0; r < curF.allMasks[i].rows; r++)
+        //         {
+        //             const uchar* ptr = curF.allMasks[i].ptr<uchar>(r);
+        //             for (int c = 0; c < curF.allMasks[i].cols; c++)
+        //             {
+        //                 if (ptr[c] > 0)
+        //                 {
+        //                     center.x += c;
+        //                     center.y += r;
+        //                     count++;
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     if (count > 0)
+        //     {
+        //         center.x /= count;
+        //         center.y /= count;
+        //
+        //         // 均值方向和 variance 大小
+        //         cv::Point2f meanVec = (i < curF.mvOptflwMeanofClusters.size())
+        //                                   ? curF.mvOptflwMeanofClusters[i]
+        //                                   : cv::Point2f(0, 0);
+        //         float varLen = (i < curF.mvOptflwVarianceofClusters.size()) ? curF.mvOptflwVarianceofClusters[i] : 0.0f;
+        //
+        //         float norm = std::sqrt(meanVec.x * meanVec.x + meanVec.y * meanVec.y);
+        //         cv::Point2f dir = (norm > 1e-5) ? (meanVec / norm) : cv::Point2f(0, 0);
+        //         cv::Point2f endPoint = center + dir * varLen * 5.0f;
+        //
+        //         cv::arrowedLine(vis_flow, center, endPoint, cv::Scalar(0, 255, 255), 2,
+        //                         cv::LINE_AA, 0, 0.2);
+        //     }
+        // }
+        //
+        // // --- 保存和显示 ---
+        // if (curF.mnId <= 20)
+        // {
+        //     std::string saveName1 = "save_figs/ORB_variance" + std::to_string(curF.mnId) + ".png";
+        //     std::string saveName2 = "save_figs/OptFlow_variance" + std::to_string(curF.mnId) + ".png";
+        //     cv::imwrite(saveName1, vis_orb);
+        //     cv::imwrite(saveName2, vis_flow);
+        // }
+        //
+        // cv::imshow("ORB Variance Vectors", vis_orb);
+        // cv::imshow("Optical Flow Variance Vectors", vis_flow);
+        // // cv::waitKey(0);
+
+
+        int pause = 1;
     }
 
     void Tracking::RecordClusterDynamics(Frame& F)
@@ -1793,6 +1948,47 @@ namespace ORB_SLAM2
             }
         }
 
+        ///---------------draw ORB-------------
+        // cv::Mat imgShow;
+        // cv::cvtColor(mCurrentFrame.frameImGray, imgShow, cv::COLOR_GRAY2BGR);
+        //
+        // for (int i = 0; i < mCurrentFrame.N; i++)
+        // {
+        //     if (mCurrentFrame.mvpMapPoints[i])
+        //     {
+        //         cv::Point2f ptCurrent = mCurrentFrame.mvKeysUn[i].pt;
+        //
+        //         // 找到该 MapPoint 在参考关键帧中的索引
+        //         MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        //         int idxRef = pMP->GetIndexInKeyFrame(mpReferenceKF);
+        //
+        //         if(idxRef >= 0)
+        //         {
+        //             // 用参考关键帧中的特征点坐标作为对应点
+        //             cv::Point2f ptRef = mpReferenceKF->mvKeysUn[idxRef].pt;
+        //
+        //             // 画当前帧的点
+        //             cv::circle(imgShow, ptCurrent, 2, cv::Scalar(0,255,0), -1);
+        //
+        //             // 画参考关键帧的点
+        //             cv::circle(imgShow, ptRef, 2, cv::Scalar(0,255,0), -1);
+        //
+        //             // 画连线
+        //             cv::line(imgShow, ptCurrent, ptRef, cv::Scalar(0,255,0), 1);
+        //         }
+        //     }
+        // }
+        // std::string saveName = "save_figs/ORB_" + std::to_string(mCurrentFrame.mnId) + ".png";
+        // cv::imwrite(saveName, imgShow);
+        //
+        // cv::imshow("TrackRefKF Matches", imgShow);
+        // cv::waitKey(0);
+        // ///--------------------------------
+
+
+
+
+
         std::cout << "TrackReferenceKeyFrame end, mvOptflwVarianceofClusters size="
             << mCurrentFrame.mvOptflwVarianceofClusters.size() << std::endl;
 
@@ -1996,6 +2192,46 @@ namespace ORB_SLAM2
         DetermineDynamics(mCurrentFrame);
         //RecordClusterDynamics(mCurrentFrame);
         ///adds on end--------------------------------------
+
+
+        ///---------------draw ORB-------------
+        // cv::Mat imgShow;
+        // cv::cvtColor(mCurrentFrame.frameImGray, imgShow, cv::COLOR_GRAY2BGR);
+        //
+        // for (int i = 0; i < mCurrentFrame.N; i++)
+        // {
+        //     if (mCurrentFrame.mvpMapPoints[i])
+        //     {
+        //         cv::Point2f ptCurrent = mCurrentFrame.mvKeysUn[i].pt;
+        //
+        //         // 找到该 MapPoint 在参考关键帧中的索引
+        //         MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        //         int idxRef = pMP->GetIndexInKeyFrame(mpReferenceKF);
+        //
+        //         if(idxRef >= 0)
+        //         {
+        //             // 用参考关键帧中的特征点坐标作为对应点
+        //             cv::Point2f ptRef = mpReferenceKF->mvKeysUn[idxRef].pt;
+        //
+        //             // 画当前帧的点
+        //             cv::circle(imgShow, ptCurrent, 2, cv::Scalar(0,255,0), -1);
+        //
+        //             // 画参考关键帧的点
+        //             cv::circle(imgShow, ptRef, 2, cv::Scalar(0,255,0), -1);
+        //
+        //             // 画连线
+        //             cv::line(imgShow, ptCurrent, ptRef, cv::Scalar(0,255,0), 1);
+        //         }
+        //     }
+        // }
+        // std::string saveName = "save_figs/ORB_" + std::to_string(mCurrentFrame.mnId) + ".png";
+        // cv::imwrite(saveName, imgShow);
+        //
+        // cv::imshow("TrackRefKF Matches", imgShow);
+        // cv::waitKey(0);
+        // ///--------------------------------
+
+
 
         // If few matches, uses a wider window search
         if (nmatches < 20)

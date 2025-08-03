@@ -86,21 +86,9 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    ///object mask classes / boundbox txt
-    vector<string> vstrClassFilenames;
-    vstrClassFilenames.resize(nImages);
-    if (argv[7] == "mask")
-    {
-        LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
-    }
-    else if (argv[7] == "boundbox")
-    {
-        LoadLabels(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
-    }
-
     /// metric method
     string metric_type = string(argv[6]);
-    string object_type = string(argv[8]);
+    string object_type = string(argv[7]);
     if (metric_type != "variance" && metric_type != "euclidean")
     {
         cerr << "Invalid metric type: " << metric_type << ". Use 'variance' or 'euclidean'." << endl;
@@ -112,6 +100,19 @@ int main(int argc, char** argv)
         return 1;
     }
 
+
+    ///object mask classes / boundbox txt
+    vector<string> vstrClassFilenames;
+    vstrClassFilenames.resize(nImages);
+    if (object_type == "mask")
+    {
+        LoadClasses(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
+    }
+    else if (object_type == "boundbox")
+    {
+        LoadLabels(vstrImageFilenamesRGB, vstrClassFilenames, string(argv[3]), dataset);
+    }
+
     ///----------------------------------------------
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
@@ -119,7 +120,7 @@ int main(int argc, char** argv)
 
     ///set metric & mask type
     SLAM.SetMetricType(metric_type);
-    SLAM.SetMetricType(object_type);
+    SLAM.SetObjectType(object_type);
 
 
     // Vector for tracking time statistics

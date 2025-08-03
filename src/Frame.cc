@@ -370,6 +370,10 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         clusterDynamicName = classAddress.substr(0, headlength) + "dynamics.txt";
         //cout<<"clusterDynamicName "<<clusterDynamicName<<endl;
 
+        //temp for debug
+    std::vector<std::tuple<int,int,int,int,int>> boundinfos;
+
+
         if (objectMaskBoundType == "mask")
         {
             //step 1 get all class labels
@@ -392,13 +396,132 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
                 cv::Point2f centroid = getCentroid(mask);
                 maskCentres.push_back(centroid);
             }
+
+            ///Draw masks for figures
+            // // 将灰度图转成 BGR 彩色图，方便显示彩色 mask
+            // // 灰度转彩色
+            // cv::Mat frameColor;
+            // cv::cvtColor(frameImGray, frameColor, cv::COLOR_GRAY2BGR);
+            //
+            // // 预定义10种颜色（B,G,R）
+            // std::vector<cv::Scalar> colorTable = {
+            //     cv::Scalar(0,0,255),
+            //     cv::Scalar(0,255,0),
+            //     cv::Scalar(255,0,0),
+            //     cv::Scalar(0,255,255),
+            //     cv::Scalar(255,0,255),
+            //     cv::Scalar(255,255,0),
+            //     cv::Scalar(128,0,255),
+            //     cv::Scalar(255,128,0),
+            //     cv::Scalar(0,128,255),
+            //     cv::Scalar(128,255,0)
+            // };
+            //
+            // double alpha = 0.4; // 透明度
+            //
+            // // 每帧重新分配 label->颜色索引
+            // std::map<int,int> labelToColorIndex;
+            // int nextColorIndex = 0;
+            //
+            // for (size_t i = 0; i < allMasks.size(); i++) {
+            //     int label = mvClusterLabels[i];
+            //
+            //     // 如果这个 label 第一次出现，就分配一个颜色
+            //     if (labelToColorIndex.find(label) == labelToColorIndex.end()) {
+            //         labelToColorIndex[label] = nextColorIndex % colorTable.size();
+            //         nextColorIndex++;
+            //     }
+            //
+            //     int colorIdx = labelToColorIndex[label];
+            //     cv::Scalar color = colorTable[colorIdx];
+            //
+            //     // 在 mask 区域生成颜色层
+            //     cv::Mat colorLayer(frameColor.size(), frameColor.type(), cv::Scalar(0,0,0));
+            //     colorLayer.setTo(color, allMasks[i]);
+            //
+            //     // 叠加透明 mask
+            //     cv::addWeighted(colorLayer, alpha, frameColor, 1.0, 0, frameColor);
+            // }
+            //
+            // if (mnId <= 20)
+            // {
+            //     std::string saveName = "save_figs/overlay_" + std::to_string(mnId) + ".png";
+            //     cv::imwrite(saveName, frameColor);
+            // }
+            // // cv::imshow("Masks Overlay", frameColor);
+            // // cv::waitKey(0);
+            // ///------------------------------------------------------
+
+
         }
         else if (objectMaskBoundType == "boundbox")
         {
             //step 1 get all class labels
-            //step 2 get all bound box location
-            //todo changed mask image way to bound box image way, so rest code is the same!
+            ifstream reader;
+            reader.open(classAddress, ios::in);
+            if(!reader)
+                cout<<"cannot open "<<classAddress<<endl;
+            int label;
+            float xc, yc, w, h, conf;
+            const int img_w = imGray.cols;
+            const int img_h = imGray.rows;
+            while (reader >> label >> xc >> yc >> w >> h >> conf)
+            {
+                mvClusterLabels.push_back(label);
+                mvClusterDynamic.push_back(false);
+
+                //step 2 get all bound box location
+                // xmin = (xcenter - width/2) * image_width
+                // xmax = (xcenter + width/2) * image_width
+                float x1f = (xc - w/2.0f) * img_w;
+                float y1f = (yc - h/2.0f) * img_h;
+                float x2f = (xc + w/2.0f) * img_w;
+                float y2f = (yc + h/2.0f) * img_h;
+
+                int ix1 = std::max(0, (int)std::round(x1f));
+                int iy1 = std::max(0, (int)std::round(y1f));
+                int ix2 = std::min(img_w - 1, (int)std::round(x2f));
+                int iy2 = std::min(img_h - 1, (int)std::round(y2f));
+
+                std::tuple<int,int,int,int,int> info = {label, ix1, iy1, ix2, iy2};
+                boundinfos.push_back(info);
+
+
+                //create mask image
+                cv::Mat mask = cv::Mat::zeros(imGray.rows, imGray.cols, CV_8UC1);
+                cv::rectangle(mask,cv::Point(ix1, iy1),cv::Point(ix2, iy2),
+                              cv::Scalar(255), cv::FILLED);
+
+                allMasks.push_back(mask.clone());
+                maskCentres.push_back(getCentroid(mask));
+            }
         }
+
+    // // ------- 可选调试绘制模块 -------
+    // {
+    //         cv::Mat vis;
+    //         cv::cvtColor(imGray, vis, cv::COLOR_GRAY2BGR);
+    //
+    //         for (auto &bb : boundinfos)
+    //         {
+    //             int lbl, x1, y1, x2, y2;
+    //             std::tie(lbl, x1, y1, x2, y2) = bb;
+    //
+    //             cv::rectangle(vis,
+    //                           cv::Point(x1, y1),
+    //                           cv::Point(x2, y2),
+    //                           cv::Scalar(0,255,0), 2);
+    //
+    //             cv::putText(vis, std::to_string(lbl),
+    //                         cv::Point(x1, std::max(0,y1-5)),
+    //                         cv::FONT_HERSHEY_SIMPLEX, 0.5,
+    //                         cv::Scalar(0,0,255), 1);
+    //         }
+    //
+    //         cv::imshow("BoundBox Visualization", vis);
+    //         cv::waitKey(0);
+    // }
+
 
 
 
