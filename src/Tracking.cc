@@ -815,10 +815,14 @@ namespace ORB_SLAM2
         curF.mvOpFlowKyLabels = vector<int>(matchedPt.size(), -1); //labels of each optical flow point
         std::vector<vector<cv::Point2f>> pointOfClusters_cur(curF.mvClusterLabels.size());
         std::vector<vector<cv::Point2f>> pointOfClusters_last(curF.mvClusterLabels.size());
+        //process background
+        vector<cv::Point2f> pointofBackground_cur;//for background
+        vector<cv::Point2f> pointofBackground_last;
         for (int i = 0; i < matchedPt.size(); i++)
         {
             if (status[i])
             {
+                bool inMask = false;
                 for (int j = 0; j < curF.allMasks.size(); j++)
                 {
                     //cout<<"matchedPt[i].y, matchedPt[i].x "<<matchedPt[i].y<<" "<<matchedPt[i].x<<endl;
@@ -832,20 +836,30 @@ namespace ORB_SLAM2
                         ///Step 2.2 for each cluster, store the optical features
                         pointOfClusters_cur[j].push_back(matchedPt[i]);
                         pointOfClusters_last[j].push_back(lastKeyF.mvOpFlwKyPt[i]);
+
+                        inMask = true;
                     }
+                }
+                //process background
+                if (!inMask)
+                {
+                    pointofBackground_cur.push_back(matchedPt[i]);
+                    pointofBackground_last.push_back(lastKeyF.mvOpFlwKyPt[i]);
                 }
             }
         }
 
         ///Step 3, for each cluster, calc the vector mean and vector variance
 
-        curF.mvClusterOpFlowVariance.assign(pointOfClusters_cur.size(), cv::Point2f(0, 0));
+        //Store variance vectors of each cluster
+        curF.mvOpFlow_VarianceVecs_ofClusters.assign(pointOfClusters_cur.size(), cv::Point2f(0, 0));
+        //Store Variance Scalar of each cluster
         curF.mvOptflwVarianceofClusters.assign(pointOfClusters_cur.size(), 0.0f);
-
-        curF.mvOptflwErrorsOfClusters.clear();
-        curF.mvOptflwErrorsOfClusters.resize(pointOfClusters_cur.size());
-
-        vector<cv::Point2f> clusterMeans, clusterVariance, clusterMeanPoints; //no necessary need this anymore
+        //Store the distance of each pair of optflow of each fluster
+        curF.mvOptflow_Distances_OfClusters.clear();
+        curF.mvOptflow_Distances_OfClusters.resize(pointOfClusters_cur.size());
+        curF.mvMean_OptFlowVector_ofClusters.clear();
+        // vector<cv::Point2f> clusterMeans, clusterVariance, clusterMeanPoints; //no necessary need this anymore
         for (int i = 0; i < pointOfClusters_cur.size(); i++)
         {
             if (pointOfClusters_cur[i].empty())
@@ -856,7 +870,7 @@ namespace ORB_SLAM2
             {
                 cv::Point2f diff = pointOfClusters_cur[i][j] - pointOfClusters_last[i][j];
                 float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-                curF.mvOptflwErrorsOfClusters[i].push_back(dist);
+                curF.mvOptflow_Distances_OfClusters[i].push_back(dist);
             }
 
             //mean error vector
@@ -868,14 +882,15 @@ namespace ORB_SLAM2
             pointMean(pointOfClusters_cur[i], meanPoint);
             vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
             vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
-            curF.mvOptflwMeanofClusters.push_back(meanVector);
+            curF.mvMean_OptFlowVector_ofClusters.push_back(meanVector);
             //clusterMeans.push_back(meanVector);
-            clusterVariance.push_back(varianceVector);
-            clusterMeanPoints.push_back(meanPoint);
+            // clusterVariance.push_back(varianceVector);
+            // clusterMeanPoints.push_back(meanPoint);
 
-            curF.mvClusterOpFlowVariance[i] = varianceVector;
+            curF.mvOpFlow_VarianceVecs_ofClusters[i] = varianceVector;
             float variance = 0;
-            variance = sqrt(varianceVector.x * varianceVector.x + varianceVector.y * varianceVector.y);
+            //variance = sqrt(varianceVector.x * varianceVector.x + varianceVector.y * varianceVector.y);
+            variance = sqrt(varianceVector.x + varianceVector.y);
             curF.mvOptflwVarianceofClusters[i] = variance;
 
             if (std::isnan(varianceVector.x) || std::isnan(varianceVector.y))
@@ -884,11 +899,42 @@ namespace ORB_SLAM2
                 int testpausepoint = 1;
             }
         }
-        //std::cout << "curF.mvOptflwVarianceofClusters ";
-        for (int i = 0; i < curF.mvOptflwVarianceofClusters.size(); i++)
+
+        //process background
+        curF.mvOptflow_Distances_OfBackground.clear();
+        for (int i=0;i<pointofBackground_cur.size();i++)
         {
-            cout << curF.mvOptflwVarianceofClusters[i] << " ";
+            //store the moving distance of each flow point in this cluster
+                cv::Point2f diff = pointofBackground_cur[i] - pointofBackground_last[i];
+                float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+                curF.mvOptflow_Distances_OfBackground.push_back(dist);
         }
+        //mean error vector
+        if (!pointofBackground_cur.empty())
+        {
+            cv::Point2f meanVector(0, 0), varianceVector(0, 0);
+            cv::Point2f meanPoint(0, 0);
+            pointMean(pointofBackground_cur, meanPoint);
+            vectorMean(pointofBackground_last, pointofBackground_cur, meanVector);
+            vectorVariance(pointofBackground_last, pointofBackground_cur, meanVector, varianceVector);
+            curF.mMean_OptFlowVector_ofBackground = meanVector;
+            curF.mOptFlow_VarianceVec_OfBackground = varianceVector;
+            float variance = 0;
+            //variance = sqrt(varianceVector.x * varianceVector.x + varianceVector.y * varianceVector.y);
+            variance = sqrt(varianceVector.x + varianceVector.y);
+            curF.mScalarOptFlowVarianceOfBackground = variance;
+        }
+        else
+        {
+            curF.mMean_OptFlowVector_ofBackground = cv::Point2f(0, 0);
+            curF.mOptFlow_VarianceVec_OfBackground = cv::Point2f(0, 0);
+            curF.mScalarOptFlowVarianceOfBackground = 0.0f;
+        }
+
+
+        //print check
+        for (int i = 0; i < curF.mvOptflwVarianceofClusters.size(); i++)
+            cout << curF.mvOptflwVarianceofClusters[i] << " ";
         std::cout << endl;
 
         // // --- Optical flow cluster visualization ---
@@ -975,10 +1021,14 @@ namespace ORB_SLAM2
         std::vector<vector<cv::Point2f>> pointOfClusters_cur(curF.mvClusterLabels.size());
         std::vector<vector<cv::Point2f>> pointOfClusters_last(curF.mvClusterLabels.size());
         //cout << "CheckOpticalFlowDynamic function matchedPt " << matchedPt.size() << endl;
+        //process background
+        vector<cv::Point2f> pointofBackground_cur;//for background
+        vector<cv::Point2f> pointofBackground_last;
         for (int i = 0; i < matchedPt.size(); i++)
         {
             if (status[i])
             {
+                bool inMask = false;
                 for (int j = 0; j < curF.allMasks.size(); j++)
                 {
                     int x = int(matchedPt[i].x), y = int(matchedPt[i].y);
@@ -991,16 +1041,24 @@ namespace ORB_SLAM2
                         ///Step 2.2 for each cluster, store the optical features
                         pointOfClusters_cur[j].push_back(matchedPt[i]);
                         pointOfClusters_last[j].push_back(lastF.mvOpFlwKyPt[i]);
+                        inMask = true;
                     }
+                }
+                //process background
+                if (!inMask)
+                {
+                    pointofBackground_cur.push_back(matchedPt[i]);
+                    pointofBackground_last.push_back(lastF.mvOpFlwKyPt[i]);
                 }
             }
         }
         ///Step 3, for each cluster, calc the vector mean and vector variance
-        curF.mvClusterOpFlowVariance.assign(pointOfClusters_cur.size(), cv::Point2f(0, 0));
+        curF.mvOpFlow_VarianceVecs_ofClusters.assign(pointOfClusters_cur.size(), cv::Point2f(0, 0));
         curF.mvOptflwVarianceofClusters.assign(pointOfClusters_cur.size(), 0.0f);
         vector<cv::Point2f> clusterMeans, clusterVariance, clusterMeanPoints;
-        curF.mvOptflwErrorsOfClusters.clear();
-        curF.mvOptflwErrorsOfClusters.resize(pointOfClusters_cur.size());
+        curF.mvOptflow_Distances_OfClusters.clear();
+        curF.mvOptflow_Distances_OfClusters.resize(pointOfClusters_cur.size());
+        curF.mvMean_OptFlowVector_ofClusters.clear();
         for (int i = 0; i < pointOfClusters_cur.size(); i++)
         {
             if (pointOfClusters_cur[i].empty())
@@ -1011,7 +1069,7 @@ namespace ORB_SLAM2
             {
                 cv::Point2f diff = pointOfClusters_cur[i][j] - pointOfClusters_last[i][j];
                 float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-                curF.mvOptflwErrorsOfClusters[i].push_back(dist);
+                curF.mvOptflow_Distances_OfClusters[i].push_back(dist);
             }
 
             //mean error vector
@@ -1024,11 +1082,11 @@ namespace ORB_SLAM2
             pointMean(pointOfClusters_cur[i], meanPoint);
             vectorMean(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector);
             vectorVariance(pointOfClusters_last[i], pointOfClusters_cur[i], meanVector, varianceVector);
-            curF.mvOptflwMeanofClusters.push_back(meanVector);
+            curF.mvMean_OptFlowVector_ofClusters.push_back(meanVector);
             //clusterMeans.push_back(meanVector);
             clusterVariance.push_back(varianceVector);
             clusterMeanPoints.push_back(meanPoint);
-            curF.mvClusterOpFlowVariance[i] = varianceVector;
+            curF.mvOpFlow_VarianceVecs_ofClusters[i] = varianceVector;
             //error --- need update threshold or experiment results?
             //float variance = sqrt(varianceVector.x * varianceVector.x + varianceVector.y * varianceVector.y);
             float variance = sqrt(varianceVector.x + varianceVector.y );
@@ -1068,6 +1126,38 @@ namespace ORB_SLAM2
 
             int pause = 1;
         }
+
+        //process background
+        curF.mvOptflow_Distances_OfBackground.clear();
+        for (int i=0;i<pointofBackground_cur.size();i++)
+        {
+            //store the moving distance of each flow point in this cluster
+            cv::Point2f diff = pointofBackground_cur[i] - pointofBackground_last[i];
+            float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+            curF.mvOptflow_Distances_OfBackground.push_back(dist);
+        }
+        //mean error vector
+        if (!pointofBackground_cur.empty())
+        {
+            cv::Point2f meanVector(0, 0), varianceVector(0, 0);
+            cv::Point2f meanPoint(0, 0);
+            pointMean(pointofBackground_cur, meanPoint);
+            vectorMean(pointofBackground_last, pointofBackground_cur, meanVector);
+            vectorVariance(pointofBackground_last, pointofBackground_cur, meanVector, varianceVector);
+            curF.mMean_OptFlowVector_ofBackground = meanVector;
+            curF.mOptFlow_VarianceVec_OfBackground = varianceVector;
+            //float variance = 0;
+            //variance = sqrt(varianceVector.x * varianceVector.x + varianceVector.y * varianceVector.y);
+            float variance = sqrt(varianceVector.x + varianceVector.y );
+            curF.mScalarOptFlowVarianceOfBackground = variance;
+        }
+        else
+        {
+            curF.mMean_OptFlowVector_ofBackground = cv::Point2f(0, 0);
+            curF.mOptFlow_VarianceVec_OfBackground = cv::Point2f(0, 0);
+            curF.mScalarOptFlowVarianceOfBackground = 0.0f;
+        }
+
     }
 
     /**
@@ -1173,6 +1263,8 @@ namespace ORB_SLAM2
         //todo change to keypoint*?
         vector<vector<int>> ptIndexOfEachCluster(F.mvClusterLabels.size()); //keypoint indexes of each cluster
         vector<vector<MapPoint*>> mapPointsOfEachMasks(F.mvClusterLabels.size()); //mapPoint of each cluster
+        vector<int> ptIndexOfBackGround; //store background points for variance unifying
+        vector<MapPoint*> mapPointsOfBackground;
         for (int i = 0; i < keyNumCur; i++)
         {
             //Store keypoint to each cluster
@@ -1184,9 +1276,14 @@ namespace ORB_SLAM2
                     ptIndexOfEachCluster[clusteri].push_back(i);
                     mapPointsOfEachMasks[clusteri].push_back(F.mvpMapPoints[i]);
                 }
-                //int label = F.mvClusterLabels[clusteri]; ///error i forget comment the first line why orb has no this error while boon met?
+                //int label = F.mvClusterLabels[clusteri]; ///error. i forget comment the first line why orb has no this error while boon met?
                 //if(label==0)
                 //    cout<<"pt "<<F_cur.mvKeysUn[i].pt<<" is person point "<<endl;
+                else
+                {
+                    ptIndexOfBackGround.push_back(i);
+                    mapPointsOfBackground.push_back(F.mvpMapPoints[i]);
+                }
             }
         }
         //cout<<"-------------"<<endl;
@@ -1194,8 +1291,6 @@ namespace ORB_SLAM2
         //        for(int i=0;i<ptIndexOfEachCluster.size();i++)
         //            cout<<"label "<<F_cur.mvClusterLabels[i]<<" ptIndexOfEachCluster i "<<i<<" "<<ptIndexOfEachCluster[i].size()<<endl;
 
-
-        ///todo maybe need to check the size of indexOfEachMasks and mapPointsOfEachMasks
         ///Step 2. PROJECT FROM MAP TO LOCAL image for pixel error
 
         // cv::Mat imgClone;
@@ -1210,6 +1305,7 @@ namespace ORB_SLAM2
         else
             Tcw = mVelocity * mLastFrame.mTcw;
 
+        //process points in clusters
         for (int i = 0; i < ptIndexOfEachCluster.size(); i++)
         {
             int numofClu = ptIndexOfEachCluster[i].size();
@@ -1241,6 +1337,28 @@ namespace ORB_SLAM2
         // cv::imshow("Reprojection Errors", imgClone);
         // cv::waitKey(0);
         F.mvRePjtErrorsOfClusters = errorOfClusters;
+
+        //process the point in backgrounds
+        vector<float> errorOfBackground(ptIndexOfBackGround.size());
+        for (int i = 0; i < ptIndexOfBackGround.size(); i++)
+        {
+            MapPoint* mp = mapPointsOfBackground[i];
+            cv::Mat pose = mp->GetWorldPos();
+            cv::Mat pose_h(4, 1,CV_32F);
+            pose.copyTo(pose_h.rowRange(0, 3));
+            pose_h.at<float>(3, 0) = 1.0f;
+            cv::Mat pose_cur = Tcw * pose_h;
+            cv::Point2f predict = F.project2image(pose_cur);
+            cv::Point2f observe = F.mvKeysUn[ptIndexOfBackGround[i]].pt;
+            float distance = sqrt((predict.x - observe.x)
+                * (predict.x - observe.x)
+                + (predict.y - observe.y)
+                * (predict.y - observe.y));
+            // cout<<"label "<<allLabels[i]<<" distance "<<distance<<endl;
+            errorOfBackground[i] = distance;
+        }
+        F.mvRePjtErrorsofBackground = errorOfBackground;
+
 
         ///// --- 可视化重投影误差和统计信息 ---
 
@@ -1325,9 +1443,7 @@ namespace ORB_SLAM2
 
 
         ///Step 3. Calc the coefficient variance for each cluster
-        vector<float> CVofEachCluster;
-        vector<bool> dynamicFlags(errorOfClusters.size(), false);
-        float varianceThreshold = 5.0; //Todo, to change to dynamic variance threshold
+
         for (int i = 0; i < errorOfClusters.size(); i++)
         {
             float mean = 0, variance = 0, CV = 0; //coefficient variance
@@ -1337,12 +1453,16 @@ namespace ORB_SLAM2
             }
             F.mvRePjtMeanofClusters.push_back(mean);
             F.mvRePjtVarianceofClusters.push_back(variance);
-            CVofEachCluster.push_back(CV);
             //int label = F.mvClusterLabels[i];
             //cout << "label " << label << " size " << errorOfClusters[i].size() << " mean " << mean << " variance " << variance << " CV " << CV << endl;
-            if (variance >= varianceThreshold)
-                dynamicFlags[i] = true;
         }
+
+        //process background
+        float mean = 0, variance = 0, CV = 0;
+        if (errorOfClusters.size() > 0)
+            varianceAndMean(errorOfBackground, mean, variance, CV);
+        F.mvRePjtMeanofBackground = mean;
+        F.mvRePjtVarianceofBackground = variance;
 
         ///mark dynamics --- leaves this to determinedynamic()
         //        for (int i = 0; i < dynamicFlags.size(); i++) {
@@ -1362,34 +1482,34 @@ namespace ORB_SLAM2
         int pause = 0;
     }
 
-    void normalizeData(std::vector<float> data, std::vector<float>& normalizedData)
-    {
-        //find the max
-        float maxData = *max_element(data.begin(), data.end());
-        //normalize each element
-        for (float value : data)
-        {
-            normalizedData.push_back(value / maxData);
-        }
-    }
-
-    void normalizeVector(std::vector<cv::Point2f> data, std::vector<cv::Point2f>& normalizedData)
-    {
-        //find the max
-        float maxX = 0.0, maxY = 0.0;
-        //normalize each element
-        for (cv::Point2f element : data)
-        {
-            if (element.x > maxX)
-                maxX = element.x;
-            if (element.y > maxY)
-                maxY = element.y;
-        }
-        for (cv::Point2f element : data)
-        {
-            normalizedData.push_back(cv::Point2f(element.x / maxX, element.y / maxY));
-        }
-    }
+    // void normalizeData(std::vector<float> data, std::vector<float>& normalizedData)
+    // {
+    //     //find the max
+    //     float maxData = *max_element(data.begin(), data.end());
+    //     //normalize each element
+    //     for (float value : data)
+    //     {
+    //         normalizedData.push_back(value / maxData);
+    //     }
+    // }
+    //
+    // void normalizeVector(std::vector<cv::Point2f> data, std::vector<cv::Point2f>& normalizedData)
+    // {
+    //     //find the max
+    //     float maxX = 0.0, maxY = 0.0;
+    //     //normalize each element
+    //     for (cv::Point2f element : data)
+    //     {
+    //         if (element.x > maxX)
+    //             maxX = element.x;
+    //         if (element.y > maxY)
+    //             maxY = element.y;
+    //     }
+    //     for (cv::Point2f element : data)
+    //     {
+    //         normalizedData.push_back(cv::Point2f(element.x / maxX, element.y / maxY));
+    //     }
+    // }
 
     /*
      * combine the reproject variance and opticalflow vector variance of each cluster
@@ -1399,45 +1519,182 @@ namespace ORB_SLAM2
     {
         if (mpSystem->mMetricType == "variance")
         {
-            ///normalize the errors of each cluster
-            //        vector<float> normlaizedRePjtVar;
-            //        normalizeData(curF.mvRePjtVarianceofClusters, normlaizedRePjtVar);
-            //        //normalize the optical flow variance
-            //        vector<cv::Point2f> normlaizedOptFlwVar;
-            //        normalizeVector(curF.mvClusterOpFlowVariance, normlaizedOptFlwVar);
-            //todo, normalized error is not used yet
+            //Step 1 Normalize variance among clusters and background -> for confidence score method
+            vector<float> allReVar = curF.mvRePjtVarianceofClusters;
+            allReVar.push_back(curF.mvRePjtVarianceofBackground);//push background variance into all variances
+            vector<float> allOptVar = curF.mvOptflwVarianceofClusters;
+            allOptVar.push_back(curF.mScalarOptFlowVarianceOfBackground);//push background variance into all variances
+            //wow new func
+            float minRe = *min_element(allReVar.begin(), allReVar.end());
+            float maxRe = *max_element(allReVar.begin(), allReVar.end());
+            float minOpt = *min_element(allOptVar.begin(), allOptVar.end());
+            float maxOpt = *max_element(allOptVar.begin(), allOptVar.end());
+            //define a func
+            auto normalize = [](float v, float vmin, float vmax) {
+                return (v - vmin) / (vmax - vmin + 1e-6f);
+            };
+            //Apply normalization
+            curF.mvNormalized_RePjtVarianceofClusters.clear();
+            curF.mvNormalized_RePjtVarianceofClusters.resize(curF.mvRePjtVarianceofClusters.size());
+            ///variance to confidence score
+            curF.C_o.resize(curF.mvOptflwVarianceofClusters.size());
+            curF.C_r.resize(curF.mvRePjtVarianceofClusters.size());
+            float beta = 5.0f;
+            for (int i = 0; i < curF.mvRePjtVarianceofClusters.size(); i++)
+            {
+                curF.mvNormalized_RePjtVarianceofClusters[i] = normalize(
+                    curF.mvRePjtVarianceofClusters[i], minRe, maxRe);
+                curF.C_r[i] = std::exp(-beta * curF.mvNormalized_RePjtVarianceofClusters[i]);
+            }
+            curF.mvNormalized_RePjtVarianceofBackground = normalize(curF.mvRePjtVarianceofBackground, minRe, maxRe);
+
+            curF.mvNormalized_OptflwVarianceofClusters.clear();
+            curF.mvNormalized_OptflwVarianceofClusters.resize(curF.mvOptflwVarianceofClusters.size());
+            for (int i = 0; i < curF.mvOptflwVarianceofClusters.size(); i++)
+            {
+                curF.mvNormalized_OptflwVarianceofClusters[i] = normalize(
+                    curF.mvOptflwVarianceofClusters[i], minOpt, maxOpt);
+                curF.C_o[i] = std::exp(-beta * curF.mvNormalized_OptflwVarianceofClusters[i]);
+            }
+            curF.mNormalized_ScalarOptFlowVarianceOfBackground = normalize(
+                curF.mScalarOptFlowVarianceOfBackground, minOpt, maxOpt);
+
+            /// 保存 Confidence Score 到文件
+            // {
+            //     std::ofstream fout("confidence_log.txt", std::ios::app);
+            //     if (!fout.is_open())
+            //     {
+            //         std::cerr << "Cannot open confidence_log.txt" << std::endl;
+            //     }
+            //     else
+            //     {
+            //         float beta = 5.0f; // 控制置信度衰减速度，可调
+            //         for (int i = 0; i < curF.mvClusterLabels.size(); i++)
+            //         {
+            //             float c_r = std::exp(-beta * curF.mvNormalized_RePjtVarianceofClusters[i]);
+            //             float c_o = std::exp(-beta * curF.mvNormalized_OptflwVarianceofClusters[i]);
+            //             float c_fused = c_r * c_o;
+            //
+            //             fout << curF.mnId << " "                       // 帧号
+            //                  << curF.mvClusterLabels[i] << " "         // object label
+            //                  << c_r << " "                             // reprojection confidence
+            //                  << c_o << " "                             // optical flow confidence
+            //                  << c_fused << " "                         // fused confidence
+            //                  << 0                                      // type 0: 普通 object
+            //                  << "\n";
+            //         }
+            //
+            //         // 背景
+            //         float c_r_bg = std::exp(-beta * curF.mvNormalized_RePjtVarianceofBackground);
+            //         float c_o_bg = std::exp(-beta * curF.mNormalized_ScalarOptFlowVarianceOfBackground);
+            //         float c_fused_bg = c_r_bg * c_o_bg;
+            //
+            //         fout << curF.mnId << " "
+            //              << -1 << " "                        // 背景 label
+            //              << c_r_bg << " "
+            //              << c_o_bg << " "
+            //              << c_fused_bg << " "
+            //              << 1                                // type 1: 背景
+            //              << "\n";
+            //
+            //         fout.close();
+            //     }
+            // }
+
+
+            ///Store variance
+            // {
+            //     // 打开文件（追加模式）
+            //     std::ofstream fout("variance_log.txt", std::ios::app);
+            //     if (!fout.is_open())
+            //     {
+            //         std::cerr << "Cannot open variance_log.txt" << std::endl;
+            //     }
+            //     else
+            //     {
+            //         // 保存每个 cluster 的 variance
+            //         for (int i = 0; i < curF.mvRePjtVarianceofClusters.size(); i++)
+            //         {
+            //             fout << curF.mnId << " "
+            //                  << curF.mvClusterLabels[i] << " "
+            //                  << curF.mvRePjtVarianceofClusters[i] << " "
+            //                  << curF.mvOptflwVarianceofClusters[i] << " "
+            //                  << curF.mvNormalized_RePjtVarianceofClusters[i] << " "
+            //                  << curF.mvNormalized_OptflwVarianceofClusters[i] << " "
+            //                  << 0  // 0 表示普通 cluster
+            //                  << "\n";
+            //         }
+            //
+            //         // 保存背景的 variance，索引用 -1
+            //         fout << curF.mnId << " "
+            //              << -1 << " "
+            //              << curF.mvRePjtVarianceofBackground << " "
+            //              << curF.mScalarOptFlowVarianceOfBackground << " "
+            //              << curF.mvNormalized_RePjtVarianceofBackground << " "
+            //              << curF.mNormalized_ScalarOptFlowVarianceOfBackground << " "
+            //              << 1  // 1 表示背景
+            //              << "\n";
+            //
+            //         fout.close();
+            //     }
+            // }
+
+            //note --- statistic from walking_halfsphere
+            //reprojection error variance
+            //mask label -1 mean 5.158 25% 3.573 50% 4.926 75% 6.414
+            //mask label 0 mean 7.046 25% 1.743 50% 8.181 75% 10.944
+            //optical flow error variance
+            //mask label -1 mean 4.830 25% 2.167 50% 3.672 75% 6.405
+            //mask label 0 mean 5.121 25% 1.248 50% 2.496 75% 5.401
+            //reprojection error variance normalized
+            //mask label -1 mean 0.481 25% 0.301 50% 0.412 75% 0.613
+            //masl label 0 mean 0.591 25% 0.148 50% 0.695 75% 1.000
+            //optical flow error variance normalized
+            //mask label -1 mean 0.655 25% 0.397 50% 0.662 75% 1.000
+            //mask label 0 mean 0.495 25% 0.170 50% 0.420 75% 0.907
+
+            //step 2 assign dynamic flags
             vector<bool> clusterDynamicFlags(curF.mvClusterLabels.size(), false);
             for (int i = 0; i < clusterDynamicFlags.size(); i++)
             {
-                //Dont need calc at here anymore. directly got from curF.mvOptflwVarianceofClusters[i]
-                // float OptVarianceVector = sqrt(curF.mvClusterOpFlowVariance[i].x * curF.mvClusterOpFlowVariance[i].x +
-                //     curF.mvClusterOpFlowVariance[i].y * curF.mvClusterOpFlowVariance[i].y);
+                // if (curF.mvRePjtVarianceofClusters[i] > 5.0 && curF.mvOptflwVarianceofClusters[i] > 1.0
+                //     || curF.mvRePjtVarianceofClusters[i] > 10.0
+                //     || curF.mvOptflwVarianceofClusters[i] > 10.0)
+                // {
                 //
-                // if (std::abs(OptVarianceVector - curF.mvOptflwVarianceofClusters[i]) > 1e-5) {
-                //     std::cout << "Mismatch in variance at cluster " << i
-                //               << ": recomputed=" << OptVarianceVector
-                //               << ", stored=" << curF.mvOptflwVarianceofClusters[i] << std::endl;
+                //     //Note First way. Old direct way.
+                //     //TUM and most Bonn
+                //     /// testing other value for checking the dynamic determing ability and capture screenshot for special case
+                //     //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
+                //     //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
+                //     //if(curF.mvClusterLabels[i]==0){
+                //     //if(curF.mvRePjtVarianceofClusters[i] > 5.0){
+                //     // if(varianceVector > 1.0){
+                //     clusterDynamicFlags[i] = true;
+                //     curF.mvClusterDynamic[i] = true;
+                // }
+                // if (!(curF.mvOptflwVarianceofClusters[i] >= 0 && curF.mvRePjtVarianceofClusters[i] >= 0))
+                //     int pause = 1;
+
+                // //Note Second way. normalized variance
+                // if (curF.mvNormalized_RePjtVarianceofClusters[i]>0.591
+                //     &&curF.mvNormalized_OptflwVarianceofClusters[i]>0.495
+                //     ||curF.mvNormalized_RePjtVarianceofClusters[i]>0.9
+                //     ||curF.mvNormalized_OptflwVarianceofClusters[i]>0.9)
+                // {
+                //     clusterDynamicFlags[i] = true;
+                //     curF.mvClusterDynamic[i] = true;
                 // }
 
-                // if (curF.mvRePjtVarianceofClusters[i] > 5.0 && OptVarianceVector > 1.0
-                //     || curF.mvRePjtVarianceofClusters[i] > 10.0
-                //     || OptVarianceVector > 100.0)
-                if (curF.mvRePjtVarianceofClusters[i] > 5.0 && curF.mvOptflwVarianceofClusters[i] > 1.0
-                    || curF.mvRePjtVarianceofClusters[i] > 10.0
-                    || curF.mvOptflwVarianceofClusters[i] > 10.0)
+                //Note Third way. confidence score
+                if (curF.C_r[i] < 0.0521 //exo(0.591 * -5)
+                    && curF.C_o[i] < 0.0842 //exp(0.495 * -5)
+                    || curF.C_r[i] < 0.0111 //exp(0.9*-5)
+                    || curF.C_o[i] < 0.0111) //exp(0.9*-5)
                 {
-                    //TUM and most Bonn
-                    /// testing other value for checking the dynamic determing ability and capture screenshot for special case
-                    //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
-                    //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
-                    //if(curF.mvClusterLabels[i]==0){
-                    //if(curF.mvRePjtVarianceofClusters[i] > 5.0){
-                    // if(varianceVector > 1.0){
                     clusterDynamicFlags[i] = true;
                     curF.mvClusterDynamic[i] = true;
                 }
-                if (!(curF.mvOptflwVarianceofClusters[i] >= 0 && curF.mvRePjtVarianceofClusters[i] >= 0))
-                    int pause = 1;
             }
             //cout<<curF.mnId<<"curF.mvOptflwVarianceofClusters "<<curF.mvOptflwVarianceofClusters.size()<<" curF.mvRePjtVarianceofClusters "<<curF.mvRePjtVarianceofClusters.size()<<endl;
             //apply to each keypoint
@@ -1475,8 +1732,8 @@ namespace ORB_SLAM2
 
                 //if (curF.mvRePjtMeanofClusters[i] > 7.04)//based on walking halfsphere error report
                 float distance = sqrt(
-                    curF.mvOptflwMeanofClusters[i].x * curF.mvOptflwMeanofClusters[i].x
-                    + curF.mvOptflwMeanofClusters[i].y * curF.mvOptflwMeanofClusters[i].y);
+                    curF.mvMean_OptFlowVector_ofClusters[i].x * curF.mvMean_OptFlowVector_ofClusters[i].x
+                    + curF.mvMean_OptFlowVector_ofClusters[i].y * curF.mvMean_OptFlowVector_ofClusters[i].y);
                 //if (distance > 7.192087)//based on walking halfsphere error report
                 if (distance > 7.192087 && curF.mvRePjtMeanofClusters[i] > 7.04)
                 {

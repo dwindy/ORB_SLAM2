@@ -226,7 +226,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
         }
     //Step 4 init the mvClusterOpFlowVariance
     for(int i=0;i<allMasks.size();i++)
-        mvClusterOpFlowVariance.push_back(cv::Point2f(0.0));
+        mvOpFlow_VarianceVecs_ofClusters.push_back(cv::Point2f(0.0));
 
     ///------------------------------------------------------------------------------------------------------------------
     ComputeStereoMatches();
@@ -559,7 +559,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         }
         //Step 4 init the mvClusterOpFlowVariance
         for(int i=0;i<allMasks.size();i++)
-            mvClusterOpFlowVariance.push_back(cv::Point2f(0.0));
+            mvOpFlow_VarianceVecs_ofClusters.push_back(cv::Point2f(0.0));
         ///---------------------------------------------------------------------------------------
 
         ComputeStereoFromRGBD(imDepth);
