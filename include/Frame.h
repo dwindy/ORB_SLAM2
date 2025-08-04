@@ -187,7 +187,7 @@ public:
     float mScalarOptFlowVarianceOfBackground;//sqrt(x^2+y")
     float mNormalized_ScalarOptFlowVarianceOfBackground;
 
-    std::vector<float> C_r,C_o;
+    std::vector<float> C_r,C_o,C_fused;
 
 
     ///for optical flow

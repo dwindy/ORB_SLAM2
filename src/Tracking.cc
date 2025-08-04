@@ -1537,8 +1537,11 @@ namespace ORB_SLAM2
             curF.mvNormalized_RePjtVarianceofClusters.clear();
             curF.mvNormalized_RePjtVarianceofClusters.resize(curF.mvRePjtVarianceofClusters.size());
             ///variance to confidence score
-            curF.C_o.resize(curF.mvOptflwVarianceofClusters.size());
-            curF.C_r.resize(curF.mvRePjtVarianceofClusters.size());
+            curF.C_o.assign(curF.mvOptflwVarianceofClusters.size(), 1.0f);
+            curF.C_r.assign(curF.mvRePjtVarianceofClusters.size(), 1.0f);
+            curF.C_fused.assign(curF.mvOptflwVarianceofClusters.size(), 1.0f);
+
+
             float beta = 5.0f;
             for (int i = 0; i < curF.mvRePjtVarianceofClusters.size(); i++)
             {
@@ -1558,7 +1561,6 @@ namespace ORB_SLAM2
             }
             curF.mNormalized_ScalarOptFlowVarianceOfBackground = normalize(
                 curF.mScalarOptFlowVarianceOfBackground, minOpt, maxOpt);
-
             /// 保存 Confidence Score 到文件
             // {
             //     std::ofstream fout("confidence_log.txt", std::ios::app);
@@ -1685,6 +1687,8 @@ namespace ORB_SLAM2
                 //     clusterDynamicFlags[i] = true;
                 //     curF.mvClusterDynamic[i] = true;
                 // }
+
+                curF.C_fused[i] = curF.C_r[i] * curF.C_o[i];
 
                 //Note Third way. confidence score
                 if (curF.C_r[i] < 0.0521 //exo(0.591 * -5)

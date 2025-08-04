@@ -515,6 +515,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                             e->setMeasurement(obs);
                             const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                             Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+
                             e->setInformation(Info);
 
                             g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
@@ -583,12 +584,22 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                             const float &kp_ur = pFrame->mvuRight[i];
                             obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
+                            ///get confidence score
+                            int labelindex = pFrame->mvKeysClusters[i];
+                            float confidence = pFrame->C_fused[labelindex];
+                            if(confidence < 1e-4f)
+                                confidence = 1e-4f;
+
+
                             g2o::EdgeStereoSE3ProjectXYZOnlyPose *e = new g2o::EdgeStereoSE3ProjectXYZOnlyPose();
 
                             e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                             e->setMeasurement(obs);
                             const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-                            Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+                            //Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
+                            ///apply confidence score
+                            Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2 * confidence;
+                            cout<<"pFrame "<<pFrame->mnId<<" keypt index "<<i<<" weight "<<confidence<<endl;
                             e->setInformation(Info);
 
                             g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
