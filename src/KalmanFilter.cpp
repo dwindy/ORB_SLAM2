@@ -7,47 +7,49 @@
 namespace ORB_SLAM2 {
     KalmanFilter::KalmanFilter() {}
 
-    KalmanFilter::KalmanFilter(int globalIDin, int labelin, double Uin, double Vin) {
-        lostCounter = 0;
-        lost = false;
-        globalID = globalIDin;
-        label = labelin;
-        X = (cv::Mat_<double>(4, 1) << Uin, Vin, 0, 0);
-        U = (cv::Mat_<double>(2, 1) << 0, 0);
-        dt = 1;
-        std_mear = 0.1;
-        A = (cv::Mat_<double>(4, 4) << 1, 0, dt, 0,
-                0, 1, 0, dt,
-                0, 0, 1, 0,
-                0, 0, 0, 1);
-        B = (cv::Mat_<double>(4, 2) << dt * dt / 2, 0,
-                0, dt * dt / 2,
-                dt, 0,
-                0, dt);
-        H = (cv::Mat_<double>(2, 4) << 1, 0, 0, 0,
-                0, 1, 0, 0);
-        Q = (cv::Mat_<double>(4, 4) << dt * dt * dt * dt / 4, 0, dt * dt * dt / 2, 0,
-                0, dt * dt * dt * dt / 4, 0, dt * dt * dt / 2,
-                dt * dt * dt / 2, 0, dt * dt, 0,
-                0, dt * dt * dt / 2, 0, dt * dt);
-        R = (cv::Mat_<double>(2, 2) << std_mear * std_mear, 0
-                , 0, std_mear * std_mear);
-        P = cv::Mat_<double>::eye(4, 4);
-//    std::cout<<"Global ID "<<globalID<<" is created."<<std::endl;
-//    std::cout<<"X: "<<X<<std::endl;
-//    std::cout<<"U: "<<U<<std::endl;
-//    std::cout<<"P: "<<P<<std::endl;
-//    std::cout<<"Q: "<<Q<<std::endl;
-//    std::cout<<"R: "<<R<<std::endl;
-//    std::cout<<"H: "<<H<<std::endl;
-//    std::cout<<"B: "<<B<<std::endl;
-//    std::cout<<"A: "<<A<<std::endl;
-//    std::cout<<"dt: "<<dt<<std::endl;
-//    std::cout<<"std_mear: "<<std_mear<<std::endl;
-//    std::cout<<"lostCounter: "<<lostCounter<<std::endl;
-//    std::cout<<"label: "<<label<<std::endl;
-//    std::cout<<"========================"<<std::endl;
-//    std::cout<<std::endl;
+    KalmanFilter::KalmanFilter(int globalIDin, int labelin, double Uin, double Vin)
+    {
+            confidence_Pre = 1;
+            lostCounter = 0;
+            lost = false;
+            globalID = globalIDin;
+            label = labelin;
+            X = (cv::Mat_<double>(4, 1) << Uin, Vin, 0, 0);
+            U = (cv::Mat_<double>(2, 1) << 0, 0);
+            dt = 1;
+            std_mear = 0.1;
+            A = (cv::Mat_<double>(4, 4) << 1, 0, dt, 0,
+                    0, 1, 0, dt,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1);
+            B = (cv::Mat_<double>(4, 2) << dt * dt / 2, 0,
+                    0, dt * dt / 2,
+                    dt, 0,
+                    0, dt);
+            H = (cv::Mat_<double>(2, 4) << 1, 0, 0, 0,
+                    0, 1, 0, 0);
+            Q = (cv::Mat_<double>(4, 4) << dt * dt * dt * dt / 4, 0, dt * dt * dt / 2, 0,
+                    0, dt * dt * dt * dt / 4, 0, dt * dt * dt / 2,
+                    dt * dt * dt / 2, 0, dt * dt, 0,
+                    0, dt * dt * dt / 2, 0, dt * dt);
+            R = (cv::Mat_<double>(2, 2) << std_mear * std_mear, 0
+                    , 0, std_mear * std_mear);
+            P = cv::Mat_<double>::eye(4, 4);
+            //    std::cout<<"Global ID "<<globalID<<" is created."<<std::endl;
+            //    std::cout<<"X: "<<X<<std::endl;
+            //    std::cout<<"U: "<<U<<std::endl;
+            //    std::cout<<"P: "<<P<<std::endl;
+            //    std::cout<<"Q: "<<Q<<std::endl;
+            //    std::cout<<"R: "<<R<<std::endl;
+            //    std::cout<<"H: "<<H<<std::endl;
+            //    std::cout<<"B: "<<B<<std::endl;
+            //    std::cout<<"A: "<<A<<std::endl;
+            //    std::cout<<"dt: "<<dt<<std::endl;
+            //    std::cout<<"std_mear: "<<std_mear<<std::endl;
+            //    std::cout<<"lostCounter: "<<lostCounter<<std::endl;
+            //    std::cout<<"label: "<<label<<std::endl;
+            //    std::cout<<"========================"<<std::endl;
+            //    std::cout<<std::endl;
     }
 
 
@@ -99,12 +101,12 @@ namespace ORB_SLAM2 {
 
     void KalmanFilter::updateDynamics() {
         float sum = 0;
-        for (int i = 0; i < dynamics.size(); i++) {
-            sum += dynamics[i];
+        for (int i = 0; i < dynamicsHistory.size(); i++) {
+            sum += dynamicsHistory[i];
         }
         //todo confirm why in some case dynamics.size is 0? which lead nan problem.
-        if (dynamics.size() > 0)
-            dynamic_status = sum / dynamics.size();
+        if (dynamicsHistory.size() > 0)
+            dynamic_status = sum / dynamicsHistory.size();
         else
             dynamic_status = 0;
     }

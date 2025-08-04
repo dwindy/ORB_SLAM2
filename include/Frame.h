@@ -188,6 +188,7 @@ public:
     float mNormalized_ScalarOptFlowVarianceOfBackground;
 
     std::vector<float> C_r,C_o,C_fused;
+    std::vector<float> Pre_C_r,Pre_C_o,Pre_C_fused;
 
 
     ///for optical flow

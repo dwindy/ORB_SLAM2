@@ -327,6 +327,7 @@ namespace ORB_SLAM2
         mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
                               mThDepth, classAddress, objType);
 
+
         Track();
 
         return mCurrentFrame.mTcw.clone();
@@ -442,6 +443,7 @@ namespace ORB_SLAM2
         }
         else
         {
+
             // System is initialized. Track Frame.
             bool bOK;
 
@@ -456,6 +458,10 @@ namespace ORB_SLAM2
                     // Local Mapping might have changed some MapPoints tracked in last frame
                     CheckReplacedInLastFrame();
 
+                    ///Adds on Kalman filter tracking
+                    trackKalmanFilter();
+                    ///-----------------------------------
+
                     if (mVelocity.empty() || mCurrentFrame.mnId < mnLastRelocFrameId + 2)
                     {
                         bOK = TrackReferenceKeyFrame();
@@ -466,9 +472,7 @@ namespace ORB_SLAM2
                         if (!bOK)
                             bOK = TrackReferenceKeyFrame();
                     }
-                    ///Adds on Kalman filter tracking
-                    trackKalmanFilter();
-                    ///-----------------------------------
+
                 }
                 else
                 {
@@ -728,8 +732,10 @@ namespace ORB_SLAM2
                 allKFs.push_back(newKF);
                 kfGlobalID++;
                 mCurrentFrame.mvKalFilts[i] = newKF; //init frame, same order as mvClusterlabels
-                newKF->frame = &mCurrentFrame;
+                //newKF->frame = &mCurrentFrame;
+                //newKF->allFrames.push_back(&mCurrentFrame);//Error. becuase mCurrentFrame while be overwrite every time when new frame constructed.
             }
+            int pause = 1;
             ///---------------------------------
         }
     }
@@ -1761,6 +1767,37 @@ namespace ORB_SLAM2
             }
         }
 
+        ///add a Bayesian Belief Update block
+        if (mpSystem->mMetricType == "variance")
+        {
+            for (int i = 0; i < curF.mvClusterLabels.size(); i++)
+            {
+                //Step 1 get current confidence
+                float cr = curF.C_r[i];
+                float co = curF.C_o[i];
+                float c_static = curF.C_fused[i]; //confidence is the probability of static
+                float c_dynamic = 1.0f - c_static;
+                //Step 2 find corresponding kalman filter instance
+                KalmanFilter* kf = curF.mvKalFilts[i];
+                if (!kf) continue; //should always has a kalman filter instance
+
+                //Step 3 get last confience
+                float bel_stc_prev = kf->confidence_Pre;
+                float bel_dyn_prev = 1.0f - bel_stc_prev;
+
+                //Step 4 normalized posterior probability
+                float bel_static_un = c_static * bel_stc_prev;
+                float bel_dynamic_un = c_dynamic * bel_dyn_prev;
+                float S = bel_static_un + bel_dynamic_un;
+
+                //Step 5 normalization
+                float bel_static = bel_static_un / (S + 1e-6f);
+                //kf->static_prob[] = bel_static; //store a copy of bel_static in the kalman instance?
+                //Step 6 apply update
+                curF.C_fused[i] = bel_static;
+                kf->confidence_Pre = bel_static;
+            }
+        }
         ///----------------------------
         // // 转成彩色图
         // // --- 可视化每个 cluster 的 ORB variance 向量 + mask ---
@@ -2246,10 +2283,6 @@ namespace ORB_SLAM2
         // cv::waitKey(0);
         // ///--------------------------------
 
-
-
-
-
         std::cout << "TrackReferenceKeyFrame end, mvOptflwVarianceofClusters size="
             << mCurrentFrame.mvOptflwVarianceofClusters.size() << std::endl;
 
@@ -2308,7 +2341,6 @@ namespace ORB_SLAM2
             }
         }
         ///step 3 update status of each kf instance
-        ///and add unmatched observation as new kf instance
         vector<int> obserMatchFlags(mCurrentFrame.mvClusterLabels.size(), false);
         for (int k = 0; k < allKFs.size(); k++)
         {
@@ -2322,11 +2354,12 @@ namespace ORB_SLAM2
 
                 //store the dynamic status
                 if (mCurrentFrame.mvClusterDynamic[index])
-                    allKFs[k]->dynamics.push_back(1);
+                    allKFs[k]->dynamicsHistory.push_back(1);
                 else
-                    allKFs[k]->dynamics.push_back(0);
+                    allKFs[k]->dynamicsHistory.push_back(0);
                 //connecting currentFrame to this kalman filter instance
                 mCurrentFrame.mvKalFilts[index] = allKFs[k];
+                //allKFs[k]->allFrames.push_back(&mCurrentFrame); Error. becuase mCurrentFrame while be overwrite every time when new frame constructed.
             }
             else
                 allKFs[k]->lostCounter++;
@@ -2341,12 +2374,13 @@ namespace ORB_SLAM2
                 KalmanFilter* newKF = new KalmanFilter(kfGlobalID, mCurrentFrame.mvClusterLabels[l],
                                                        observationPoint.x, observationPoint.y);
                 allKFs.push_back(newKF);
+                //newKF->allFrames.push_back(&mCurrentFrame); Error. becuase mCurrentFrame while be overwrite every time when new frame constructed.
                 kfGlobalID++;
                 //store the dynamic status
                 if (mCurrentFrame.mvClusterDynamic[l])
-                    newKF->dynamics.push_back(1);
+                    newKF->dynamicsHistory.push_back(1);
                 else
-                    newKF->dynamics.push_back(0);
+                    newKF->dynamicsHistory.push_back(0);
                 //store the kalman filter instance to frame
                 mCurrentFrame.mvKalFilts[l] = newKF;
             }

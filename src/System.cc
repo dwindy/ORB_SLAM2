@@ -514,7 +514,7 @@ namespace ORB_SLAM2
                     auto kalmaninstance = frame->mvKalFilts[i];
                     float dynamics = kalmaninstance->dynamic_status;
                     int index = kalmaninstance->globalID;
-                    writer << label << " " << kalmaninstance->dynamics.size() << " " << dynamics << " ";
+                    writer << label << " " << kalmaninstance->dynamicsHistory.size() << " " << dynamics << " ";
                     //if(label ==0)
                     //    cout<<"kalfilter ID : "<<index<<" label "<<label<<" dynamic num "<<kalmaninstance->dynamics.size()<<" dynamics "<<dynamics<<" ";
                 }

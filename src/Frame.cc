@@ -371,7 +371,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
         //cout<<"clusterDynamicName "<<clusterDynamicName<<endl;
 
         //temp for debug
-    std::vector<std::tuple<int,int,int,int,int>> boundinfos;
+        std::vector<std::tuple<int,int,int,int,int>> boundinfos;
 
 
         if (objectMaskBoundType == "mask")
@@ -521,9 +521,6 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     //         cv::imshow("BoundBox Visualization", vis);
     //         cv::waitKey(0);
     // }
-
-
-
 
         //step 2.5 init the kalman filters
         mvKalFilts = vector<KalmanFilter*>(allMasks.size(),nullptr);//init as same size as vector<cv::Mat> allMasks;

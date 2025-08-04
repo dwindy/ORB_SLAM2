@@ -17,8 +17,10 @@ namespace ORB_SLAM2 {
     public:
         int label;
         int globalID;
-        Frame *frame;
-        vector<int> dynamics;
+        //Frame *frame;
+        //vector<Frame*> allFrames;//No need to record this. CurrentFrame pointer will be updated to the newest frame.
+        float confidence_Pre;
+        vector<int> dynamicsHistory;
         float dynamic_status;
         int lostCounter;
         bool lost;
