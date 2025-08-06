@@ -82,7 +82,7 @@ int main(int argc, char** argv)
     string dataset = string(argv[5]);
     if (dataset != "Bonn" && dataset != "TUM" && dataset != "Ulster")
     {
-        cerr << "Invalid metric type: " << dataset << ". Use 'Bonn', 'Ulster' or 'TUM'." << endl;
+        cerr << "Invalid dataset type: " << dataset << ". Use 'Bonn', 'Ulster' or 'TUM'." << endl;
         return 1;
     }
 
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
     }
     if (object_type != "mask" && object_type != "boundbox")
     {
-        cerr << "Invalid metric type: " << object_type << ". Use 'mask' or 'boundbox'." << endl;
+        cerr << "Invalid object type: " << object_type << ". Use 'mask' or 'boundbox'." << endl;
         return 1;
     }
 
