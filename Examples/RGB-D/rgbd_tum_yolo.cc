@@ -253,13 +253,13 @@ void LoadClasses(vector<string> vstrImageFilenames, vector<string>& vstrClassFil
         string header;
         if (dataset == "Ulster")
             header = vstrImageFilenames[i].substr(3, 20);
-        else if (dataset == "BONN")
+        else if (dataset == "Bonn")
             header = vstrImageFilenames[i].substr(3, 17);
         else if (dataset == "TUM")
             header = vstrImageFilenames[i].substr(3, 18);
         else
         {
-            cerr << "Unknown dataset: " << dataset << ". Supported: TUM, BONN, Ulster" << endl;
+            cerr << "Unknown dataset: " << dataset << ". Supported: TUM, Bonn, Ulster" << endl;
             exit(1);
         }
 

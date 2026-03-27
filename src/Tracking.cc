@@ -1236,7 +1236,7 @@ namespace ORB_SLAM2
         }
         else
         {
-            mean = data[0];
+            mean = data[0]; //todo there will be bug that data is zero size?
             std = 0;
             CV = 0;
         }
@@ -1465,7 +1465,7 @@ namespace ORB_SLAM2
 
         //process background
         float mean = 0, variance = 0, CV = 0;
-        if (errorOfClusters.size() > 0)
+        if (errorOfBackground.size() > 0) //tocheck used to be errorOfClusters.size() > 0 should be bug
             varianceAndMean(errorOfBackground, mean, variance, CV);
         F.mvRePjtMeanofBackground = mean;
         F.mvRePjtVarianceofBackground = variance;

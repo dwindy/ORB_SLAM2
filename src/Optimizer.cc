@@ -538,7 +538,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                             vnIndexEdgeStereo.push_back(i);
                         }
                     }
-                    else ///Todo dynamic points. adding weights
+                    else ///modified. dynamic points. adding weights
                     {
                         // Monocular observation
                         if (pFrame->mvuRight[i] < 0) {
@@ -599,7 +599,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                             //Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
                             ///apply confidence score
                             Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2 * confidence;
-                            cout<<"pFrame "<<pFrame->mnId<<" keypt index "<<i<<" weight "<<confidence<<endl;
+                            //cout<<"pFrame "<<pFrame->mnId<<" keypt index "<<i<<" weight "<<confidence<<endl;
                             e->setInformation(Info);
 
                             g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
