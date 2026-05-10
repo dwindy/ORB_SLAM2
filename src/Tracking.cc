@@ -1099,6 +1099,9 @@ namespace ORB_SLAM2
             curF.mvOptflwVarianceofClusters[i] = variance;
             if (std::isnan(varianceVector.x) || std::isnan(varianceVector.y))
                 cout << "if(std::isnan(varianceVector.x)||std::isnan(varianceVector.y)) is TRUE!!!" << endl;
+            //prepare for drawing
+            if (variance > 7.0)
+                curF.mvClusterDynamicOpj[i] = true;
 
 
             ///-----draw
@@ -1228,15 +1231,21 @@ namespace ORB_SLAM2
      */
     void varianceAndMean(vector<float> data, float& mean, float& std, float& CV)
     {
-        if (data.size() > 1)
+        if (data.empty())
+        {
+            mean = 0;
+            std = 0;
+            CV = 0;
+        }
+        else if (data.size() > 1)
         {
             mean = calculateMean(data);
             std = calculateStandardDeviation(data, mean);
-            CV = std / mean;
+            CV = mean != 0.0f ? std / mean : 0.0f;
         }
         else
         {
-            mean = data[0]; //todo there will be bug that data is zero size?
+            mean = data[0];
             std = 0;
             CV = 0;
         }
@@ -1461,11 +1470,14 @@ namespace ORB_SLAM2
             F.mvRePjtVarianceofClusters.push_back(variance);
             //int label = F.mvClusterLabels[i];
             //cout << "label " << label << " size " << errorOfClusters[i].size() << " mean " << mean << " variance " << variance << " CV " << CV << endl;
+            //prepare for drawing
+            if (variance > 7.0)
+                F.mvClusterDynamicRep[i] = true;
         }
 
         //process background
         float mean = 0, variance = 0, CV = 0;
-        if (errorOfBackground.size() > 0) //tocheck used to be errorOfClusters.size() > 0 should be bug
+        if (errorOfBackground.size() > 0)//previouly used errorOfClusters, when backgrond empty. get error
             varianceAndMean(errorOfBackground, mean, variance, CV);
         F.mvRePjtMeanofBackground = mean;
         F.mvRePjtVarianceofBackground = variance;
@@ -1548,7 +1560,7 @@ namespace ORB_SLAM2
             curF.C_fused.assign(curF.mvOptflwVarianceofClusters.size(), 1.0f);
 
 
-            float beta = 5.0f;
+            float beta = 1.0f;
             for (int i = 0; i < curF.mvRePjtVarianceofClusters.size(); i++)
             {
                 curF.mvNormalized_RePjtVarianceofClusters[i] = normalize(
@@ -1672,7 +1684,7 @@ namespace ORB_SLAM2
                 //
                 //     //Note First way. Old direct way.
                 //     //TUM and most Bonn
-                //     /// testing other value for checking the dynamic determing ability and capture screenshot for special case
+                //     //testing other value for checking the dynamic determing ability and capture screenshot for special case
                 //     //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 1.0 ) { //Bonn move obstruct
                 //     //if (curF.mvRePjtVarianceofClusters[i] > 5.0 && varianceVector > 2.0 ) { //Bonn rgbd_bonn_synchronous
                 //     //if(curF.mvClusterLabels[i]==0){
@@ -1697,14 +1709,39 @@ namespace ORB_SLAM2
                 curF.C_fused[i] = curF.C_r[i] * curF.C_o[i];
 
                 //Note Third way. confidence score
-                if (curF.C_r[i] < 0.0521 //exo(0.591 * -5)
-                    && curF.C_o[i] < 0.0842 //exp(0.495 * -5)
-                    || curF.C_r[i] < 0.0111 //exp(0.9*-5)
-                    || curF.C_o[i] < 0.0111) //exp(0.9*-5)
+                //Normal for TUM beta -5
+                // if (curF.C_r[i] < 0.0521 //exo(0.591 * -5)
+                //     && curF.C_o[i] < 0.0842 //exp(0.495 * -5)
+                //     || curF.C_r[i] < 0.0111 //exp(0.9*-5)
+                //     || curF.C_o[i] < 0.0111) //exp(0.9*-5)
+                //Beta -3 working for most Bonn
+                //Test Bonn working fine for most sequence except moving nonobstructing box (high error) static (lost some time?)
+                // if (curF.C_r[i] < 0.65 //exo(0.591 * -3)
+                //     && curF.C_o[i] < 0.65 //exp(0.496? * -3)
+                //     || curF.C_r[i] < 0.1 //exp(0.9*-3)
+                //     || curF.C_o[i] < 0.1) //exp(0.9*-3)
+                // //Test Bonn for moving nonobstructing box
+                // if (curF.C_r[i] < 0.4
+                //     && curF.C_o[i] < 0.6)
+                //Test for KITTI
+                if (curF.C_r[i] < 0.553
+                    && curF.C_o[i] < 0.610
+                    ||curF.C_r[i]<0.4
+                    || curF.C_o[i] < 0.3)
+                // if (curF.mvClusterLabels[i]==0)
                 {
                     clusterDynamicFlags[i] = true;
                     curF.mvClusterDynamic[i] = true;
+                    //cout << "label " << curF.mvClusterLabels[i] << " cr " << curF.C_r[i] << " co " << curF.C_o[i] <<
+                    //    " DYNAMIC" << endl;
                 }
+                else
+                {
+                    //cout << "label " << curF.mvClusterLabels[i] << " cr " << curF.C_r[i] << " co " << curF.C_o[i] <<
+                    //    " FALSE" << endl;
+                }
+
+
             }
             //cout<<curF.mnId<<"curF.mvOptflwVarianceofClusters "<<curF.mvOptflwVarianceofClusters.size()<<" curF.mvRePjtVarianceofClusters "<<curF.mvRePjtVarianceofClusters.size()<<endl;
             //apply to each keypoint
@@ -1799,9 +1836,9 @@ namespace ORB_SLAM2
             }
         }
         ///----------------------------
-        // // 转成彩色图
-        // // --- 可视化每个 cluster 的 ORB variance 向量 + mask ---
-        // // --- 准备基础底图（灰度转彩色） ---
+        // 转成彩色图
+        // --- 可视化每个 cluster 的 ORB variance 向量 + mask ---
+        // --- 准备基础底图（灰度转彩色） ---
         // cv::Mat base;
         // if (!curF.frameImGray.empty())
         //     cv::cvtColor(curF.frameImGray, base, cv::COLOR_GRAY2BGR);
@@ -1856,11 +1893,11 @@ namespace ORB_SLAM2
         //         center.x /= count;
         //         center.y /= count;
         //
-        //         cv::Point2f varVec = curF.mvClusterOpFlowVariance[i];
-        //         cv::Point2f endPoint = center + varVec * 5.0f;
+        //         cv::Point2f varVec = curF.mvOpFlow_VarianceVecs_ofClusters[i];
+        //         cv::Point2f endPoint = center + varVec * 7.0f;
         //
-        //         cv::arrowedLine(vis_orb, center, endPoint, cv::Scalar(0, 255, 0), 2,
-        //                         cv::LINE_AA, 0, 0.2);
+        //         cv::arrowedLine(vis_orb, center, endPoint, cv::Scalar(0, 255, 0), 6,
+        //                         cv::LINE_AA, 0, 0.45);
         //     }
         // }
         //
@@ -1892,17 +1929,17 @@ namespace ORB_SLAM2
         //         center.y /= count;
         //
         //         // 均值方向和 variance 大小
-        //         cv::Point2f meanVec = (i < curF.mvOptflwMeanofClusters.size())
-        //                                   ? curF.mvOptflwMeanofClusters[i]
+        //         cv::Point2f meanVec = (i < curF.mvMean_OptFlowVector_ofClusters.size())
+        //                                   ? curF.mvMean_OptFlowVector_ofClusters[i]
         //                                   : cv::Point2f(0, 0);
         //         float varLen = (i < curF.mvOptflwVarianceofClusters.size()) ? curF.mvOptflwVarianceofClusters[i] : 0.0f;
         //
         //         float norm = std::sqrt(meanVec.x * meanVec.x + meanVec.y * meanVec.y);
         //         cv::Point2f dir = (norm > 1e-5) ? (meanVec / norm) : cv::Point2f(0, 0);
-        //         cv::Point2f endPoint = center + dir * varLen * 5.0f;
+        //         cv::Point2f endPoint = center + dir * varLen * 7.0f;
         //
-        //         cv::arrowedLine(vis_flow, center, endPoint, cv::Scalar(0, 255, 255), 2,
-        //                         cv::LINE_AA, 0, 0.2);
+        //         cv::arrowedLine(vis_flow, center, endPoint, cv::Scalar(0, 255, 255), 6,
+        //                         cv::LINE_AA, 0, 0.45);
         //     }
         // }
         //
@@ -1915,9 +1952,36 @@ namespace ORB_SLAM2
         //     cv::imwrite(saveName2, vis_flow);
         // }
         //
-        // cv::imshow("ORB Variance Vectors", vis_orb);
-        // cv::imshow("Optical Flow Variance Vectors", vis_flow);
+        // // cv::imshow("ORB Variance Vectors", vis_orb);
+        // // cv::imshow("Optical Flow Variance Vectors", vis_flow);
         // // cv::waitKey(0);
+
+        // // --- 生成 Confidence Image (C_fused 越小越白代表动态性高) ---
+        // cv::Mat confImg = cv::Mat::zeros(base.size(), CV_8UC1);
+        //
+        // for (size_t i = 0; i < curF.allMasks.size(); i++)
+        // {
+        //     if (i >= curF.C_fused.size()) continue;
+        //
+        //     // 动态率 = 1 - 静态置信度
+        //     float dynamicRate = 1.0f - curF.C_fused[i];
+        //
+        //     // 转成 0~255 灰度值
+        //     float v = dynamicRate * 255.0f;
+        //     v = std::min(255.0f, std::max(0.0f, v));
+        //     uchar intensity = static_cast<uchar>(v);
+        //
+        //
+        //     confImg.setTo(intensity, curF.allMasks[i]);
+        // }
+        //
+        // // 保存图像
+        // if (curF.mnId <= 20)
+        // {
+        //     std::string saveName = "save_figs/confidence_" + std::to_string(curF.mnId) + ".png";
+        //     cv::imwrite(saveName, confImg);
+        // }
+
 
 
         int pause = 1;

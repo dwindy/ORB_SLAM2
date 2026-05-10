@@ -39,7 +39,6 @@ DATASETS=(
     "rgbd_bonn_static_close_far"
     "rgbd_bonn_synchronous"
     "rgbd_bonn_synchronous2"
-    
 )
 
 # Change directory to ORB_SLAM2

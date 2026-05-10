@@ -161,6 +161,8 @@ public:
     std::string clusterDynamicName;
     std::vector<int> mvClusterLabels;//label of each cluster, same size of masks
     std::vector<bool> mvClusterDynamic;//label of dynamic of each cluster, same size of masks
+    std::vector<bool> mvClusterDynamicRep;
+    std::vector<bool> mvClusterDynamicOpj;
     std::vector<int> mvKeysClusters;//cluster index of each keypoint
     std::vector<int> mvKeysLabels;//label of this keypoint. same label didn't mean same cluster
     std::vector<bool> mvKeysSoft;

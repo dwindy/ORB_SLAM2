@@ -1,12 +1,33 @@
-/snap/clion/367/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/snap/clion/367/bin/ninja/linux/x64/ninja -G Ninja -S /home/xin/Downloads/ORB_SLAM2 -B /home/xin/Downloads/ORB_SLAM2/cmake-build-debug
-CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
-  Compatibility with CMake < 3.5 has been removed from CMake.
+/snap/clion/439/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/snap/clion/439/bin/ninja/linux/x64/ninja -G Ninja -S /home/bingxin/Downloads/ORB_SLAM2 -B /home/bingxin/Downloads/ORB_SLAM2/cmake-build-debug
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
 
   Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
   to tell CMake that the project requires at least <min> but has been updated
   to work with policies introduced by <max> or earlier.
 
-  Or, add -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
 
-
--- Configuring incomplete, errors occurred!
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+Build type: Debug
+-- Performing Test COMPILER_SUPPORTS_CXX14
+-- Performing Test COMPILER_SUPPORTS_CXX14 - Success
+-- Using flag -std=c++14.
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so  found components: OpenGL
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/bingxin/Downloads/ORB_SLAM2/cmake-build-debug

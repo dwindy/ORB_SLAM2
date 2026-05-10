@@ -385,6 +385,9 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
             while (reader >> label){
                 mvClusterLabels.push_back(label);
                 mvClusterDynamic.push_back(false);
+                //For showing
+                mvClusterDynamicOpj.push_back(false);
+                mvClusterDynamicRep.push_back(false);
             }
             //step 2 read each mask image
             //std::vector<cv::Mat> allMasks;

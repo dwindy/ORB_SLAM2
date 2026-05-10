@@ -17,7 +17,15 @@
     <option name="reloaded" value="true" />
   </component>
   <component name="CMakeRunConfigurationManager">
-    <generated />
+    <generated>
+      <config projectName="ORB_SLAM2" targetName="mono_tum_yolo" />
+      <config projectName="ORB_SLAM2" targetName="stereo_kitti" />
+      <config projectName="ORB_SLAM2" targetName="rgbd_tum_yolo" />
+      <config projectName="ORB_SLAM2" targetName="mono_tum" />
+      <config projectName="ORB_SLAM2" targetName="stereo_kitti_yolo" />
+      <config projectName="ORB_SLAM2" targetName="rgbd_tum" />
+      <config projectName="ORB_SLAM2" targetName="ORB_SLAM2" />
+    </generated>
   </component>
   <component name="CMakeSettings">
     <configurations>
@@ -26,22 +34,1014 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d9688e28-8423-406e-b888-76af525cee58" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/ORB_SLAM2.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ORB_SLAM2.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/.~lock.Ablation.ods#" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/.~lock.semanticSLAM.ods#" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_euroc.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Monocular/mono_euroc.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_kitti.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Monocular/mono_kitti.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_tum.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Monocular/mono_tum.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Monocular/mono_tum_yolo.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/CameraTrajectory.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/CameraTrajectory.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/KeyFrameTrajectory.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/KeyFrameTrajectory.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation.ods" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/evo_tool_script.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg2_desk_with_person_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_sitting_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/boundbox/TUM/rgbd_dataset_freiburg3_walking_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/evo_tool_script.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg2_desk_with_person_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_sitting_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/opt+rej/TUM/rgbd_dataset_freiburg3_walking_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/evo_tool_script.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg2_desk_with_person_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_sitting_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz/OpticalFlowErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/optical/TUM/rgbd_dataset_freiburg3_walking_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/evo_tool_script.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/readme.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg2_desk_with_person_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_sitting_xyz_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_halfsphere_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_rpy_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_static_ape_summary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/CameraTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/KeyFrameTrajectory_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_10.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_3.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_4.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_5.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_6.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_7.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_8.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz/ReprojErrorLog_9.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/Ablation/reprojection/TUM/rgbd_dataset_freiburg3_walking_xyz_ape_summary.txt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/RGB-D/results/semanticSLAM.ods" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/results/semanticSLAM.ods" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Examples/Stereo/results/.~lock.KITTI-result.xlsx#" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo_zoe.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo_zoe.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/FlowchartRevised.jpeg" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/FlowchartRevised.jpeg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance1.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance1.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance10.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance10.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance11.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance11.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance12.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance12.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance13.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance13.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance14.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance14.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance15.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance15.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance16.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance16.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance17.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance17.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance18.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance18.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance19.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance19.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance2.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance2.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance20.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance20.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance3.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance3.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance4.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance4.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance5.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance5.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance6.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance6.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance7.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance7.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance8.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance8.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance9.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/ORB_variance9.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance1.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance1.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance10.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance10.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance11.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance11.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance12.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance12.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance13.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance13.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance14.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance14.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance15.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance15.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance16.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance16.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance17.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance17.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance18.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance18.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance19.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance19.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance2.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance2.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance20.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance20.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance3.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance3.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance4.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance4.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance5.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance5.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance6.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance6.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance7.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance7.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance8.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance8.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance9.png" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/RGB-D/save_figs/OptFlow_variance9.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Stereo/CameraTrajectory.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Stereo/CameraTrajectory.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Examples/Stereo/results/KITTI-result.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Stereo/results/KITTI-result.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/.cmake/api/v1/reply/directory-.-Debug-f5ebdc15457944623624.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Stereo/stereo_euroc.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Stereo/stereo_euroc.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Stereo/stereo_kitti.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Stereo/stereo_kitti.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Stereo/stereo_kitti_yolo" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Stereo/stereo_kitti_yolo" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/Stereo/stereo_kitti_yolo.cc" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/Stereo/stereo_kitti_yolo.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/revised-exp.sh" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/revised-exp.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/CMakeConfigureLog.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/TargetDirectories.txt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-Debug-log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-Debug-log.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-environment.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-environment.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Optimizer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/Optimizer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/cmake_install.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/cmake_install.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/Frame.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/Frame.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/FrameDrawer.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/FrameDrawer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Frame.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/Frame.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/FrameDrawer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/FrameDrawer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MapDrawer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/MapDrawer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Tracking.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/Tracking.cc" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,11 +1051,19 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="8648" />
+  </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo.cc" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/include/Frame.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/include/System.h" root0="FORCE_HIGHLIGHTING" />
@@ -70,8 +1078,15 @@
     <setting file="file://$PROJECT_DIR$/src/Tracking.cc" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/Viewer.cc" root0="FORCE_HIGHLIGHTING" />
   </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="Rvmeuui5" />
+  </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
   </component>
   <component name="ProjectApplicationVersion">
     <option name="ide" value="CLion" />
@@ -87,36 +1102,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;CMake Application.rgbd_tum_yolo.executor&quot;: &quot;Debug&quot;,
-    &quot;CMake Application.rgbd_tum_yolo_boundbox.executor&quot;: &quot;Debug&quot;,
-    &quot;CMake Application.stereo_kitti.executor&quot;: &quot;Debug&quot;,
-    &quot;CMake Application.stereo_kitti_yolo.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.west.config.association.type.startup.service&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;ROVK-SLAM&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/xin/Downloads/ORB_SLAM2/Examples/RGB-D&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.toDoOptions&quot;,
-    &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "CMake Application.rgbd_tum_yolo.executor": "Debug",
+    "CMake Application.rgbd_tum_yolo_boundbox.executor": "Debug",
+    "CMake Application.stereo_kitti.executor": "Debug",
+    "CMake Application.stereo_kitti_yolo.executor": "Debug",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "RunOnceActivity.west.config.association.type.startup.service": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "ROVK-SLAM",
+    "last_opened_file_path": "/home/bingxin/Downloads/NGD-SLAM",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "http.proxy",
+    "structure.view.defaults.are.configured": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Examples/RGB-D" />
@@ -126,57 +1144,63 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.rgbd_tum_yolo">
-    <configuration name="monoLiDAR_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="$PROJECT_DIR$/Vocabulary/ORBvoc.txt KITTI04-12.yaml $PROJECT_DIR$/../DATASET/KITTI/data_odometry_gray/dataset/sequences/09 $PROJECT_DIR$/../DATASET/KITTI/data_odometry_velodyne/dataset/sequences/09/" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="monoLiDAR_kitti" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="monoLiDAR_kitti">
+    <configuration name="ORB_SLAM2" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="ORB_SLAM2" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="mono_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="$PROJECT_DIR$/Vocabulary/ORBvoc.txt KITTI04-12.yaml $PROJECT_DIR$/../DATASET/KITTI/data_odometry_gray/dataset/sequences/09 $PROJECT_DIR$/../DATASET/KITTI/data_odometry_velodyne/dataset/sequences/09/" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="mono_kitti" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="mono_kitti">
+    <configuration name="monoLiDAR_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="$PROJECT_DIR$/Vocabulary/ORBvoc.txt KITTI04-12.yaml $PROJECT_DIR$/../DATASET/KITTI/data_odometry_gray/dataset/sequences/09 $PROJECT_DIR$/../DATASET/KITTI/data_odometry_velodyne/dataset/sequences/09/" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="monoLiDAR_kitti" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="monoLiDAR_kitti">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="mono_tum" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM2.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="mono_tum" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="mono_tum">
+    <configuration name="mono_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="$PROJECT_DIR$/Vocabulary/ORBvoc.txt KITTI04-12.yaml $PROJECT_DIR$/../DATASET/KITTI/data_odometry_gray/dataset/sequences/09 $PROJECT_DIR$/../DATASET/KITTI/data_odometry_velodyne/dataset/sequences/09/" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="mono_kitti" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="mono_kitti">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="mono_tum_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="mono_tum_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="mono_tum_yolo">
+    <configuration name="mono_tum" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM2.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="mono_tum" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="mono_tum">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="rgbd_tum" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static/associate.txt" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="rgbd_tum" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="rgbd_tum">
+    <configuration name="mono_tum_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="mono_tum_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="mono_tum_yolo">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="rgbd_tum_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_halfsphere $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_halfsphere/associate.txt TUM variance mask" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="rgbd_tum_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="rgbd_tum_yolo">
+    <configuration name="rgbd_tum" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_static/associate.txt" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="rgbd_tum" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="rgbd_tum">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="rgbd_tum_yolo_boundbox" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_halfsphere $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_halfsphere/associate.txt TUM variance" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="rgbd_tum_yolo_boundbox" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="rgbd_tum_yolo_boundbox">
+    <configuration name="rgbd_tum_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../dataset/TUM/rgbd_dataset_freiburg3_walking_halfsphere/ $PROJECT_DIR$/../dataset/TUM/rgbd_dataset_freiburg3_walking_halfsphere/associate.txt TUM variance mask" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="rgbd_tum_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="rgbd_tum_yolo">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="rgbd_tum_yolo_zoe" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM2-YOLO-ZOE.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg2_desk_with_person" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="rgbd_tum_yolo_zoe" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="rgbd_tum_yolo_zoe">
+    <configuration name="rgbd_tum_yolo_boundbox" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM3.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_halfsphere $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg3_walking_halfsphere/associate.txt TUM variance" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="rgbd_tum_yolo_boundbox" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="rgbd_tum_yolo_boundbox">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="stereo_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt KITTI00-02.yaml $PROJECT_DIR$/../DATASET/KITTI/dataset/sequences/00" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="stereo_kitti" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="stereo_kitti">
+    <configuration name="rgbd_tum_yolo_zoe" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt TUM2-YOLO-ZOE.yaml $PROJECT_DIR$/../DATASET/TUM/rgbd_dataset_freiburg2_desk_with_person" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="rgbd_tum_yolo_zoe" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="rgbd_tum_yolo_zoe">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="stereo_kitti_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt KITTI00-02.yaml ../../../DATASET/KITTI/dataset/sequences/00 variance" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="stereo_kitti_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="stereo_kitti_yolo">
+    <configuration name="stereo_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt KITTI00-02.yaml $PROJECT_DIR$/../DATASET/KITTI/dataset/sequences/00" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="stereo_kitti" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="stereo_kitti">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="stereo_kitti_yolo" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="../../Vocabulary/ORBvoc.txt KITTI00-02.yaml ../../../DATASET/KITTI/dataset/sequences/00 variance" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ORB_SLAM2" TARGET_NAME="stereo_kitti_yolo" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ORB_SLAM2" RUN_TARGET_NAME="stereo_kitti_yolo">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <list>
+      <item itemvalue="CMake Application.ORB_SLAM2" />
       <item itemvalue="CMake Application.monoLiDAR_kitti" />
       <item itemvalue="CMake Application.mono_kitti" />
       <item itemvalue="CMake Application.mono_tum" />
@@ -469,7 +1493,31 @@
       <workItem from="1754340917375" duration="10167000" />
       <workItem from="1754426735586" duration="2035000" />
       <workItem from="1754442768409" duration="16000" />
-      <workItem from="1754443167397" duration="184000" />
+      <workItem from="1754443167397" duration="483000" />
+      <workItem from="1754492864506" duration="27002000" />
+      <workItem from="1754674448726" duration="4220000" />
+      <workItem from="1755130979683" duration="18000" />
+      <workItem from="1756036628946" duration="2739000" />
+      <workItem from="1756041168751" duration="5842000" />
+      <workItem from="1757623153121" duration="5000" />
+      <workItem from="1775805377911" duration="1953000" />
+      <workItem from="1775807387275" duration="10000" />
+      <workItem from="1775807801050" duration="383000" />
+      <workItem from="1775808243076" duration="205000" />
+      <workItem from="1775808461174" duration="537000" />
+      <workItem from="1775809032321" duration="81000" />
+      <workItem from="1775809152227" duration="79000" />
+      <workItem from="1775809264748" duration="4552000" />
+      <workItem from="1776073696195" duration="4910000" />
+      <workItem from="1776153246846" duration="2378000" />
+      <workItem from="1777359907452" duration="55000" />
+      <workItem from="1777360009001" duration="10000" />
+      <workItem from="1778037895233" duration="225000" />
+      <workItem from="1778038128298" duration="1147000" />
+      <workItem from="1778049764600" duration="8000" />
+      <workItem from="1778049798300" duration="61000" />
+      <workItem from="1778050038378" duration="79000" />
+      <workItem from="1778050126117" duration="663000" />
     </task>
     <servers />
   </component>
@@ -480,6 +1528,7 @@
     <isAutomaticCheckingOnLaunch value="false" />
     <isAutomaticFoundErrors value="true" />
     <isAutomaticReloadCMake value="true" />
+    <isAutomaticBootstrapAfterUpdate value="false" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -499,62 +1548,6 @@
           <url>file://$PROJECT_DIR$/Examples/RGB-D/rgbd_tum_yolo_zoe.cc</url>
           <line>118</line>
           <option name="timeStamp" value="34" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <condition expression="curF.C_fused[i]&gt;1" language="C++" />
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>1699</line>
-          <option name="timeStamp" value="36" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>1784</line>
-          <option name="timeStamp" value="37" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>737</line>
-          <option name="timeStamp" value="38" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>2361</line>
-          <option name="timeStamp" value="40" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>2384</line>
-          <option name="timeStamp" value="41" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>461</line>
-          <option name="timeStamp" value="42" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>438</line>
-          <option name="timeStamp" value="43" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>2295</line>
-          <option name="timeStamp" value="44" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>458</line>
-          <option name="timeStamp" value="45" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>447</line>
-          <option name="timeStamp" value="46" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/Tracking.cc</url>
-          <line>332</line>
-          <option name="timeStamp" value="47" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
