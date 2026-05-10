@@ -1,0 +1,79 @@
+
+Panoptic-SLAM Copyright (C) 2024 Gabriel Fischer and João Soares, Istituto Italiano di Tecnologia.
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it
+under certain conditions. See LICENSE.txt.
+
+Input sensor was set to: RGB-D
+Loading settings from /home/panoptic_slam/Dataset/Bonn.yaml
+Camera1.k3 optional parameter does not exist...
+	-Loaded camera 1
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+	-Loaded image info
+	-Loaded RGB-D calibration
+	-Loaded ORB settings
+Viewer.imageViewScale optional parameter does not exist...
+	-Loaded viewer settings
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+	-Loaded Atlas settings
+System.thFarPoints optional parameter does not exist...
+	-Loaded misc parameters
+----------------------------------
+SLAM settings: 
+	-Camera 1 parameters (Pinhole): [ 542.823 542.577 315.594 237.756 ]
+	-Camera 1 distortion parameters: [  0.039903 -0.099343 -0.00073 -0.000144 ]
+	-Original image size: [ 640 , 480 ]
+	-Current image size: [ 640 , 480 ]
+	-Sequence FPS: 30
+	-RGB-D depth map factor: 5000
+	-Features per image: 1000
+	-ORB scale factor: 1.2
+	-ORB number of scales: 8
+	-Initial FAST threshold: 20
+	-Min FAST threshold: 7
+
+
+Loading ORB Vocabulary. This could take a while...
+Vocabulary loaded!
+
+Initialization of Atlas from scratch 
+Creation of new map with id: 0
+Creation of new map with last KF id: 0
+Seq. Name: 
+There are 1 cameras in the atlas
+Camera 0 is pinhole
+The checkpoint state_dict contains keys that are not used by the model:
+  proposal_generator.anchor_generator.cell_anchors.{0, 1, 2, 3, 4}
+Importing Panoptic Segmentation Settings... 
+PYTHONPATH=/home/panoptic_slam/src/python/
+Python Thread support Initialized 
+Panoptic Loaded 
+
+-------
+Start processing sequence ...
+Images in the sequence: 10000
+
+error: XDG_RUNTIME_DIR not set in the environment.
+
+(Current Frame:22538): dbind-WARNING **: 21:37:13.275: Couldn't connect to accessibility bus: Failed to connect to socket /run/user/1000/at-spi/bus_1: No such file or directory
+Gtk-Message: 21:37:13.293: Failed to load module "canberra-gtk-module"
+Gtk-Message: 21:37:13.293: Failed to load module "canberra-gtk-module"
+Starting the Viewer
+---------------------------------------------------------
+Frame ID: 0
+First KF:0; Map init KF:0
+New Map created with 919 points
+---------------------------------------------------------
+Frame ID: 1
+---------------------------------------------------------
+terminate called after throwing an instance of 'cv::Exception'
+  what():  OpenCV(4.5.1) /root/opencv/modules/core/src/matrix.cpp:768: error: (-215:Assertion failed) 0 <= _rowRange.start && _rowRange.start <= _rowRange.end && _rowRange.end <= m.rows in function 'Mat'
+
+Warning: CameraTrajectory.txt missing for rgbd_bonn_static run 07
+Warning: KeyFrameTrajectory.txt missing for rgbd_bonn_static run 07
+
+====================
+Exit code: 134
+====================

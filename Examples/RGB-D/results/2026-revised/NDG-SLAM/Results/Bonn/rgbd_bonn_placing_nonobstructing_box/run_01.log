@@ -1,0 +1,1505 @@
+
+ORB-SLAM3 Copyright (C) 2017-2020 Carlos Campos, Richard Elvira, Juan J. Gómez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ORB-SLAM2 Copyright (C) 2014-2016 Raúl Mur-Artal, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it
+under certain conditions. See LICENSE.txt.
+
+Input sensor was set to: RGB-D
+Loading settings from /home/bingxin/Downloads/NGD-SLAM/Examples/RGB-D/Bonn.yaml
+Camera1.k3 optional parameter does not exist...
+	-Loaded camera 1
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+	-Loaded image info
+	-Loaded RGB-D calibration
+	-Loaded ORB settings
+Viewer.imageViewScale optional parameter does not exist...
+	-Loaded viewer settings
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+	-Loaded Atlas settings
+System.thFarPoints optional parameter does not exist...
+	-Loaded misc parameters
+----------------------------------
+SLAM settings: 
+	-Camera 1 parameters (Pinhole): [ 542.823 542.577 315.594 237.756 ]
+	-Camera 1 distortion parameters: [  0.039903 -0.099343 -0.00073 -0.000144 ]
+	-Original image size: [ 640 , 480 ]
+	-Current image size: [ 640 , 480 ]
+	-Sequence FPS: 30
+	-RGB-D depth map factor: 5000
+	-Features per image: 1000
+	-ORB scale factor: 1.2
+	-ORB number of scales: 8
+	-Initial FAST threshold: 20
+	-Min FAST threshold: 7
+
+
+Loading ORB Vocabulary. This could take a while...
+Vocabulary loaded!
+
+Initialization of Atlas from scratch 
+Creation of new map with id: 0
+Creation of new map with last KF id: 0
+Seq. Name: 
+There are 1 cameras in the atlas
+Camera 0 is pinhole
+Net use yolo-fastest
+
+-------
+Start processing sequence ...
+Images in the sequence: 720
+
+First KF:0; Map init KF:0
+New Map created with 889 points
+Average processing time of GrabImageRGBD(): 43.5813ms
+Frame 0 end
+Average processing time of GrabImageRGBD(): 34.5662ms
+Frame 1 end
+Average processing time of GrabImageRGBD(): 31.827ms
+Frame 2 end
+Average processing time of GrabImageRGBD(): 26.9419ms
+Frame 3 end
+Average processing time of GrabImageRGBD(): 22.4036ms
+Frame 4 end
+Average processing time of GrabImageRGBD(): 20.262ms
+Frame 5 end
+Starting the Viewer
+Average processing time of GrabImageRGBD(): 19.0386ms
+Frame 6 end
+Average processing time of GrabImageRGBD(): 17.1734ms
+Frame 7 end
+Average processing time of GrabImageRGBD(): 15.6409ms
+Frame 8 end
+Average processing time of GrabImageRGBD(): 15.1101ms
+Frame 9 end
+Average processing time of GrabImageRGBD(): 14.1201ms
+Frame 10 end
+Average processing time of GrabImageRGBD(): 13.8507ms
+Frame 11 end
+Average processing time of GrabImageRGBD(): 13.5136ms
+Frame 12 end
+Average processing time of GrabImageRGBD(): 12.8667ms
+Frame 13 end
+Average processing time of GrabImageRGBD(): 12.4335ms
+Frame 14 end
+Average processing time of GrabImageRGBD(): 11.9237ms
+Frame 15 end
+Average processing time of GrabImageRGBD(): 11.8861ms
+Frame 16 end
+Average processing time of GrabImageRGBD(): 12.9708ms
+Frame 17 end
+Average processing time of GrabImageRGBD(): 12.4557ms
+Frame 18 end
+Average processing time of GrabImageRGBD(): 12.0822ms
+Frame 19 end
+Average processing time of GrabImageRGBD(): 11.8264ms
+Frame 20 end
+Average processing time of GrabImageRGBD(): 12.6587ms
+Frame 21 end
+Average processing time of GrabImageRGBD(): 12.5864ms
+Frame 22 end
+Average processing time of GrabImageRGBD(): 12.1987ms
+Frame 23 end
+Average processing time of GrabImageRGBD(): 11.8541ms
+Frame 24 end
+Average processing time of GrabImageRGBD(): 11.5452ms
+Frame 25 end
+Average processing time of GrabImageRGBD(): 11.4631ms
+Frame 26 end
+Average processing time of GrabImageRGBD(): 11.3126ms
+Frame 27 end
+Average processing time of GrabImageRGBD(): 11.0312ms
+Frame 28 end
+Average processing time of GrabImageRGBD(): 10.8654ms
+Frame 29 end
+Average processing time of GrabImageRGBD(): 11.3789ms
+Frame 30 end
+Average processing time of GrabImageRGBD(): 11.339ms
+Frame 31 end
+Average processing time of GrabImageRGBD(): 11.0749ms
+Frame 32 end
+Average processing time of GrabImageRGBD(): 11.0078ms
+Frame 33 end
+Average processing time of GrabImageRGBD(): 10.77ms
+Frame 34 end
+Average processing time of GrabImageRGBD(): 10.7052ms
+Frame 35 end
+Average processing time of GrabImageRGBD(): 11.1302ms
+Frame 36 end
+Average processing time of GrabImageRGBD(): 11.0661ms
+Frame 37 end
+Average processing time of GrabImageRGBD(): 10.9007ms
+Frame 38 end
+Average processing time of GrabImageRGBD(): 10.7101ms
+Frame 39 end
+Average processing time of GrabImageRGBD(): 10.5781ms
+Frame 40 end
+Average processing time of GrabImageRGBD(): 10.9601ms
+Frame 41 end
+Average processing time of GrabImageRGBD(): 10.8697ms
+Frame 42 end
+Average processing time of GrabImageRGBD(): 10.7007ms
+Frame 43 end
+Average processing time of GrabImageRGBD(): 10.594ms
+Frame 44 end
+Average processing time of GrabImageRGBD(): 10.4685ms
+Frame 45 end
+Average processing time of GrabImageRGBD(): 10.4424ms
+Frame 46 end
+Average processing time of GrabImageRGBD(): 10.2872ms
+Frame 47 end
+Average processing time of GrabImageRGBD(): 10.2558ms
+Frame 48 end
+Average processing time of GrabImageRGBD(): 10.1533ms
+Frame 49 end
+Average processing time of GrabImageRGBD(): 10.1326ms
+Frame 50 end
+Average processing time of GrabImageRGBD(): 10.1009ms
+Frame 51 end
+Average processing time of GrabImageRGBD(): 10.4137ms
+Frame 52 end
+Average processing time of GrabImageRGBD(): 10.3016ms
+Frame 53 end
+Average processing time of GrabImageRGBD(): 10.1689ms
+Frame 54 end
+Average processing time of GrabImageRGBD(): 10.0526ms
+Frame 55 end
+Average processing time of GrabImageRGBD(): 10.0437ms
+Frame 56 end
+Average processing time of GrabImageRGBD(): 10.0355ms
+Frame 57 end
+Average processing time of GrabImageRGBD(): 10.4309ms
+Frame 58 end
+Average processing time of GrabImageRGBD(): 10.3538ms
+Frame 59 end
+Average processing time of GrabImageRGBD(): 10.2383ms
+Frame 60 end
+Average processing time of GrabImageRGBD(): 10.1364ms
+Frame 61 end
+Average processing time of GrabImageRGBD(): 10.4764ms
+Frame 62 end
+Average processing time of GrabImageRGBD(): 10.4772ms
+Frame 63 end
+Average processing time of GrabImageRGBD(): 10.3617ms
+Frame 64 end
+Average processing time of GrabImageRGBD(): 10.3321ms
+Frame 65 end
+Average processing time of GrabImageRGBD(): 10.5992ms
+Frame 66 end
+Average processing time of GrabImageRGBD(): 10.5876ms
+Frame 67 end
+Average processing time of GrabImageRGBD(): 10.5645ms
+Frame 68 end
+Average processing time of GrabImageRGBD(): 10.5434ms
+Frame 69 end
+Average processing time of GrabImageRGBD(): 10.4451ms
+Frame 70 end
+Average processing time of GrabImageRGBD(): 10.4223ms
+Frame 71 end
+Average processing time of GrabImageRGBD(): 10.698ms
+Frame 72 end
+Average processing time of GrabImageRGBD(): 10.6977ms
+Frame 73 end
+Average processing time of GrabImageRGBD(): 10.6888ms
+Frame 74 end
+Average processing time of GrabImageRGBD(): 10.6153ms
+Frame 75 end
+Average processing time of GrabImageRGBD(): 10.5215ms
+Frame 76 end
+Average processing time of GrabImageRGBD(): 10.4834ms
+Frame 77 end
+Average processing time of GrabImageRGBD(): 10.46ms
+Frame 78 end
+Average processing time of GrabImageRGBD(): 10.7088ms
+Frame 79 end
+Average processing time of GrabImageRGBD(): 10.6954ms
+Frame 80 end
+Average processing time of GrabImageRGBD(): 10.6112ms
+Frame 81 end
+Average processing time of GrabImageRGBD(): 10.5697ms
+Frame 82 end
+Average processing time of GrabImageRGBD(): 10.5492ms
+Frame 83 end
+Average processing time of GrabImageRGBD(): 10.5111ms
+Frame 84 end
+Average processing time of GrabImageRGBD(): 10.4295ms
+Frame 85 end
+Average processing time of GrabImageRGBD(): 10.4264ms
+Frame 86 end
+Average processing time of GrabImageRGBD(): 10.3707ms
+Frame 87 end
+Average processing time of GrabImageRGBD(): 10.3582ms
+Frame 88 end
+Average processing time of GrabImageRGBD(): 10.3362ms
+Frame 89 end
+Average processing time of GrabImageRGBD(): 10.2582ms
+Frame 90 end
+Average processing time of GrabImageRGBD(): 10.4654ms
+Frame 91 end
+Average processing time of GrabImageRGBD(): 10.3953ms
+Frame 92 end
+Average processing time of GrabImageRGBD(): 10.3233ms
+Frame 93 end
+Average processing time of GrabImageRGBD(): 10.3106ms
+Frame 94 end
+Average processing time of GrabImageRGBD(): 10.2936ms
+Frame 95 end
+Average processing time of GrabImageRGBD(): 10.2768ms
+Frame 96 end
+Average processing time of GrabImageRGBD(): 10.4686ms
+Frame 97 end
+Average processing time of GrabImageRGBD(): 10.4245ms
+Frame 98 end
+Average processing time of GrabImageRGBD(): 10.355ms
+Frame 99 end
+Average processing time of GrabImageRGBD(): 10.3463ms
+Frame 100 end
+Average processing time of GrabImageRGBD(): 10.3463ms
+Frame 101 end
+Average processing time of GrabImageRGBD(): 10.3181ms
+Frame 102 end
+Average processing time of GrabImageRGBD(): 10.3099ms
+Frame 103 end
+Average processing time of GrabImageRGBD(): 10.244ms
+Frame 104 end
+Average processing time of GrabImageRGBD(): 10.1776ms
+Frame 105 end
+Average processing time of GrabImageRGBD(): 10.1686ms
+Frame 106 end
+Average processing time of GrabImageRGBD(): 10.0992ms
+Frame 107 end
+Average processing time of GrabImageRGBD(): 10.0368ms
+Frame 108 end
+Average processing time of GrabImageRGBD(): 10.0316ms
+Frame 109 end
+Average processing time of GrabImageRGBD(): 10.0246ms
+Frame 110 end
+Average processing time of GrabImageRGBD(): 10.0118ms
+Frame 111 end
+Average processing time of GrabImageRGBD(): 9.95244ms
+Frame 112 end
+Average processing time of GrabImageRGBD(): 9.93238ms
+Frame 113 end
+Average processing time of GrabImageRGBD(): 10.1113ms
+Frame 114 end
+Average processing time of GrabImageRGBD(): 10.061ms
+Frame 115 end
+Average processing time of GrabImageRGBD(): 9.99997ms
+Frame 116 end
+Average processing time of GrabImageRGBD(): 9.94562ms
+Frame 117 end
+Average processing time of GrabImageRGBD(): 9.94935ms
+Frame 118 end
+Average processing time of GrabImageRGBD(): 9.94015ms
+Frame 119 end
+Average processing time of GrabImageRGBD(): 9.92451ms
+Frame 120 end
+Average processing time of GrabImageRGBD(): 10.1054ms
+Frame 121 end
+Average processing time of GrabImageRGBD(): 10.1006ms
+Frame 122 end
+Average processing time of GrabImageRGBD(): 10.044ms
+Frame 123 end
+Average processing time of GrabImageRGBD(): 10.1795ms
+Frame 124 end
+Average processing time of GrabImageRGBD(): 10.188ms
+Frame 125 end
+Average processing time of GrabImageRGBD(): 10.1348ms
+Frame 126 end
+Average processing time of GrabImageRGBD(): 10.0867ms
+Frame 127 end
+Average processing time of GrabImageRGBD(): 10.0423ms
+Frame 128 end
+Average processing time of GrabImageRGBD(): 10.0431ms
+Frame 129 end
+Average processing time of GrabImageRGBD(): 10.0441ms
+Frame 130 end
+Average processing time of GrabImageRGBD(): 9.99483ms
+Frame 131 end
+Average processing time of GrabImageRGBD(): 9.99377ms
+Frame 132 end
+Average processing time of GrabImageRGBD(): 9.9954ms
+Frame 133 end
+Average processing time of GrabImageRGBD(): 9.94344ms
+Frame 134 end
+Average processing time of GrabImageRGBD(): 9.94546ms
+Frame 135 end
+Average processing time of GrabImageRGBD(): 9.94359ms
+Frame 136 end
+Average processing time of GrabImageRGBD(): 9.89352ms
+Frame 137 end
+Average processing time of GrabImageRGBD(): 9.87212ms
+Frame 138 end
+Average processing time of GrabImageRGBD(): 9.82597ms
+Frame 139 end
+Average processing time of GrabImageRGBD(): 9.81907ms
+Frame 140 end
+Average processing time of GrabImageRGBD(): 9.78466ms
+Frame 141 end
+Average processing time of GrabImageRGBD(): 9.74145ms
+Frame 142 end
+Average processing time of GrabImageRGBD(): 9.88266ms
+Frame 143 end
+Average processing time of GrabImageRGBD(): 9.87444ms
+Frame 144 end
+Average processing time of GrabImageRGBD(): 9.90481ms
+Frame 145 end
+Average processing time of GrabImageRGBD(): 10.0492ms
+Frame 146 end
+Average processing time of GrabImageRGBD(): 10.0405ms
+Frame 147 end
+Average processing time of GrabImageRGBD(): 10.0277ms
+Frame 148 end
+Average processing time of GrabImageRGBD(): 9.98571ms
+Frame 149 end
+Average processing time of GrabImageRGBD(): 9.94372ms
+Frame 150 end
+Average processing time of GrabImageRGBD(): 9.90512ms
+Frame 151 end
+Average processing time of GrabImageRGBD(): 9.89949ms
+Frame 152 end
+Average processing time of GrabImageRGBD(): 9.87676ms
+Frame 153 end
+Average processing time of GrabImageRGBD(): 9.88143ms
+Frame 154 end
+Average processing time of GrabImageRGBD(): 9.88966ms
+Frame 155 end
+Average processing time of GrabImageRGBD(): 9.84665ms
+Frame 156 end
+Average processing time of GrabImageRGBD(): 9.84447ms
+Frame 157 end
+Average processing time of GrabImageRGBD(): 9.84711ms
+Frame 158 end
+Average processing time of GrabImageRGBD(): 9.80898ms
+Frame 159 end
+Average processing time of GrabImageRGBD(): 9.9397ms
+Frame 160 end
+Average processing time of GrabImageRGBD(): 9.94906ms
+Frame 161 end
+Average processing time of GrabImageRGBD(): 9.95571ms
+Frame 162 end
+Average processing time of GrabImageRGBD(): 9.94598ms
+Frame 163 end
+Average processing time of GrabImageRGBD(): 9.93397ms
+Frame 164 end
+Average processing time of GrabImageRGBD(): 9.90857ms
+Frame 165 end
+Average processing time of GrabImageRGBD(): 9.91212ms
+Frame 166 end
+Average processing time of GrabImageRGBD(): 9.912ms
+Frame 167 end
+Average processing time of GrabImageRGBD(): 9.91439ms
+Frame 168 end
+Average processing time of GrabImageRGBD(): 9.89898ms
+Frame 169 end
+Average processing time of GrabImageRGBD(): 9.90214ms
+Frame 170 end
+Average processing time of GrabImageRGBD(): 9.90539ms
+Frame 171 end
+Average processing time of GrabImageRGBD(): 9.90784ms
+Frame 172 end
+Average processing time of GrabImageRGBD(): 9.90044ms
+Frame 173 end
+Average processing time of GrabImageRGBD(): 10.008ms
+Frame 174 end
+Average processing time of GrabImageRGBD(): 10.0038ms
+Frame 175 end
+Average processing time of GrabImageRGBD(): 9.99636ms
+Frame 176 end
+Average processing time of GrabImageRGBD(): 9.98652ms
+Frame 177 end
+Average processing time of GrabImageRGBD(): 9.9646ms
+Frame 178 end
+Average processing time of GrabImageRGBD(): 9.92736ms
+Frame 179 end
+Average processing time of GrabImageRGBD(): 10.0441ms
+Frame 180 end
+Average processing time of GrabImageRGBD(): 10.0126ms
+Frame 181 end
+Average processing time of GrabImageRGBD(): 9.97953ms
+Frame 182 end
+Average processing time of GrabImageRGBD(): 10.0813ms
+Frame 183 end
+Average processing time of GrabImageRGBD(): 10.0813ms
+Frame 184 end
+Average processing time of GrabImageRGBD(): 10.0455ms
+Frame 185 end
+Average processing time of GrabImageRGBD(): 10.0391ms
+Frame 186 end
+Average processing time of GrabImageRGBD(): 10.01ms
+Frame 187 end
+Average processing time of GrabImageRGBD(): 10.0053ms
+Frame 188 end
+Average processing time of GrabImageRGBD(): 9.97156ms
+Frame 189 end
+Average processing time of GrabImageRGBD(): 9.9569ms
+Frame 190 end
+Average processing time of GrabImageRGBD(): 10.0626ms
+Frame 191 end
+Average processing time of GrabImageRGBD(): 10.0613ms
+Frame 192 end
+Average processing time of GrabImageRGBD(): 10.0534ms
+Frame 193 end
+Average processing time of GrabImageRGBD(): 10.0436ms
+Frame 194 end
+Average processing time of GrabImageRGBD(): 10.1729ms
+Frame 195 end
+Average processing time of GrabImageRGBD(): 10.1835ms
+Frame 196 end
+Average processing time of GrabImageRGBD(): 10.1677ms
+Frame 197 end
+Average processing time of GrabImageRGBD(): 10.1394ms
+Frame 198 end
+Average processing time of GrabImageRGBD(): 10.2467ms
+Frame 199 end
+Average processing time of GrabImageRGBD(): 10.2206ms
+Frame 200 end
+Average processing time of GrabImageRGBD(): 10.1864ms
+Frame 201 end
+Average processing time of GrabImageRGBD(): 10.1532ms
+Frame 202 end
+Average processing time of GrabImageRGBD(): 10.1205ms
+Frame 203 end
+Average processing time of GrabImageRGBD(): 10.0986ms
+Frame 204 end
+Average processing time of GrabImageRGBD(): 10.0675ms
+Frame 205 end
+Average processing time of GrabImageRGBD(): 10.0358ms
+Frame 206 end
+Average processing time of GrabImageRGBD(): 10.0377ms
+Frame 207 end
+Average processing time of GrabImageRGBD(): 10.0387ms
+Frame 208 end
+Average processing time of GrabImageRGBD(): 10.004ms
+Frame 209 end
+Average processing time of GrabImageRGBD(): 10.0934ms
+Frame 210 end
+Average processing time of GrabImageRGBD(): 10.092ms
+Frame 211 end
+Average processing time of GrabImageRGBD(): 10.1005ms
+Frame 212 end
+Average processing time of GrabImageRGBD(): 10.0734ms
+Frame 213 end
+Average processing time of GrabImageRGBD(): 10.0607ms
+Frame 214 end
+Average processing time of GrabImageRGBD(): 10.0486ms
+Frame 215 end
+Average processing time of GrabImageRGBD(): 10.0306ms
+Frame 216 end
+Average processing time of GrabImageRGBD(): 10.0269ms
+Frame 217 end
+Average processing time of GrabImageRGBD(): 10.0223ms
+Frame 218 end
+Average processing time of GrabImageRGBD(): 9.99271ms
+Frame 219 end
+Average processing time of GrabImageRGBD(): 10.0933ms
+Frame 220 end
+Average processing time of GrabImageRGBD(): 10.0679ms
+Frame 221 end
+Average processing time of GrabImageRGBD(): 10.0542ms
+Frame 222 end
+Average processing time of GrabImageRGBD(): 10.0259ms
+Frame 223 end
+Average processing time of GrabImageRGBD(): 10.0232ms
+Frame 224 end
+Average processing time of GrabImageRGBD(): 10.0188ms
+Frame 225 end
+Average processing time of GrabImageRGBD(): 10.0166ms
+Frame 226 end
+Average processing time of GrabImageRGBD(): 10.0123ms
+Frame 227 end
+Average processing time of GrabImageRGBD(): 10.0067ms
+Frame 228 end
+Average processing time of GrabImageRGBD(): 9.99922ms
+Frame 229 end
+Average processing time of GrabImageRGBD(): 9.99101ms
+Frame 230 end
+Average processing time of GrabImageRGBD(): 9.96389ms
+Frame 231 end
+Average processing time of GrabImageRGBD(): 10.0439ms
+Frame 232 end
+Average processing time of GrabImageRGBD(): 10.023ms
+Frame 233 end
+Average processing time of GrabImageRGBD(): 9.99301ms
+Frame 234 end
+Average processing time of GrabImageRGBD(): 9.98294ms
+Frame 235 end
+Average processing time of GrabImageRGBD(): 9.99184ms
+Frame 236 end
+Average processing time of GrabImageRGBD(): 9.98207ms
+Frame 237 end
+Average processing time of GrabImageRGBD(): 10.0916ms
+Frame 238 end
+Average processing time of GrabImageRGBD(): 10.1123ms
+Frame 239 end
+Average processing time of GrabImageRGBD(): 10.1395ms
+Frame 240 end
+Average processing time of GrabImageRGBD(): 10.1719ms
+Frame 241 end
+Average processing time of GrabImageRGBD(): 10.2798ms
+Frame 242 end
+Average processing time of GrabImageRGBD(): 10.3152ms
+Frame 243 end
+Average processing time of GrabImageRGBD(): 10.3212ms
+Frame 244 end
+Average processing time of GrabImageRGBD(): 10.3556ms
+Frame 245 end
+Average processing time of GrabImageRGBD(): 10.3805ms
+Frame 246 end
+Average processing time of GrabImageRGBD(): 10.4769ms
+Frame 247 end
+Average processing time of GrabImageRGBD(): 10.4979ms
+Frame 248 end
+Average processing time of GrabImageRGBD(): 10.4989ms
+Frame 249 end
+Average processing time of GrabImageRGBD(): 10.5086ms
+Frame 250 end
+Average processing time of GrabImageRGBD(): 10.598ms
+Frame 251 end
+Average processing time of GrabImageRGBD(): 10.6306ms
+Frame 252 end
+Average processing time of GrabImageRGBD(): 10.6527ms
+Frame 253 end
+Average processing time of GrabImageRGBD(): 10.7577ms
+Frame 254 end
+Average processing time of GrabImageRGBD(): 10.7616ms
+Frame 255 end
+Average processing time of GrabImageRGBD(): 10.7825ms
+Frame 256 end
+Average processing time of GrabImageRGBD(): 10.7976ms
+Frame 257 end
+Average processing time of GrabImageRGBD(): 10.889ms
+Frame 258 end
+Average processing time of GrabImageRGBD(): 10.915ms
+Frame 259 end
+Average processing time of GrabImageRGBD(): 10.9193ms
+Frame 260 end
+Average processing time of GrabImageRGBD(): 10.9325ms
+Frame 261 end
+Average processing time of GrabImageRGBD(): 11.0673ms
+Frame 262 end
+Average processing time of GrabImageRGBD(): 11.0946ms
+Frame 263 end
+Average processing time of GrabImageRGBD(): 11.0956ms
+Frame 264 end
+Average processing time of GrabImageRGBD(): 11.1148ms
+Frame 265 end
+Average processing time of GrabImageRGBD(): 11.1523ms
+Frame 266 end
+Average processing time of GrabImageRGBD(): 11.2847ms
+Frame 267 end
+Average processing time of GrabImageRGBD(): 11.285ms
+Frame 268 end
+Average processing time of GrabImageRGBD(): 11.295ms
+Frame 269 end
+Average processing time of GrabImageRGBD(): 11.2946ms
+Frame 270 end
+Average processing time of GrabImageRGBD(): 11.2985ms
+Frame 271 end
+Average processing time of GrabImageRGBD(): 11.3956ms
+Frame 272 end
+Average processing time of GrabImageRGBD(): 11.4048ms
+Frame 273 end
+Average processing time of GrabImageRGBD(): 11.4137ms
+Frame 274 end
+Average processing time of GrabImageRGBD(): 11.4173ms
+Frame 275 end
+Average processing time of GrabImageRGBD(): 11.4258ms
+Frame 276 end
+Average processing time of GrabImageRGBD(): 11.4267ms
+Frame 277 end
+Average processing time of GrabImageRGBD(): 11.4315ms
+Frame 278 end
+Average processing time of GrabImageRGBD(): 11.5196ms
+Frame 279 end
+Average processing time of GrabImageRGBD(): 11.5254ms
+Frame 280 end
+Average processing time of GrabImageRGBD(): 11.5239ms
+Frame 281 end
+Average processing time of GrabImageRGBD(): 11.5287ms
+Frame 282 end
+Average processing time of GrabImageRGBD(): 11.5347ms
+Frame 283 end
+Average processing time of GrabImageRGBD(): 11.538ms
+Frame 284 end
+Average processing time of GrabImageRGBD(): 11.5445ms
+Frame 285 end
+Average processing time of GrabImageRGBD(): 11.5532ms
+Frame 286 end
+Average processing time of GrabImageRGBD(): 11.6347ms
+Frame 287 end
+Average processing time of GrabImageRGBD(): 11.6724ms
+Frame 288 end
+Average processing time of GrabImageRGBD(): 11.6781ms
+Frame 289 end
+Average processing time of GrabImageRGBD(): 11.7108ms
+Frame 290 end
+Average processing time of GrabImageRGBD(): 11.744ms
+Frame 291 end
+Average processing time of GrabImageRGBD(): 11.7695ms
+Frame 292 end
+Average processing time of GrabImageRGBD(): 11.7698ms
+Frame 293 end
+Average processing time of GrabImageRGBD(): 11.8965ms
+Frame 294 end
+Average processing time of GrabImageRGBD(): 11.9331ms
+Frame 295 end
+Average processing time of GrabImageRGBD(): 11.949ms
+Frame 296 end
+Average processing time of GrabImageRGBD(): 11.9685ms
+Frame 297 end
+Average processing time of GrabImageRGBD(): 11.9894ms
+Frame 298 end
+Average processing time of GrabImageRGBD(): 11.9996ms
+Frame 299 end
+Average processing time of GrabImageRGBD(): 12.0111ms
+Frame 300 end
+Average processing time of GrabImageRGBD(): 12.125ms
+Frame 301 end
+Average processing time of GrabImageRGBD(): 12.1411ms
+Frame 302 end
+Average processing time of GrabImageRGBD(): 12.1503ms
+Frame 303 end
+Average processing time of GrabImageRGBD(): 12.1882ms
+Frame 304 end
+Average processing time of GrabImageRGBD(): 12.2047ms
+Frame 305 end
+Average processing time of GrabImageRGBD(): 12.229ms
+Frame 306 end
+Average processing time of GrabImageRGBD(): 12.3642ms
+Frame 307 end
+Average processing time of GrabImageRGBD(): 12.3968ms
+Frame 308 end
+Average processing time of GrabImageRGBD(): 12.4307ms
+Frame 309 end
+Average processing time of GrabImageRGBD(): 12.4495ms
+Frame 310 end
+Average processing time of GrabImageRGBD(): 12.4632ms
+Frame 311 end
+Average processing time of GrabImageRGBD(): 12.4787ms
+Frame 312 end
+Average processing time of GrabImageRGBD(): 12.4771ms
+Frame 313 end
+Average processing time of GrabImageRGBD(): 12.489ms
+Frame 314 end
+Average processing time of GrabImageRGBD(): 12.6241ms
+Frame 315 end
+Average processing time of GrabImageRGBD(): 12.6579ms
+Frame 316 end
+Average processing time of GrabImageRGBD(): 12.6611ms
+Frame 317 end
+Average processing time of GrabImageRGBD(): 12.6976ms
+Frame 318 end
+Average processing time of GrabImageRGBD(): 12.7254ms
+Frame 319 end
+Average processing time of GrabImageRGBD(): 12.7414ms
+Frame 320 end
+Average processing time of GrabImageRGBD(): 12.8318ms
+Frame 321 end
+Average processing time of GrabImageRGBD(): 12.8478ms
+Frame 322 end
+Average processing time of GrabImageRGBD(): 12.855ms
+Frame 323 end
+Average processing time of GrabImageRGBD(): 12.8625ms
+Frame 324 end
+Average processing time of GrabImageRGBD(): 12.8636ms
+Frame 325 end
+Average processing time of GrabImageRGBD(): 12.8658ms
+Frame 326 end
+Average processing time of GrabImageRGBD(): 12.8766ms
+Frame 327 end
+Average processing time of GrabImageRGBD(): 12.8588ms
+Frame 328 end
+Average processing time of GrabImageRGBD(): 12.8661ms
+Frame 329 end
+Average processing time of GrabImageRGBD(): 12.8704ms
+Frame 330 end
+Average processing time of GrabImageRGBD(): 12.8624ms
+Frame 331 end
+Average processing time of GrabImageRGBD(): 12.8628ms
+Frame 332 end
+Average processing time of GrabImageRGBD(): 12.8701ms
+Frame 333 end
+Average processing time of GrabImageRGBD(): 12.8721ms
+Frame 334 end
+Average processing time of GrabImageRGBD(): 12.9528ms
+Frame 335 end
+Average processing time of GrabImageRGBD(): 12.9583ms
+Frame 336 end
+Average processing time of GrabImageRGBD(): 12.9611ms
+Frame 337 end
+Average processing time of GrabImageRGBD(): 12.9562ms
+Frame 338 end
+Average processing time of GrabImageRGBD(): 12.9485ms
+Frame 339 end
+Average processing time of GrabImageRGBD(): 12.9398ms
+Frame 340 end
+Average processing time of GrabImageRGBD(): 12.918ms
+Frame 341 end
+Average processing time of GrabImageRGBD(): 12.9026ms
+Frame 342 end
+Average processing time of GrabImageRGBD(): 12.8865ms
+Frame 343 end
+Average processing time of GrabImageRGBD(): 12.8857ms
+Frame 344 end
+Average processing time of GrabImageRGBD(): 12.883ms
+Frame 345 end
+Average processing time of GrabImageRGBD(): 12.8735ms
+Frame 346 end
+Average processing time of GrabImageRGBD(): 12.8492ms
+Frame 347 end
+Average processing time of GrabImageRGBD(): 12.8223ms
+Frame 348 end
+Average processing time of GrabImageRGBD(): 12.8006ms
+Frame 349 end
+Average processing time of GrabImageRGBD(): 12.8708ms
+Frame 350 end
+Average processing time of GrabImageRGBD(): 12.865ms
+Frame 351 end
+Average processing time of GrabImageRGBD(): 12.8381ms
+Frame 352 end
+Average processing time of GrabImageRGBD(): 12.8137ms
+Frame 353 end
+Average processing time of GrabImageRGBD(): 12.7895ms
+Frame 354 end
+Average processing time of GrabImageRGBD(): 12.78ms
+Frame 355 end
+Average processing time of GrabImageRGBD(): 12.7729ms
+Frame 356 end
+Average processing time of GrabImageRGBD(): 12.7592ms
+Frame 357 end
+Average processing time of GrabImageRGBD(): 12.7497ms
+Frame 358 end
+Average processing time of GrabImageRGBD(): 12.7225ms
+Frame 359 end
+Average processing time of GrabImageRGBD(): 12.7803ms
+Frame 360 end
+Average processing time of GrabImageRGBD(): 12.7602ms
+Frame 361 end
+Average processing time of GrabImageRGBD(): 12.7342ms
+Frame 362 end
+Average processing time of GrabImageRGBD(): 12.7297ms
+Frame 363 end
+Average processing time of GrabImageRGBD(): 12.7148ms
+Frame 364 end
+Average processing time of GrabImageRGBD(): 12.6882ms
+Frame 365 end
+Average processing time of GrabImageRGBD(): 12.667ms
+Frame 366 end
+Average processing time of GrabImageRGBD(): 12.6576ms
+Frame 367 end
+Average processing time of GrabImageRGBD(): 12.6308ms
+Frame 368 end
+Average processing time of GrabImageRGBD(): 12.6218ms
+Frame 369 end
+Average processing time of GrabImageRGBD(): 12.6676ms
+Frame 370 end
+Average processing time of GrabImageRGBD(): 12.6652ms
+Frame 371 end
+Average processing time of GrabImageRGBD(): 12.6415ms
+Frame 372 end
+Average processing time of GrabImageRGBD(): 12.632ms
+Frame 373 end
+Average processing time of GrabImageRGBD(): 12.6141ms
+Frame 374 end
+Average processing time of GrabImageRGBD(): 12.6036ms
+Frame 375 end
+Average processing time of GrabImageRGBD(): 12.5894ms
+Frame 376 end
+Average processing time of GrabImageRGBD(): 12.6365ms
+Frame 377 end
+Average processing time of GrabImageRGBD(): 12.6157ms
+Frame 378 end
+Average processing time of GrabImageRGBD(): 12.59ms
+Frame 379 end
+Average processing time of GrabImageRGBD(): 12.5668ms
+Frame 380 end
+Average processing time of GrabImageRGBD(): 12.5446ms
+Frame 381 end
+Average processing time of GrabImageRGBD(): 12.526ms
+Frame 382 end
+Average processing time of GrabImageRGBD(): 12.5026ms
+Frame 383 end
+Average processing time of GrabImageRGBD(): 12.4841ms
+Frame 384 end
+Average processing time of GrabImageRGBD(): 12.4791ms
+Frame 385 end
+Average processing time of GrabImageRGBD(): 12.4733ms
+Frame 386 end
+Average processing time of GrabImageRGBD(): 12.4503ms
+Frame 387 end
+Average processing time of GrabImageRGBD(): 12.4359ms
+Frame 388 end
+Average processing time of GrabImageRGBD(): 12.4132ms
+Frame 389 end
+Average processing time of GrabImageRGBD(): 12.3911ms
+Frame 390 end
+Average processing time of GrabImageRGBD(): 12.3685ms
+Frame 391 end
+Average processing time of GrabImageRGBD(): 12.3605ms
+Frame 392 end
+Average processing time of GrabImageRGBD(): 12.4168ms
+Frame 393 end
+Average processing time of GrabImageRGBD(): 12.4133ms
+Frame 394 end
+Average processing time of GrabImageRGBD(): 12.4035ms
+Frame 395 end
+Average processing time of GrabImageRGBD(): 12.3894ms
+Frame 396 end
+Average processing time of GrabImageRGBD(): 12.3716ms
+Frame 397 end
+Average processing time of GrabImageRGBD(): 12.3605ms
+Frame 398 end
+Average processing time of GrabImageRGBD(): 12.3479ms
+Frame 399 end
+Average processing time of GrabImageRGBD(): 12.3977ms
+Frame 400 end
+Average processing time of GrabImageRGBD(): 12.3784ms
+Frame 401 end
+Average processing time of GrabImageRGBD(): 12.3555ms
+Frame 402 end
+Average processing time of GrabImageRGBD(): 12.3467ms
+Frame 403 end
+Average processing time of GrabImageRGBD(): 12.3281ms
+Frame 404 end
+Average processing time of GrabImageRGBD(): 12.3166ms
+Frame 405 end
+Average processing time of GrabImageRGBD(): 12.2955ms
+Frame 406 end
+Average processing time of GrabImageRGBD(): 12.3442ms
+Frame 407 end
+Average processing time of GrabImageRGBD(): 12.3385ms
+Frame 408 end
+Average processing time of GrabImageRGBD(): 12.3331ms
+Frame 409 end
+Average processing time of GrabImageRGBD(): 12.317ms
+Frame 410 end
+Average processing time of GrabImageRGBD(): 12.2994ms
+Frame 411 end
+Average processing time of GrabImageRGBD(): 12.2898ms
+Frame 412 end
+Average processing time of GrabImageRGBD(): 12.2685ms
+Frame 413 end
+Average processing time of GrabImageRGBD(): 12.3188ms
+Frame 414 end
+Average processing time of GrabImageRGBD(): 12.3008ms
+Frame 415 end
+Average processing time of GrabImageRGBD(): 12.2774ms
+Frame 416 end
+Average processing time of GrabImageRGBD(): 12.2703ms
+Frame 417 end
+Average processing time of GrabImageRGBD(): 12.2631ms
+Frame 418 end
+Average processing time of GrabImageRGBD(): 12.2552ms
+Frame 419 end
+Average processing time of GrabImageRGBD(): 12.2425ms
+Frame 420 end
+Average processing time of GrabImageRGBD(): 12.2858ms
+Frame 421 end
+Average processing time of GrabImageRGBD(): 12.2863ms
+Frame 422 end
+Average processing time of GrabImageRGBD(): 12.2796ms
+Frame 423 end
+Average processing time of GrabImageRGBD(): 12.2635ms
+Frame 424 end
+Average processing time of GrabImageRGBD(): 12.259ms
+Frame 425 end
+Average processing time of GrabImageRGBD(): 12.2415ms
+Frame 426 end
+Average processing time of GrabImageRGBD(): 12.2223ms
+Frame 427 end
+Average processing time of GrabImageRGBD(): 12.2598ms
+Frame 428 end
+Average processing time of GrabImageRGBD(): 12.2419ms
+Frame 429 end
+Average processing time of GrabImageRGBD(): 12.2205ms
+Frame 430 end
+Average processing time of GrabImageRGBD(): 12.2028ms
+Frame 431 end
+Average processing time of GrabImageRGBD(): 12.1818ms
+Frame 432 end
+Average processing time of GrabImageRGBD(): 12.1679ms
+Frame 433 end
+Average processing time of GrabImageRGBD(): 12.1534ms
+Frame 434 end
+Average processing time of GrabImageRGBD(): 12.2096ms
+Frame 435 end
+Average processing time of GrabImageRGBD(): 12.1927ms
+Frame 436 end
+Average processing time of GrabImageRGBD(): 12.1733ms
+Frame 437 end
+Average processing time of GrabImageRGBD(): 12.1663ms
+Frame 438 end
+Average processing time of GrabImageRGBD(): 12.1572ms
+Frame 439 end
+Average processing time of GrabImageRGBD(): 12.1479ms
+Frame 440 end
+Average processing time of GrabImageRGBD(): 12.1393ms
+Frame 441 end
+Average processing time of GrabImageRGBD(): 12.1304ms
+Frame 442 end
+Average processing time of GrabImageRGBD(): 12.1218ms
+Frame 443 end
+Average processing time of GrabImageRGBD(): 12.1113ms
+Frame 444 end
+Average processing time of GrabImageRGBD(): 12.1547ms
+Frame 445 end
+Average processing time of GrabImageRGBD(): 12.1484ms
+Frame 446 end
+Average processing time of GrabImageRGBD(): 12.1408ms
+Frame 447 end
+Average processing time of GrabImageRGBD(): 12.1262ms
+Frame 448 end
+Average processing time of GrabImageRGBD(): 12.1067ms
+Frame 449 end
+Average processing time of GrabImageRGBD(): 12.0972ms
+Frame 450 end
+Average processing time of GrabImageRGBD(): 12.0783ms
+Frame 451 end
+Average processing time of GrabImageRGBD(): 12.12ms
+Frame 452 end
+Average processing time of GrabImageRGBD(): 12.1163ms
+Frame 453 end
+Average processing time of GrabImageRGBD(): 12.1105ms
+Frame 454 end
+Average processing time of GrabImageRGBD(): 12.1046ms
+Frame 455 end
+Average processing time of GrabImageRGBD(): 12.0858ms
+Frame 456 end
+Average processing time of GrabImageRGBD(): 12.0696ms
+Frame 457 end
+Average processing time of GrabImageRGBD(): 12.0604ms
+Frame 458 end
+Average processing time of GrabImageRGBD(): 12.0443ms
+Frame 459 end
+Average processing time of GrabImageRGBD(): 12.0259ms
+Frame 460 end
+Average processing time of GrabImageRGBD(): 12.0705ms
+Frame 461 end
+Average processing time of GrabImageRGBD(): 12.0651ms
+Frame 462 end
+Average processing time of GrabImageRGBD(): 12.0563ms
+Frame 463 end
+Average processing time of GrabImageRGBD(): 12.0476ms
+Frame 464 end
+Average processing time of GrabImageRGBD(): 12.0287ms
+Frame 465 end
+Average processing time of GrabImageRGBD(): 12.0138ms
+Frame 466 end
+Average processing time of GrabImageRGBD(): 12.0038ms
+Frame 467 end
+Average processing time of GrabImageRGBD(): 11.9939ms
+Frame 468 end
+Average processing time of GrabImageRGBD(): 12.0365ms
+Frame 469 end
+Average processing time of GrabImageRGBD(): 12.0312ms
+Frame 470 end
+Average processing time of GrabImageRGBD(): 12.012ms
+Frame 471 end
+Average processing time of GrabImageRGBD(): 12.0085ms
+Frame 472 end
+Average processing time of GrabImageRGBD(): 11.9895ms
+Frame 473 end
+Average processing time of GrabImageRGBD(): 11.9732ms
+Frame 474 end
+Average processing time of GrabImageRGBD(): 12.0157ms
+Frame 475 end
+Average processing time of GrabImageRGBD(): 12.003ms
+Frame 476 end
+Average processing time of GrabImageRGBD(): 11.9922ms
+Frame 477 end
+Average processing time of GrabImageRGBD(): 11.9761ms
+Frame 478 end
+Average processing time of GrabImageRGBD(): 11.9588ms
+Frame 479 end
+Average processing time of GrabImageRGBD(): 12.0025ms
+Frame 480 end
+Average processing time of GrabImageRGBD(): 11.9983ms
+Frame 481 end
+Average processing time of GrabImageRGBD(): 11.9889ms
+Frame 482 end
+Average processing time of GrabImageRGBD(): 11.9716ms
+Frame 483 end
+Average processing time of GrabImageRGBD(): 11.9632ms
+Frame 484 end
+Average processing time of GrabImageRGBD(): 11.9522ms
+Frame 485 end
+Average processing time of GrabImageRGBD(): 11.9436ms
+Frame 486 end
+Average processing time of GrabImageRGBD(): 11.9346ms
+Frame 487 end
+Average processing time of GrabImageRGBD(): 11.9211ms
+Frame 488 end
+Average processing time of GrabImageRGBD(): 11.9611ms
+Frame 489 end
+Average processing time of GrabImageRGBD(): 11.9547ms
+Frame 490 end
+Average processing time of GrabImageRGBD(): 11.937ms
+Frame 491 end
+Average processing time of GrabImageRGBD(): 11.9199ms
+Frame 492 end
+Average processing time of GrabImageRGBD(): 11.9022ms
+Frame 493 end
+Average processing time of GrabImageRGBD(): 11.8937ms
+Frame 494 end
+Average processing time of GrabImageRGBD(): 11.8846ms
+Frame 495 end
+Average processing time of GrabImageRGBD(): 11.8668ms
+Frame 496 end
+Average processing time of GrabImageRGBD(): 11.8567ms
+Frame 497 end
+Average processing time of GrabImageRGBD(): 11.8967ms
+Frame 498 end
+Average processing time of GrabImageRGBD(): 11.8922ms
+Frame 499 end
+Average processing time of GrabImageRGBD(): 11.8851ms
+Frame 500 end
+Average processing time of GrabImageRGBD(): 11.8777ms
+Frame 501 end
+Average processing time of GrabImageRGBD(): 11.8699ms
+Frame 502 end
+Average processing time of GrabImageRGBD(): 11.8531ms
+Frame 503 end
+Average processing time of GrabImageRGBD(): 11.8437ms
+Frame 504 end
+Average processing time of GrabImageRGBD(): 11.8277ms
+Frame 505 end
+Average processing time of GrabImageRGBD(): 11.8237ms
+Frame 506 end
+Average processing time of GrabImageRGBD(): 11.8073ms
+Frame 507 end
+Average processing time of GrabImageRGBD(): 11.8463ms
+Frame 508 end
+Average processing time of GrabImageRGBD(): 11.8391ms
+Frame 509 end
+Average processing time of GrabImageRGBD(): 11.833ms
+Frame 510 end
+Average processing time of GrabImageRGBD(): 11.8187ms
+Frame 511 end
+Average processing time of GrabImageRGBD(): 11.8091ms
+Frame 512 end
+Average processing time of GrabImageRGBD(): 11.792ms
+Frame 513 end
+Average processing time of GrabImageRGBD(): 11.7821ms
+Frame 514 end
+Average processing time of GrabImageRGBD(): 11.7714ms
+Frame 515 end
+Average processing time of GrabImageRGBD(): 11.7544ms
+Frame 516 end
+Average processing time of GrabImageRGBD(): 11.7882ms
+Frame 517 end
+Average processing time of GrabImageRGBD(): 11.7755ms
+Frame 518 end
+Average processing time of GrabImageRGBD(): 11.7607ms
+Frame 519 end
+Average processing time of GrabImageRGBD(): 11.7437ms
+Frame 520 end
+Average processing time of GrabImageRGBD(): 11.7281ms
+Frame 521 end
+Average processing time of GrabImageRGBD(): 11.7178ms
+Frame 522 end
+Average processing time of GrabImageRGBD(): 11.7065ms
+Frame 523 end
+Average processing time of GrabImageRGBD(): 11.6982ms
+Frame 524 end
+Average processing time of GrabImageRGBD(): 11.6818ms
+Frame 525 end
+Average processing time of GrabImageRGBD(): 11.7207ms
+Frame 526 end
+Average processing time of GrabImageRGBD(): 11.7171ms
+Frame 527 end
+Average processing time of GrabImageRGBD(): 11.7018ms
+Frame 528 end
+Average processing time of GrabImageRGBD(): 11.6946ms
+Frame 529 end
+Average processing time of GrabImageRGBD(): 11.6856ms
+Frame 530 end
+Average processing time of GrabImageRGBD(): 11.6734ms
+Frame 531 end
+Average processing time of GrabImageRGBD(): 11.6576ms
+Frame 532 end
+Average processing time of GrabImageRGBD(): 11.6442ms
+Frame 533 end
+Average processing time of GrabImageRGBD(): 11.6351ms
+Frame 534 end
+Average processing time of GrabImageRGBD(): 11.6728ms
+Frame 535 end
+Average processing time of GrabImageRGBD(): 11.6611ms
+Frame 536 end
+Average processing time of GrabImageRGBD(): 11.6498ms
+Frame 537 end
+Average processing time of GrabImageRGBD(): 11.6347ms
+Frame 538 end
+Average processing time of GrabImageRGBD(): 11.6238ms
+Frame 539 end
+Average processing time of GrabImageRGBD(): 11.6087ms
+Frame 540 end
+Average processing time of GrabImageRGBD(): 11.6026ms
+Frame 541 end
+Average processing time of GrabImageRGBD(): 11.5988ms
+Frame 542 end
+Average processing time of GrabImageRGBD(): 11.5928ms
+Frame 543 end
+Average processing time of GrabImageRGBD(): 11.584ms
+Frame 544 end
+Average processing time of GrabImageRGBD(): 11.6211ms
+Frame 545 end
+Average processing time of GrabImageRGBD(): 11.6181ms
+Frame 546 end
+Average processing time of GrabImageRGBD(): 11.6081ms
+Frame 547 end
+Average processing time of GrabImageRGBD(): 11.5929ms
+Frame 548 end
+Average processing time of GrabImageRGBD(): 11.5806ms
+Frame 549 end
+Average processing time of GrabImageRGBD(): 11.5652ms
+Frame 550 end
+Average processing time of GrabImageRGBD(): 11.5517ms
+Frame 551 end
+Average processing time of GrabImageRGBD(): 11.544ms
+Frame 552 end
+Average processing time of GrabImageRGBD(): 11.5353ms
+Frame 553 end
+Average processing time of GrabImageRGBD(): 11.597ms
+Frame 554 end
+Average processing time of GrabImageRGBD(): 11.5943ms
+Frame 555 end
+Average processing time of GrabImageRGBD(): 11.5887ms
+Frame 556 end
+Average processing time of GrabImageRGBD(): 11.5763ms
+Frame 557 end
+Average processing time of GrabImageRGBD(): 11.5626ms
+Frame 558 end
+Average processing time of GrabImageRGBD(): 11.5529ms
+Frame 559 end
+Average processing time of GrabImageRGBD(): 11.5454ms
+Frame 560 end
+Average processing time of GrabImageRGBD(): 11.531ms
+Frame 561 end
+Average processing time of GrabImageRGBD(): 11.5162ms
+Frame 562 end
+Average processing time of GrabImageRGBD(): 11.5014ms
+Frame 563 end
+Average processing time of GrabImageRGBD(): 11.5336ms
+Frame 564 end
+Average processing time of GrabImageRGBD(): 11.5224ms
+Frame 565 end
+Average processing time of GrabImageRGBD(): 11.5195ms
+Frame 566 end
+Average processing time of GrabImageRGBD(): 11.5081ms
+Frame 567 end
+Average processing time of GrabImageRGBD(): 11.5062ms
+Frame 568 end
+Average processing time of GrabImageRGBD(): 11.4924ms
+Frame 569 end
+Average processing time of GrabImageRGBD(): 11.4889ms
+Frame 570 end
+Average processing time of GrabImageRGBD(): 11.4753ms
+Frame 571 end
+Average processing time of GrabImageRGBD(): 11.4717ms
+Frame 572 end
+Average processing time of GrabImageRGBD(): 11.4578ms
+Frame 573 end
+Average processing time of GrabImageRGBD(): 11.4542ms
+Frame 574 end
+Average processing time of GrabImageRGBD(): 11.4453ms
+Frame 575 end
+Average processing time of GrabImageRGBD(): 11.441ms
+Frame 576 end
+Average processing time of GrabImageRGBD(): 11.4303ms
+Frame 577 end
+Average processing time of GrabImageRGBD(): 11.4169ms
+Frame 578 end
+Average processing time of GrabImageRGBD(): 11.4035ms
+Frame 579 end
+Average processing time of GrabImageRGBD(): 11.3999ms
+Frame 580 end
+Average processing time of GrabImageRGBD(): 11.3879ms
+Frame 581 end
+Average processing time of GrabImageRGBD(): 11.3843ms
+Frame 582 end
+Average processing time of GrabImageRGBD(): 11.3795ms
+Frame 583 end
+Average processing time of GrabImageRGBD(): 11.371ms
+Frame 584 end
+Average processing time of GrabImageRGBD(): 11.367ms
+Frame 585 end
+Average processing time of GrabImageRGBD(): 11.36ms
+Frame 586 end
+Average processing time of GrabImageRGBD(): 11.356ms
+Frame 587 end
+Average processing time of GrabImageRGBD(): 11.3527ms
+Frame 588 end
+Average processing time of GrabImageRGBD(): 11.3392ms
+Frame 589 end
+Average processing time of GrabImageRGBD(): 11.3774ms
+Frame 590 end
+Average processing time of GrabImageRGBD(): 11.3689ms
+Frame 591 end
+Average processing time of GrabImageRGBD(): 11.3568ms
+Frame 592 end
+Average processing time of GrabImageRGBD(): 11.3434ms
+Frame 593 end
+Average processing time of GrabImageRGBD(): 11.3314ms
+Frame 594 end
+Average processing time of GrabImageRGBD(): 11.3227ms
+Frame 595 end
+Average processing time of GrabImageRGBD(): 11.3201ms
+Frame 596 end
+Average processing time of GrabImageRGBD(): 11.3155ms
+Frame 597 end
+Average processing time of GrabImageRGBD(): 11.3099ms
+Frame 598 end
+Average processing time of GrabImageRGBD(): 11.3015ms
+Frame 599 end
+Average processing time of GrabImageRGBD(): 11.3343ms
+Frame 600 end
+Average processing time of GrabImageRGBD(): 11.3339ms
+Frame 601 end
+Average processing time of GrabImageRGBD(): 11.3306ms
+Frame 602 end
+Average processing time of GrabImageRGBD(): 11.3315ms
+Frame 603 end
+Average processing time of GrabImageRGBD(): 11.3268ms
+Frame 604 end
+Average processing time of GrabImageRGBD(): 11.3221ms
+Frame 605 end
+Average processing time of GrabImageRGBD(): 11.3139ms
+Frame 606 end
+Average processing time of GrabImageRGBD(): 11.3085ms
+Frame 607 end
+Average processing time of GrabImageRGBD(): 11.3033ms
+Frame 608 end
+Average processing time of GrabImageRGBD(): 11.2984ms
+Frame 609 end
+Average processing time of GrabImageRGBD(): 11.3346ms
+Frame 610 end
+Average processing time of GrabImageRGBD(): 11.3271ms
+Frame 611 end
+Average processing time of GrabImageRGBD(): 11.3236ms
+Frame 612 end
+Average processing time of GrabImageRGBD(): 11.3173ms
+Frame 613 end
+Average processing time of GrabImageRGBD(): 11.3057ms
+Frame 614 end
+Average processing time of GrabImageRGBD(): 11.2983ms
+Frame 615 end
+Average processing time of GrabImageRGBD(): 11.2937ms
+Frame 616 end
+Average processing time of GrabImageRGBD(): 11.2888ms
+Frame 617 end
+Average processing time of GrabImageRGBD(): 11.2843ms
+Frame 618 end
+Average processing time of GrabImageRGBD(): 11.2788ms
+Frame 619 end
+Average processing time of GrabImageRGBD(): 11.3136ms
+Frame 620 end
+Average processing time of GrabImageRGBD(): 11.3121ms
+Frame 621 end
+Average processing time of GrabImageRGBD(): 11.2994ms
+Frame 622 end
+Average processing time of GrabImageRGBD(): 11.2943ms
+Frame 623 end
+Average processing time of GrabImageRGBD(): 11.2926ms
+Frame 624 end
+Average processing time of GrabImageRGBD(): 11.2889ms
+Frame 625 end
+Average processing time of GrabImageRGBD(): 11.2793ms
+Frame 626 end
+Average processing time of GrabImageRGBD(): 11.2722ms
+Frame 627 end
+Average processing time of GrabImageRGBD(): 11.2598ms
+Frame 628 end
+Average processing time of GrabImageRGBD(): 11.2474ms
+Frame 629 end
+Average processing time of GrabImageRGBD(): 11.2412ms
+Frame 630 end
+Average processing time of GrabImageRGBD(): 11.2371ms
+Frame 631 end
+Average processing time of GrabImageRGBD(): 11.2333ms
+Frame 632 end
+Average processing time of GrabImageRGBD(): 11.2207ms
+Frame 633 end
+Average processing time of GrabImageRGBD(): 11.2505ms
+Frame 634 end
+Average processing time of GrabImageRGBD(): 11.2474ms
+Frame 635 end
+Average processing time of GrabImageRGBD(): 11.2363ms
+Frame 636 end
+Average processing time of GrabImageRGBD(): 11.2242ms
+Frame 637 end
+Average processing time of GrabImageRGBD(): 11.2209ms
+Frame 638 end
+Average processing time of GrabImageRGBD(): 11.2116ms
+Frame 639 end
+Average processing time of GrabImageRGBD(): 11.2084ms
+Frame 640 end
+Average processing time of GrabImageRGBD(): 11.1967ms
+Frame 641 end
+Average processing time of GrabImageRGBD(): 11.1931ms
+Frame 642 end
+Average processing time of GrabImageRGBD(): 11.1896ms
+Frame 643 end
+Average processing time of GrabImageRGBD(): 11.1809ms
+Frame 644 end
+Average processing time of GrabImageRGBD(): 11.1772ms
+Frame 645 end
+Average processing time of GrabImageRGBD(): 11.1741ms
+Frame 646 end
+Average processing time of GrabImageRGBD(): 11.1701ms
+Frame 647 end
+Average processing time of GrabImageRGBD(): 11.1582ms
+Frame 648 end
+Average processing time of GrabImageRGBD(): 11.1549ms
+Frame 649 end
+Average processing time of GrabImageRGBD(): 11.143ms
+Frame 650 end
+Average processing time of GrabImageRGBD(): 11.1312ms
+Frame 651 end
+Average processing time of GrabImageRGBD(): 11.1278ms
+Frame 652 end
+Average processing time of GrabImageRGBD(): 11.1164ms
+Frame 653 end
+Average processing time of GrabImageRGBD(): 11.113ms
+Frame 654 end
+Average processing time of GrabImageRGBD(): 11.1081ms
+Frame 655 end
+Average processing time of GrabImageRGBD(): 11.0982ms
+Frame 656 end
+Average processing time of GrabImageRGBD(): 11.0865ms
+Frame 657 end
+Average processing time of GrabImageRGBD(): 11.0836ms
+Frame 658 end
+Average processing time of GrabImageRGBD(): 11.0719ms
+Frame 659 end
+Average processing time of GrabImageRGBD(): 11.0626ms
+Frame 660 end
+Average processing time of GrabImageRGBD(): 11.0512ms
+Frame 661 end
+Average processing time of GrabImageRGBD(): 11.04ms
+Frame 662 end
+Average processing time of GrabImageRGBD(): 11.0358ms
+Frame 663 end
+Average processing time of GrabImageRGBD(): 11.0246ms
+Frame 664 end
+Average processing time of GrabImageRGBD(): 11.021ms
+Frame 665 end
+Average processing time of GrabImageRGBD(): 11.0089ms
+Frame 666 end
+Average processing time of GrabImageRGBD(): 10.999ms
+Frame 667 end
+Average processing time of GrabImageRGBD(): 10.9914ms
+Frame 668 end
+Average processing time of GrabImageRGBD(): 10.9804ms
+Frame 669 end
+Average processing time of GrabImageRGBD(): 10.9692ms
+Frame 670 end
+Average processing time of GrabImageRGBD(): 10.9651ms
+Frame 671 end
+Average processing time of GrabImageRGBD(): 10.9613ms
+Frame 672 end
+Average processing time of GrabImageRGBD(): 10.9588ms
+Frame 673 end
+Average processing time of GrabImageRGBD(): 10.9551ms
+Frame 674 end
+Average processing time of GrabImageRGBD(): 10.9512ms
+Frame 675 end
+Average processing time of GrabImageRGBD(): 10.9479ms
+Frame 676 end
+Average processing time of GrabImageRGBD(): 10.9445ms
+Frame 677 end
+Average processing time of GrabImageRGBD(): 10.9408ms
+Frame 678 end
+Average processing time of GrabImageRGBD(): 10.9312ms
+Frame 679 end
+Average processing time of GrabImageRGBD(): 10.9273ms
+Frame 680 end
+Average processing time of GrabImageRGBD(): 10.9238ms
+Frame 681 end
+Average processing time of GrabImageRGBD(): 10.9125ms
+Frame 682 end
+Average processing time of GrabImageRGBD(): 10.9019ms
+Frame 683 end
+Average processing time of GrabImageRGBD(): 10.8945ms
+Frame 684 end
+Average processing time of GrabImageRGBD(): 10.8856ms
+Frame 685 end
+Average processing time of GrabImageRGBD(): 10.8745ms
+Frame 686 end
+Average processing time of GrabImageRGBD(): 10.8718ms
+Frame 687 end
+Average processing time of GrabImageRGBD(): 10.8606ms
+Frame 688 end
+Average processing time of GrabImageRGBD(): 10.8498ms
+Frame 689 end
+Average processing time of GrabImageRGBD(): 10.839ms
+Frame 690 end
+Average processing time of GrabImageRGBD(): 10.8348ms
+Frame 691 end
+Average processing time of GrabImageRGBD(): 10.8241ms
+Frame 692 end
+Average processing time of GrabImageRGBD(): 10.8131ms
+Frame 693 end
+Average processing time of GrabImageRGBD(): 10.8101ms
+Frame 694 end
+Average processing time of GrabImageRGBD(): 10.8425ms
+Frame 695 end
+Average processing time of GrabImageRGBD(): 10.8431ms
+Frame 696 end
+Average processing time of GrabImageRGBD(): 10.8332ms
+Frame 697 end
+Average processing time of GrabImageRGBD(): 10.8309ms
+Frame 698 end
+Average processing time of GrabImageRGBD(): 10.8206ms
+Frame 699 end
+Average processing time of GrabImageRGBD(): 10.8178ms
+Frame 700 end
+Average processing time of GrabImageRGBD(): 10.8091ms
+Frame 701 end
+Average processing time of GrabImageRGBD(): 10.7986ms
+Frame 702 end
+Average processing time of GrabImageRGBD(): 10.7965ms
+Frame 703 end
+Average processing time of GrabImageRGBD(): 10.787ms
+Frame 704 end
+Average processing time of GrabImageRGBD(): 10.7788ms
+Frame 705 end
+Average processing time of GrabImageRGBD(): 10.7706ms
+Frame 706 end
+Average processing time of GrabImageRGBD(): 10.7675ms
+Frame 707 end
+Average processing time of GrabImageRGBD(): 10.7641ms
+Frame 708 end
+Average processing time of GrabImageRGBD(): 10.7539ms
+Frame 709 end
+Average processing time of GrabImageRGBD(): 10.7439ms
+Frame 710 end
+Average processing time of GrabImageRGBD(): 10.7334ms
+Frame 711 end
+Average processing time of GrabImageRGBD(): 10.7302ms
+Frame 712 end
+Average processing time of GrabImageRGBD(): 10.7199ms
+Frame 713 end
+Average processing time of GrabImageRGBD(): 10.7167ms
+Frame 714 end
+Average processing time of GrabImageRGBD(): 10.7066ms
+Frame 715 end
+Average processing time of GrabImageRGBD(): 10.7037ms
+Frame 716 end
+Average processing time of GrabImageRGBD(): 10.6945ms
+Frame 717 end
+Average processing time of GrabImageRGBD(): 10.687ms
+Frame 718 end
+Average processing time of GrabImageRGBD(): 10.6772ms
+Frame 719 end
+Shutdown
+-------
+
+median tracking time: 0.00907185
+mean tracking time: 0.0115237
+
+Saving camera trajectory to CameraTrajectory.txt ...
+
+Saving keyframe trajectory to KeyFrameTrajectory.txt ...
