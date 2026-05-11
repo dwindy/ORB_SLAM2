@@ -1207,6 +1207,9 @@ namespace ORB_SLAM2
 
     float calculateMean(const std::vector<float>& data)
     {
+        if (data.empty())
+            return 0.0f;
+
         float sum = 0.0;
         for (float value : data)
         {
@@ -1217,6 +1220,9 @@ namespace ORB_SLAM2
 
     double calculateStandardDeviation(const std::vector<float>& data, float mean)
     {
+        if (data.empty())
+            return 0.0;
+
         float sumSquaredDiff = 0.0;
         for (float value : data)
         {
