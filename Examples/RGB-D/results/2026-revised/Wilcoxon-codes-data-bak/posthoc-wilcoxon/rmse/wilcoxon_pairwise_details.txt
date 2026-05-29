@@ -1,0 +1,144 @@
+============================================================
+SG vs Panoptic
+------------------------------------------------------------
+Aligned sequences: 33
+SG mean: 0.081690
+Panoptic mean: 0.121092
+SG wins: 18
+Panoptic wins: 15
+Ties: 0
+Wilcoxon statistic: 243.000000
+p-value: 0.5134843902
+Rank-biserial correlation: 0.133690
+
+sequence                                                       SG     Panoptic         diff
+TUM::rgbd_dataset_freiburg2_desk_with_person             0.007480     0.012900    -0.005420
+TUM::rgbd_dataset_freiburg3_sitting_halfsphere           0.020840     0.017508     0.003332
+TUM::rgbd_dataset_freiburg3_sitting_rpy                  0.025020     0.035020    -0.010000
+TUM::rgbd_dataset_freiburg3_sitting_static               0.010020     0.006980     0.003040
+TUM::rgbd_dataset_freiburg3_sitting_xyz                  0.012330     0.013300    -0.000970
+TUM::rgbd_dataset_freiburg3_walking_halfsphere           0.037680     0.026930     0.010750
+TUM::rgbd_dataset_freiburg3_walking_rpy                  0.033200     0.038010    -0.004810
+TUM::rgbd_dataset_freiburg3_walking_static               0.008080     0.011600    -0.003520
+TUM::rgbd_dataset_freiburg3_walking_xyz                  0.017930     0.014630     0.003300
+bonn::rgbd_bonn_balloon                                  0.031897     0.029060     0.002837
+bonn::rgbd_bonn_balloon2                                 0.030339     0.023536     0.006802
+bonn::rgbd_bonn_balloon_tracking                         0.036922     0.036332     0.000590
+bonn::rgbd_bonn_balloon_tracking2                        0.042819     0.028600     0.014219
+bonn::rgbd_bonn_crowd                                    0.022986     0.345150    -0.322164
+bonn::rgbd_bonn_crowd2                                   0.056116     0.655410    -0.599294
+bonn::rgbd_bonn_crowd3                                   0.053319     0.033480     0.019839
+bonn::rgbd_bonn_kidnapping_box                           0.026639     0.032040    -0.005401
+bonn::rgbd_bonn_kidnapping_box2                          0.023489     0.024070    -0.000581
+bonn::rgbd_bonn_moving_nonobstructing_box                0.025887     0.101430    -0.075543
+bonn::rgbd_bonn_moving_nonobstructing_box2               0.030212     0.034100    -0.003888
+bonn::rgbd_bonn_moving_obstructing_box                   0.210722     0.402430    -0.191708
+bonn::rgbd_bonn_moving_obstructing_box2                  0.315792     0.467410    -0.151618
+bonn::rgbd_bonn_person_tracking                          0.048261     0.043900     0.004361
+bonn::rgbd_bonn_person_tracking2                         0.049085     0.052850    -0.003765
+bonn::rgbd_bonn_placing_nonobstructing_box               0.711535     0.714450    -0.002915
+bonn::rgbd_bonn_placing_nonobstructing_box2              0.020566     0.019660     0.000906
+bonn::rgbd_bonn_placing_nonobstructing_box3              0.085391     0.075100     0.010291
+bonn::rgbd_bonn_placing_obstructing_box                  0.246565     0.241010     0.005555
+bonn::rgbd_bonn_removing_nonobstructing_box              0.016884     0.017620    -0.000736
+bonn::rgbd_bonn_removing_nonobstructing_box2             0.019818     0.021710    -0.001892
+bonn::rgbd_bonn_removing_obstructing_box                 0.319088     0.309600     0.009488
+bonn::rgbd_bonn_static_close_far                         0.081454     0.100810    -0.019356
+bonn::rgbd_bonn_synchronous2                             0.017391     0.009410     0.007981
+
+============================================================
+SG vs NGD
+------------------------------------------------------------
+Aligned sequences: 33
+SG mean: 0.081690
+NGD mean: 0.079485
+SG wins: 15
+NGD wins: 18
+Ties: 0
+Wilcoxon statistic: 264.000000
+p-value: 0.7778494691
+Rank-biserial correlation: 0.058824
+
+sequence                                                       SG          NGD         diff
+TUM::rgbd_dataset_freiburg2_desk_with_person             0.007480     0.016560    -0.009080
+TUM::rgbd_dataset_freiburg3_sitting_halfsphere           0.020840     0.018993     0.001847
+TUM::rgbd_dataset_freiburg3_sitting_rpy                  0.025020     0.046554    -0.021534
+TUM::rgbd_dataset_freiburg3_sitting_static               0.010020     0.007030     0.002990
+TUM::rgbd_dataset_freiburg3_sitting_xyz                  0.012330     0.024000    -0.011670
+TUM::rgbd_dataset_freiburg3_walking_halfsphere           0.037680     0.026200     0.011480
+TUM::rgbd_dataset_freiburg3_walking_rpy                  0.033200     0.065680    -0.032480
+TUM::rgbd_dataset_freiburg3_walking_static               0.008080     0.007220     0.000860
+TUM::rgbd_dataset_freiburg3_walking_xyz                  0.017930     0.015940     0.001990
+bonn::rgbd_bonn_balloon                                  0.031897     0.030030     0.001867
+bonn::rgbd_bonn_balloon2                                 0.030339     0.027502     0.002837
+bonn::rgbd_bonn_balloon_tracking                         0.036922     0.034926     0.001997
+bonn::rgbd_bonn_balloon_tracking2                        0.042819     0.037010     0.005809
+bonn::rgbd_bonn_crowd                                    0.022986     0.023860    -0.000874
+bonn::rgbd_bonn_crowd2                                   0.056116     0.041110     0.015006
+bonn::rgbd_bonn_crowd3                                   0.053319     0.034680     0.018639
+bonn::rgbd_bonn_kidnapping_box                           0.026639     0.027670    -0.001031
+bonn::rgbd_bonn_kidnapping_box2                          0.023489     0.022490     0.001000
+bonn::rgbd_bonn_moving_nonobstructing_box                0.025887     0.039270    -0.013383
+bonn::rgbd_bonn_moving_nonobstructing_box2               0.030212     0.032930    -0.002718
+bonn::rgbd_bonn_moving_obstructing_box                   0.210722     0.313360    -0.102638
+bonn::rgbd_bonn_moving_obstructing_box2                  0.315792     0.638800    -0.323008
+bonn::rgbd_bonn_person_tracking                          0.048261     0.049750    -0.001489
+bonn::rgbd_bonn_person_tracking2                         0.049085     0.064250    -0.015165
+bonn::rgbd_bonn_placing_nonobstructing_box               0.711535     0.281180     0.430355
+bonn::rgbd_bonn_placing_nonobstructing_box2              0.020566     0.030970    -0.010404
+bonn::rgbd_bonn_placing_nonobstructing_box3              0.085391     0.077380     0.008011
+bonn::rgbd_bonn_placing_obstructing_box                  0.246565     0.269890    -0.023325
+bonn::rgbd_bonn_removing_nonobstructing_box              0.016884     0.015060     0.001824
+bonn::rgbd_bonn_removing_nonobstructing_box2             0.019818     0.019470     0.000348
+bonn::rgbd_bonn_removing_obstructing_box                 0.319088     0.185850     0.133238
+bonn::rgbd_bonn_static_close_far                         0.081454     0.088130    -0.006676
+bonn::rgbd_bonn_synchronous2                             0.017391     0.009270     0.008121
+
+============================================================
+Panoptic vs NGD
+------------------------------------------------------------
+Aligned sequences: 33
+Panoptic mean: 0.121092
+NGD mean: 0.079485
+Panoptic wins: 17
+NGD wins: 16
+Ties: 0
+Wilcoxon statistic: 272.000000
+p-value: 0.8878511484
+Rank-biserial correlation: -0.030303
+
+sequence                                                 Panoptic          NGD         diff
+TUM::rgbd_dataset_freiburg2_desk_with_person             0.012900     0.016560    -0.003660
+TUM::rgbd_dataset_freiburg3_sitting_halfsphere           0.017508     0.018993    -0.001485
+TUM::rgbd_dataset_freiburg3_sitting_rpy                  0.035020     0.046554    -0.011534
+TUM::rgbd_dataset_freiburg3_sitting_static               0.006980     0.007030    -0.000050
+TUM::rgbd_dataset_freiburg3_sitting_xyz                  0.013300     0.024000    -0.010700
+TUM::rgbd_dataset_freiburg3_walking_halfsphere           0.026930     0.026200     0.000730
+TUM::rgbd_dataset_freiburg3_walking_rpy                  0.038010     0.065680    -0.027670
+TUM::rgbd_dataset_freiburg3_walking_static               0.011600     0.007220     0.004380
+TUM::rgbd_dataset_freiburg3_walking_xyz                  0.014630     0.015940    -0.001310
+bonn::rgbd_bonn_balloon                                  0.029060     0.030030    -0.000970
+bonn::rgbd_bonn_balloon2                                 0.023536     0.027502    -0.003965
+bonn::rgbd_bonn_balloon_tracking                         0.036332     0.034926     0.001407
+bonn::rgbd_bonn_balloon_tracking2                        0.028600     0.037010    -0.008410
+bonn::rgbd_bonn_crowd                                    0.345150     0.023860     0.321290
+bonn::rgbd_bonn_crowd2                                   0.655410     0.041110     0.614300
+bonn::rgbd_bonn_crowd3                                   0.033480     0.034680    -0.001200
+bonn::rgbd_bonn_kidnapping_box                           0.032040     0.027670     0.004370
+bonn::rgbd_bonn_kidnapping_box2                          0.024070     0.022490     0.001580
+bonn::rgbd_bonn_moving_nonobstructing_box                0.101430     0.039270     0.062160
+bonn::rgbd_bonn_moving_nonobstructing_box2               0.034100     0.032930     0.001170
+bonn::rgbd_bonn_moving_obstructing_box                   0.402430     0.313360     0.089070
+bonn::rgbd_bonn_moving_obstructing_box2                  0.467410     0.638800    -0.171390
+bonn::rgbd_bonn_person_tracking                          0.043900     0.049750    -0.005850
+bonn::rgbd_bonn_person_tracking2                         0.052850     0.064250    -0.011400
+bonn::rgbd_bonn_placing_nonobstructing_box               0.714450     0.281180     0.433270
+bonn::rgbd_bonn_placing_nonobstructing_box2              0.019660     0.030970    -0.011310
+bonn::rgbd_bonn_placing_nonobstructing_box3              0.075100     0.077380    -0.002280
+bonn::rgbd_bonn_placing_obstructing_box                  0.241010     0.269890    -0.028880
+bonn::rgbd_bonn_removing_nonobstructing_box              0.017620     0.015060     0.002560
+bonn::rgbd_bonn_removing_nonobstructing_box2             0.021710     0.019470     0.002240
+bonn::rgbd_bonn_removing_obstructing_box                 0.309600     0.185850     0.123750
+bonn::rgbd_bonn_static_close_far                         0.100810     0.088130     0.012680
+bonn::rgbd_bonn_synchronous2                             0.009410     0.009270     0.000140
+
